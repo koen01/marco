@@ -161,7 +161,7 @@ transparency, blur and a light edge:
 - **Doorbell camera:** when someone rings, Home Assistant tells Marco and the screens show the camera full screen for
   a while, with a door chime (it also wakes screens in night mode).
 - **Backups** (automatic, export/import with preview), **activity log**, **command palette** (Ctrl/Cmd + K),
-  phone-friendly layout, English / Spanish / Portuguese.
+  phone-friendly layout, English / Spanish / Portuguese. A screen can also show Dutch (the admin has no Dutch yet).
 
 | | | |
 |---|---|---|

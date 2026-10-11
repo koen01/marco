@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { DATE_FORMATS, type DateFormat } from '../../shared/types';
+import { DATE_FORMATS, type DateFormat, type Lang } from '../../shared/types';
 import { formatDateLine } from '../../shared/i18n';
 import { Card, Field, PageHeader, Segmented, TextInput, ToggleRow } from '../components/ui';
 import { ScopeBadge } from '../components/ui';
@@ -8,7 +8,7 @@ import type { SectionProps } from './common';
 
 
 /** The display's own date line for `d` in time zone `tz`, so the preview matches the screen. */
-export function formatDate(d: Date, fmt: DateFormat, lang: 'es' | 'en' | 'pt', tz: string, custom = '') {
+export function formatDate(d: Date, fmt: DateFormat, lang: Lang, tz: string, custom = '') {
   let key: string;
   try {
     key = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: tz }).format(d);
@@ -163,7 +163,7 @@ const TOKENS: [string, string][] = [
 ];
 
 /** Pattern input for the custom date line: clickable variables and a live preview. */
-function CustomDate({ d, now, lang, set }: { d: { dateCustom?: string; timezone: string }; now: Date; lang: 'es' | 'en' | 'pt'; set: SectionProps['set'] }) {
+function CustomDate({ d, now, lang, set }: { d: { dateCustom?: string; timezone: string }; now: Date; lang: Lang; set: SectionProps['set'] }) {
   const value = d.dateCustom ?? '';
   const insert = (tok: string) => set((c) => void (c.datetime.dateCustom = `${c.datetime.dateCustom ?? ''}{${tok}}`.slice(0, 60)));
   return (

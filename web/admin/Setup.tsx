@@ -11,7 +11,7 @@ import type { GeocodeResult, Lang, LayoutPreset, SetupRequest, SetupStatus, Test
 import { api, ApiError } from './api';
 import { Icon, type IconName } from './components/icons';
 import { Button, Callout, Field, Segmented, TextInput } from './components/ui';
-import { getLang, setLang, t } from './i18n';
+import { type AdminLang, getLang, setLang, t } from './i18n';
 import { PRESETS, Schematic } from './sections/Layout';
 import { HOLIDAY_PRESETS, isHttpUrl, SWATCHES } from './util';
 
@@ -67,7 +67,8 @@ const STEPS: { id: string; label: string; icon: IconName }[] = [
   { id: 'done', label: 'Listo', icon: 'check' },
 ];
 
-const LANG_CARDS: { value: Lang; name: string; hello: string }[] = [
+// The wizard sets the panel and the first screen to the same language, so it offers the panel's languages.
+const LANG_CARDS: { value: AdminLang; name: string; hello: string }[] = [
   { value: 'en', name: 'English', hello: 'Hello' },
   { value: 'es', name: 'Español', hello: 'Hola' },
   { value: 'pt', name: 'Português', hello: 'Olá' },
@@ -151,10 +152,10 @@ function Rule({ ok, children }: { ok: boolean; children: ComponentChildren }) {
   );
 }
 
-export function SetupWizard({ status: initial, onDone, onLang }: { status: SetupStatus; onDone: () => void; onLang: (l: Lang) => void }) {
+export function SetupWizard({ status: initial, onDone, onLang }: { status: SetupStatus; onDone: () => void; onLang: (l: AdminLang) => void }) {
   const [status, setStatus] = useState(initial);
   const [step, setStep] = useState(0);
-  const [lang, setLangState] = useState<Lang>(getLang());
+  const [lang, setLangState] = useState<AdminLang>(getLang());
   const [token, setToken] = useState(() => takeSetupToken());
   const [tokenErr, setTokenErr] = useState('');
   const [checking, setChecking] = useState(false);
@@ -204,7 +205,7 @@ export function SetupWizard({ status: initial, onDone, onLang }: { status: Setup
   const defaultName = t('Salón');
   const effectiveName = nameTouched ? screenName : screenName || defaultName;
 
-  const changeLang = (l: Lang) => {
+  const changeLang = (l: AdminLang) => {
     setLang(l);
     setLangState(l);
     onLang(l);

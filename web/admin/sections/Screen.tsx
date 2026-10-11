@@ -33,6 +33,7 @@ export function ScreenSection({ cfg, set, errors, screenId, saved, go }: Section
                 { value: 'es', label: 'Español' },
                 { value: 'en', label: 'English' },
                 { value: 'pt', label: 'Português' },
+                { value: 'nl', label: 'Nederlands' },
               ]}
               onChange={(v) => set((d) => void (d.screen.language = v))}
             />

@@ -1,5 +1,6 @@
 // Fresh install (server needs setup): a welcome screen with the admin URL + QR code instead of an empty dashboard.
 // Polls /api/setup/status and reloads the page as soon as the wizard is completed in the admin.
+import { LOCALES } from '../../shared/i18n';
 import { logoSvg } from '../../shared/logo';
 import { qrSvg } from '../../shared/qr';
 import type { Lang, SetupStatus } from '../../shared/types';
@@ -34,6 +35,16 @@ const TEXT: Record<Lang, Record<string, string>> = {
     code: 'Pede um código de configuração? Está no registo do servidor.',
     local: 'Noutro dispositivo, troca «localhost» pelo endereço deste computador.',
     scan: 'Lê para configurar',
+  },
+  nl: {
+    hello: 'Welkom',
+    ready: 'Dit scherm is klaar. Rond de installatie af vanaf je telefoon of computer:',
+    s1: 'Scan de code of open het adres',
+    s2: 'Maak het beheerwachtwoord aan en kies je agenda’s',
+    s3: 'Dit scherm werkt zichzelf bij',
+    code: 'Wordt er om een installatiecode gevraagd? Die staat in het serverlogboek.',
+    local: 'Vervang op een ander apparaat “localhost” door het adres van deze computer.',
+    scan: 'Scan om in te stellen',
   },
 };
 
@@ -87,7 +98,7 @@ export function showWelcome(status: SetupStatus, lang: Lang): void {
       ${qr ? `<div class="wl-qr"><div class="wl-qr__img">${qr}</div><span>${esc(T.scan)}</span></div>` : ''}
     </div>
     <div class="wl-clock" aria-hidden="true"></div>`;
-  const loc = lang === 'en' ? 'en-GB' : lang === 'pt' ? 'pt-PT' : 'es-ES';
+  const loc = LOCALES[lang] ?? 'en-GB';
   const clock = el.querySelector('.wl-clock') as HTMLElement;
   const tick = () => {
     clock.textContent = new Date().toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });

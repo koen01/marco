@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- Dutch (`nl`) as a screen language (*Screen → Screen language → Nederlands*, or `?lang=nl` on one display): the date,
+  weekdays and months, the calendar, agenda, countdown, weather and doorbell texts, the pairing and welcome screens,
+  weather descriptions, wind directions, Airbnb titles and public holiday names. The admin panel itself is not
+  translated to Dutch yet and stays in English, Spanish or Portuguese.
 - Start on today (`calendar.startToday`, per screen, *Calendars → Calendar view*): the month, two weeks and week grids
   start on today instead of the first day of the week, so days that have passed take no room. Each row is seven days
   from today and the weekday header follows. Off by default; `?startToday=0|1` tries it on one display.

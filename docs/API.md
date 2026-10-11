@@ -239,7 +239,7 @@ installs) and setup is skipped; the panel then offers to change it (`passwordFro
 | `POST /api/setup/test-ics` | `{ url }` → `TestIcsResponse` (the wizard's "Test" button). Unauthenticated, so it refuses loopback, link-local / cloud-metadata, multicast and unspecified destinations (also after redirects) and returns only generic errors (`address not allowed`, `HTTP <status>`, `could not load the calendar`) |
 | `POST /api/setup/complete` | `SetupRequest` → `{ ok, user, screen: { id, slug, name, displayPath }, displayAccess }` and a session cookie (logged in). `displayPath` = the screen's private link `/d/<key>` |
 
-`SetupRequest`: `{ password, passwordConfirm, language: es|en|pt, screenName, location?: { name, lat, lon, timezone },
+`SetupRequest`: `{ password, passwordConfirm, language: es|en|pt|nl, screenName, location?: { name, lat, lon, timezone },
 timezone? (when the location is skipped), units?: metric|imperial, format24?, calendars?: [{ name, url, kind: holidays|generic }] (≤ 20), photos?: { source:
 stock|gallery|mixed }, layout?: { preset }, accent?: #rrggbb, ambient?: aurora|particles|none, theme?: dark|light }`.
 The password must have at least 10 characters, must not be a common password or a trivial pattern (`1234567890`,
@@ -339,7 +339,7 @@ Rules for the mutating setup endpoints:
 | `GET /api/admin/backups` · `POST /api/admin/backups` | List / create a manual backup |
 | `GET /api/admin/backups/:id` · `POST /api/admin/backups/:id/restore` · `DELETE /api/admin/backups/:id` | Download / restore (current config backed up first) / delete |
 | `POST /api/admin/export` | `{ includeSecrets }` → `marco-YYYY-MM-DD.json` (secrets = password hash, HA token, Google accounts, API tokens, display keys, paired devices (token hashes); never the session secret) |
-| `POST /api/admin/import/preview` | `{ bundle, lang? }` (export bundle or a bare config) → per-section summary in `lang` (es/en/pt; default: `Accept-Language`, else English), `displayAccess` (the current mode, which the import keeps) and `secretsImpact: { linksChanged, devicesRemoved, devicesAdded } \| null` (what importing the bundle's secrets would change); nothing saved |
+| `POST /api/admin/import/preview` | `{ bundle, lang? }` (export bundle or a bare config) → per-section summary in `lang` (es/en/pt/nl; default: `Accept-Language`, else English), `displayAccess` (the current mode, which the import keeps) and `secretsImpact: { linksChanged, devicesRemoved, devicesAdded } \| null` (what importing the bundle's secrets would change); nothing saved |
 | `POST /api/admin/import/apply` | `{ bundle, sections?, includeSecrets? }` → `{ ok, config, loggedOut? }`. `security.displayAccess` is never taken from the bundle (restores keep it too). Imported keys / devices close the streams of replaced keys and dropped devices |
 | `GET /api/admin/activity?type=&level=&q=&actor=&before=&limit=` | Newest first, paged with `before=<id>` |
 | `DELETE /api/admin/activity` | Clear the log |

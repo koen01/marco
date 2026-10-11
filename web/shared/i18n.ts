@@ -1,8 +1,8 @@
-// i18n + date helpers shared by the display and the admin panel (es default, en, pt).
+// i18n + date helpers shared by the display and the admin panel (es default, en, pt, nl).
 import type { DateFormat, Lang } from './types';
 
-export const LANGS: Lang[] = ['es', 'en', 'pt'];
-export const LOCALES: Record<Lang, string> = { es: 'es-ES', en: 'en-GB', pt: 'pt-PT' };
+export const LANGS: Lang[] = ['es', 'en', 'pt', 'nl'];
+export const LOCALES: Record<Lang, string> = { es: 'es-ES', en: 'en-GB', pt: 'pt-PT', nl: 'nl-NL' };
 
 type Dict = Record<string, string>;
 
@@ -198,10 +198,74 @@ const pt: Dict = {
   nightOn: 'Modo noite',
 };
 
-export const DICTS: Record<Lang, Dict> = { es, en, pt };
+const nl: Dict = {
+  // layouts with their own view (web/display/widgets/views.ts)
+  upNext: 'Hierna',
+  nothingMoreToday: 'Verder niets vandaag',
+  firstTomorrow: 'Morgen',
+  everyone: 'Iedereen',
+  birthdays: 'Verjaardagen',
+  agenda: 'Agenda',
+  allDone: 'Alles gedaan',
+  noPeople: 'Kies bij Layout de agenda’s van elke persoon',
+  nothingPlanned: 'Niets gepland',
+  daysWord: 'dagen',
+  today: 'Vandaag',
+  tomorrow: 'Morgen',
+  yesterday: 'Gisteren',
+  now: 'Nu',
+  allDay: 'Hele dag',
+  more: '+{n} meer',
+  dayXofY: 'Dag {x} van {y}',
+  checkIn: 'Check-in',
+  checkOut: 'Check-out',
+  privateMode: 'Privémodus',
+  inMinutes: 'Over {n} min',
+  inHours: 'Over {n} uur',
+  inHoursMinutes: 'Over {h} uur {m} min',
+  inDays: 'Over {n} dagen',
+  happeningNow: 'Nu',
+  untilTime: 'tot {t}',
+  next: 'Volgende',
+  noEvents: 'Geen afspraken',
+  noUpcoming: 'Niets gepland',
+  feelsLike: 'Voelt als',
+  hiShort: 'Max.',
+  loShort: 'Min.',
+  humidity: 'Luchtvochtigheid',
+  wind: 'Wind',
+  sunrise: 'Zonsopkomst',
+  sunset: 'Zonsondergang',
+  precip: 'Regen',
+  indoor: 'Thuis',
+  uv: 'UV',
+  pressure: 'Luchtdruk',
+  news: 'Nieuws',
+  todo: 'Taken',
+  offline: 'Offline',
+  photoBy: 'Foto: {a}',
+  week: 'Week',
+  todayEvents: 'Vandaag',
+  upcoming: 'Komende dagen',
+  loading: 'Laden…',
+  countdowns: 'Aftellen',
+  cdDays: 'Nog {n} dagen',
+  cdTomorrow: 'Morgen!',
+  cdToday: 'Vandaag!',
+  screenNotFound: 'Scherm “{s}” niet gevonden',
+  identifyScreen: 'Scherm',
+  identifyDevice: 'Apparaat',
+  doorbell: 'Deur',
+  doorbellRinging: 'Er staat iemand voor de deur',
+  doorbellNoPicture: 'Camera niet beschikbaar',
+  until: 'tot {t}',
+  nightOn: 'Nachtmodus',
+};
+
+export const DICTS: Record<Lang, Dict> = { es, en, pt, nl };
 
 export function normLang(l: string | undefined | null): Lang {
-  return l === 'es' || l === 'pt' ? l : 'en';
+  return l === 'es' || l === 'pt' || l === 'nl' ? l : 'en';
 }
 
 export function t(lang: Lang, key: string, vars?: Record<string, string | number>): string {
@@ -394,6 +458,7 @@ export function formatDateLine(lang: Lang, key: string, format: DateFormat = 'we
     case 'weekday_d_month':
     default:
       if (lang === 'en') return `${W}, ${day} ${capitalize(mo)}`;
+      if (lang === 'nl') return `${W} ${day} ${mo}`;
       return `${W}, ${day} de ${mo}`;
   }
 }

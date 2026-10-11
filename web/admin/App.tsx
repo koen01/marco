@@ -14,7 +14,7 @@ import { PrivacyBanner } from './components/Privacy';
 import { FeedbackDialog } from './components/FeedbackDialog';
 import { feedbackMeta } from './feedbackForm';
 import { Button, setScopeScreenName } from './components/ui';
-import { getLang, initialLang, setLang, nScreens, t } from './i18n';
+import { type AdminLang, getLang, initialLang, setLang, nScreens, t } from './i18n';
 import { setIntent } from './intent';
 import { Login } from './Login';
 import { SetupWizard, takeSetupToken } from './Setup';
@@ -247,7 +247,7 @@ export function App() {
   const wide = useMedia('(min-width: 1360px)');
   const mainRef = useRef<HTMLElement>(null);
 
-  const changeLang = (l: Lang) => {
+  const changeLang = (l: AdminLang) => {
     setLang(l);
     setLangState(l);
     // Account logins keep the language on the account too (emails and account pages follow it).
@@ -859,7 +859,7 @@ export function App() {
         </nav>
         <div class="sidebar__foot">
           <div class="lang-switch" role="group" aria-label={t('Idioma del panel')}>
-            {(['es', 'en', 'pt'] as Lang[]).map((l) => (
+            {(['es', 'en', 'pt'] as AdminLang[]).map((l) => (
               <button type="button" class={getLang() === l ? 'is-active' : ''} onClick={() => changeLang(l)}>
                 {l.toUpperCase()}
               </button>

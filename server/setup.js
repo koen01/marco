@@ -159,7 +159,7 @@ export function parseSetupBody(b) {
   const pw = passwordProblem(b.password, typeof b.passwordConfirm === 'string' ? b.passwordConfirm : '');
   if (pw) err(pw === 'mismatch' ? 'passwordConfirm' : 'password', PASSWORD_MESSAGES[pw]);
   v.password = b.password;
-  v.language = LANGS.includes(b.language) ? b.language : (err('language', 'expected es, en or pt'), 'en');
+  v.language = LANGS.includes(b.language) ? b.language : (err('language', 'expected es, en, pt or nl'), 'en');
   v.screenName = cleanText(b.screenName, 40) || 'Living room';
   if (b.location !== undefined) {
     const l = b.location;

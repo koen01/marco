@@ -7,6 +7,7 @@
 import { logoSvg } from '../../shared/logo';
 import { qrSvg } from '../../shared/qr';
 import type { HealthResponse, Lang, PairStartResponse, PairStatusResponse } from '../../shared/types';
+import { LANGS, LOCALES } from '../../shared/i18n';
 import { healthOnce } from '../health';
 import { clearCaches, saveDeviceToken } from '../identity';
 
@@ -62,6 +63,24 @@ const TEXT: Record<Lang, Record<string, string>> = {
     scan: 'Lê com o telemóvel onde usas o painel',
     kiosk: 'Quiosque Raspberry Pi? Esquece o emparelhamento ao reiniciar: põe a ligação privada do ecrã em KIOSK_URL (~/.config/marco/kiosk.env).',
   },
+  // the admin has no Dutch yet, so its menu names stay in English
+  nl: {
+    pairTitle: 'Koppel dit scherm',
+    pairLead: 'Dit scherm is privé. Koppel het aan je Marco vanaf je telefoon of computer:',
+    invalidTitle: 'Deze link is niet meer geldig',
+    invalidLead: 'De privélink is vervangen of dit apparaat is verwijderd. Open het beheer voor de nieuwe link of koppel dit scherm opnieuw:',
+    s1: 'Open het beheer → Connected screens → Pair a screen',
+    s1At: 'Open {where} → Connected screens → Pair a screen',
+    s2: 'Typ deze code of scan de QR-code',
+    s3: 'Dit scherm start vanzelf',
+    expires: 'De code verandert over {t}',
+    renewing: 'Nieuwe code ophalen…',
+    busy: 'Te veel koppelverzoeken. Over een minuut opnieuw…',
+    offline: 'De server is niet bereikbaar. Opnieuw proberen…',
+    paired: 'Gekoppeld! Starten…',
+    scan: 'Scan met de telefoon waarop je het beheer gebruikt',
+    kiosk: 'Raspberry Pi-kiosk? Die vergeet een koppeling na een herstart: zet de privélink van het scherm in KIOSK_URL (~/.config/marco/kiosk.env).',
+  },
 };
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
@@ -69,11 +88,11 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 /** Language for a screen that has no config yet: ?lang=, else the browser's, else English. */
 export function pairingLang(params = new URLSearchParams(location.search)): Lang {
   const pl = params.get('lang');
-  if (pl === 'es' || pl === 'en' || pl === 'pt') return pl;
+  if (LANGS.includes(pl as Lang)) return pl as Lang;
   try {
     for (const l of navigator.languages ?? [navigator.language]) {
       const b = String(l).slice(0, 2).toLowerCase();
-      if (b === 'es' || b === 'en' || b === 'pt') return b;
+      if (LANGS.includes(b as Lang)) return b as Lang;
     }
   } catch { /* ignore */ }
   return 'en';
@@ -216,7 +235,7 @@ export function showPairing(kind: 'pair' | 'invalid', lang: Lang, demo?: { lengt
       <div class="wl-qr"><div class="wl-qr__img"></div><span>${esc(T.scan)}</span></div>
     </div>
     <div class="wl-clock" aria-hidden="true"></div>`;
-  const loc = lang === 'en' ? 'en-GB' : lang === 'pt' ? 'pt-PT' : 'es-ES';
+  const loc = LOCALES[lang] ?? 'en-GB';
   const clock = root.querySelector('.wl-clock') as HTMLElement;
   const tick = () => {
     clock.textContent = new Date().toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });

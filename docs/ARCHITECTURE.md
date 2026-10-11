@@ -300,7 +300,8 @@ flagged by a local event or a style rule (nearest occurrence per title), sorted 
 - Photo pipeline in the browser (`web/admin/photoTools.ts`): EXIF rotation, resize to ≤ 2560 px JPEG, 480 px
   thumbnail, HEIC decoding through a lazily loaded chunk, automatic focal point (spectral saliency + skin tones,
   `web/admin/saliency.ts`). The server never decodes images.
-- i18n: Spanish strings are the keys; English and Portuguese live in `web/admin/i18n-dict*.ts`. The first visit
+- i18n: Spanish strings are the keys; English and Portuguese live in `web/admin/i18n-dict*.ts`. Dutch (`nl`) is a
+  screen language only (display and server text); the panel's own languages are `AdminLang` in `web/admin/i18n.ts`. The first visit
   follows the browser language.
 
 ## Security model

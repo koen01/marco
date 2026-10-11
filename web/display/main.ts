@@ -939,7 +939,7 @@ async function boot(): Promise<void> {
   if (setup) {
     const pl = params.get('lang');
     heartbeat.stop();
-    showWelcome(setup, pl === 'es' || pl === 'en' || pl === 'pt' ? pl : setup.suggestedLanguage);
+    showWelcome(setup, pl === 'es' || pl === 'en' || pl === 'pt' || pl === 'nl' ? pl : setup.suggestedLanguage);
     waitForSetup();
     return;
   }

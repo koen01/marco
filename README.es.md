@@ -171,7 +171,7 @@ color de la foto, transparencia, desenfoque y borde de luz:
 - **Cámara del timbre:** cuando llaman a la puerta, Home Assistant avisa a Marco y las pantallas muestran la cámara a
   pantalla completa durante un rato, con sonido de timbre (también despierta las pantallas en modo noche).
 - **Copias de seguridad** (automáticas, exportar/importar con vista previa), **registro de actividad**, **paleta de
-  comandos** (Ctrl/Cmd + K), diseño adaptado al móvil, en inglés / español / portugués.
+  comandos** (Ctrl/Cmd + K), diseño adaptado al móvil, en inglés / español / portugués. Una pantalla también puede mostrarse en neerlandés (el panel aún no).
 
 | | | |
 |---|---|---|

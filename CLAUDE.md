@@ -99,7 +99,8 @@ receives the real titles; admin lists keep them.
   temporary data dir; admin TypeScript modules are loaded in tests through `server/test/webModules.js` (Vite SSR).
   On Node 22 `npm test` imports every `*.test.js` into one process (`server/test/index.js`), so a test must restore
   what it changes globally (`fetch`, `process.env`).
-- UI text exists in English, Spanish and Portuguese, in three places. Add all three languages for each new string:
+- UI text exists in English, Spanish and Portuguese, in three places. Add all three languages for each new string.
+  Dutch (`nl`) is a screen language only: add it for display and server-generated text, not for the admin:
   - admin: the **Spanish string is the key** (`t('…')`), with English and Portuguese in `web/admin/i18n-dict*.ts`
   - display: `web/shared/i18n.ts`
   - server-generated text: `server/core/lib/i18n.js`

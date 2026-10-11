@@ -7,11 +7,14 @@ import { SINGULAR } from './i18n-plural';
  * English/Portuguese translation when available (falls back to Spanish).
  * `{name}` placeholders are interpolated from `vars`.
  */
-let current: Lang = 'es';
+/** Languages of the panel itself. Dutch (nl) only exists as a screen language so far. */
+export type AdminLang = Exclude<Lang, 'nl'>;
+
+let current: AdminLang = 'es';
 
 const LS_KEY = 'calendar-admin.lang';
 
-export function initialLang(): Lang {
+export function initialLang(): AdminLang {
   try {
     const v = localStorage.getItem(LS_KEY);
     if (v === 'es' || v === 'en' || v === 'pt') return v;
@@ -30,7 +33,7 @@ export function initialLang(): Lang {
   return 'en';
 }
 
-export function setLang(l: Lang) {
+export function setLang(l: AdminLang) {
   current = l;
   document.documentElement.lang = l;
   try {
@@ -52,7 +55,7 @@ export function t(key: string, vars?: Record<string, string | number>): string {
   return s;
 }
 
-const LOCALE: Record<Lang, string> = { es: 'es-ES', en: 'en-GB', pt: 'pt-PT' };
+const LOCALE: Record<AdminLang, string> = { es: 'es-ES', en: 'en-GB', pt: 'pt-PT' };
 export const locale = () => LOCALE[current];
 
 export function relTime(iso: string | number | null | undefined): string {
