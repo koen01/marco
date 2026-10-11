@@ -713,6 +713,30 @@ body {
 .cal .cstack .ev.cl .tm { letter-spacing: -0.02em; }
 .cal .cstack .ev.cl .em { font-size: 1em; }
 
+/* Day lists (calendar.dense): each day lists its events with the whole title wrapped. The list is a wrapping flex
+   column that clips: an entry that does not fit whole moves to a second column out of sight (calendar.ts counts
+   those for "+N"), so no entry is cut in half. */
+.dstack {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-flow: column wrap;
+  align-content: flex-start;
+  gap: calc(0.34rem * var(--cs, 1));
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.cal .dstack > .ev {
+  flex: none;
+  box-sizing: border-box;
+  width: calc(100% - 0.7rem * var(--cs, 1));
+  margin: 0 calc(0.35rem * var(--cs, 1));
+}
+.more.dm:empty { display: none; }
+/* portrait: the band above the calendar is as tall as its content, the calendar takes the rest */
+#app.portrait.cal-dense:not(.has-view) { grid-template-rows: auto minmax(0, 1fr); }
+
 /* =========================================== agenda =========================================== */
 
 .agenda { column-count: 2; column-gap: 3.6rem; height: 100%; overflow: hidden; padding: 0.6rem 0.8rem 1.4rem; }

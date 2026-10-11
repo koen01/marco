@@ -159,7 +159,7 @@ test('migration v1 → v2 keeps every value (global vs screens[0])', async () =>
   const { sources, iconRules, ...calView } = V1.calendar;
   // the motion options did not exist yet: both are back-filled on
   // compact busy days neither: it stays off for screens saved before it
-  assert.deepEqual(s.calendar, { ...calView, marquee: true, rotateBusyDays: true, compactBusyDays: false, startToday: false, fontScale: 1, sourceIds: null });
+  assert.deepEqual(s.calendar, { ...calView, marquee: true, rotateBusyDays: true, compactBusyDays: false, startToday: false, fontScale: 1, dense: false, sourceIds: null });
   // privacy mode did not exist yet: every source gets the default for its kind
   assert.deepEqual(v.calendar, { sources: sources.map((x) => ({ ...x, privacy: 'busy' })), iconRules });
   const { timezone, ...dtView } = V1.datetime;

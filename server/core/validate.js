@@ -286,6 +286,7 @@ function sanitizeScreenProfile(ctx, p, raw, seenIds, seenSlugs) {
     compactBusyDays: bool(ctx, `${p}.calendar.compactBusyDays`, ca.compactBusyDays, false),
     startToday: bool(ctx, `${p}.calendar.startToday`, ca.startToday, D.calendar.startToday),
     fontScale: num(ctx, `${p}.calendar.fontScale`, ca.fontScale, D.calendar.fontScale, 0.4, 1.5),
+    dense: bool(ctx, `${p}.calendar.dense`, ca.dense, D.calendar.dense),
     sourceIds: ca.sourceIds === null || ca.sourceIds === undefined ? null : idList(ctx, `${p}.calendar.sourceIds`, ca.sourceIds),
   };
 

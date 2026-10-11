@@ -12,6 +12,11 @@ All notable changes to this project are documented here. The format is based on
 - Entry size (`calendar.fontScale`, per screen, *Calendars → Calendar view*, 40% to 150%): the size of the events in
   the month, two weeks and week grids, separate from the screen's text size. A smaller size fits more events and
   longer titles per day while the clock, weather and day numbers stay as they are. `?calfs=0.6` tries it on one display.
+- Day lists (`calendar.dense`, per screen, *Calendars → Calendar view*): every day of the month, two weeks and week
+  grids lists its events with the whole title wrapped over up to four lines, with the time and, if turned on, the
+  end time and place. Events over several days stay as bars on top. Week rows get the height their days need, an
+  entry that does not fit is left out whole and counted in "+N", and on a portrait screen the band above the
+  calendar only takes the height of its content. `?dense=1` tries it on one display.
 
 ## [0.6.1] - 2026-10-11
 

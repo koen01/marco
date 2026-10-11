@@ -2,7 +2,7 @@
 import { addDays, diffDays, gridWeekStart, monthName, startOfWeek, weekdayNames, weekdayOfKey } from '../../shared/i18n';
 import { chipColors } from '../color';
 import { ctx } from '../ctx';
-import { esc, reconcile, setHTML, type Spec } from '../dom';
+import { esc, reconcile, setHTML, setText, type Spec } from '../dom';
 import { type NEvent, sortForDay, timeLabel } from '../eventModel';
 import { refreshMarquee } from '../marquee';
 import { PAGE_MS, pageAt, pageLabel, planPages, wrapLineCap } from '../motion';
@@ -25,6 +25,18 @@ interface Metrics {
   lineH: number;
   lineGap: number;
   pad: number;
+}
+
+/** Day lists (calendar.dense): lines a title may take before it is cut. */
+const DENSE_LINES = 4;
+
+/** One week in day lists: the bars over several days with their lanes, and each day's own entries. */
+interface DensePlan {
+  bars: Placed[];
+  lanes: number;
+  /** lanes the bars take on each day (the day's list starts below them) */
+  tops: number[];
+  days: Placed[][];
 }
 
 /** A busy day drawn as a column of compact one-line entries (calendar.compactBusyDays). */
@@ -97,10 +109,12 @@ export class MonthCalendar {
   render(events: NEvent[], tick: Tick): void {
     const { cfg, lang, tz, t } = ctx;
     const c = cfg.calendar;
-    const isWeek = c.view === 'week';
-    const nWeeks = isWeek ? 1 : c.weeks;
+    const dense = c.dense === true;
+    const isWeek = c.view === 'week' && !dense;
+    const nWeeks = c.view === 'week' ? 1 : c.weeks;
     const wantL = Math.max(1, isWeek ? Math.min(14, c.maxEventsPerDay * 3) : c.maxEventsPerDay);
     this.root.classList.toggle('is-week', isWeek);
+    this.root.classList.toggle('dense', dense);
     const compact = c.compactBusyDays === true;
     // entry size (calendar.fontScale): the CSS scales text, lanes and paddings with --cs, and so do metrics() / measureGeom()
     this.scale = Math.min(1.5, Math.max(0.4, Number(c.fontScale) || 1));
@@ -155,6 +169,16 @@ export class MonthCalendar {
     reconcile(this.weeks, weekSpecs, { flip: true });
     const rowEls = Array.from(this.weeks.children).filter((x) => !(x as any).__leaving) as HTMLElement[];
 
+    if (dense) {
+      this.renderDense(weekRows, rowEls, list, m, today, nowMs, t, tz);
+      return;
+    }
+    for (const el of rowEls as (HTMLElement & { __tpl?: string })[]) {
+      if (el.__tpl) {
+        el.style.gridTemplateRows = '';
+        el.__tpl = '';
+      }
+    }
     this.geom = this.measureGeom();
     const layouts = weekRows.map((row) => this.layoutWeek(row.start, list));
     // Compact busy days: rows share the height by what their events need (equal rows while every week fits)
@@ -462,6 +486,12 @@ export class MonthCalendar {
       }
       return sortForDay(a.e, b.e);
     });
+    this.assignLanes(segs);
+    return segs;
+  }
+
+  /** Gives each segment, in order, the first lane that is free along its whole span. Returns the lanes used. */
+  private assignLanes(segs: Placed[]): number {
     const occ: boolean[][] = [];
     for (const sg of segs) {
       let lane = 0;
@@ -476,7 +506,117 @@ export class MonthCalendar {
       }
       sg.lane = lane;
     }
-    return segs;
+    return occ.length;
+  }
+
+  // ---- Day lists (calendar.dense) ----------------------------------------------------------------------------
+
+  /**
+   * Day lists: bars that cover more than one day keep lanes at the top of the week; every other event goes in its
+   * day's list, in the order of the day.
+   */
+  private planDense(ws: string, events: NEvent[]): DensePlan {
+    const segs = this.layoutWeek(ws, events);
+    const oneDay = (sg: Placed) => Math.floor(sg.s / 2) === Math.floor((sg.eSlot - 1) / 2);
+    const bars = segs.filter((sg) => !oneDay(sg));
+    const lanes = this.assignLanes(bars);
+    const tops = new Array(7).fill(0);
+    for (const b of bars) for (let d = Math.floor(b.s / 2); d <= Math.floor((b.eSlot - 1) / 2); d++) tops[d] = Math.max(tops[d], b.lane + 1);
+    const days: Placed[][] = Array.from({ length: 7 }, () => []);
+    for (const sg of segs) if (oneDay(sg)) days[Math.floor(sg.s / 2)].push(sg);
+    for (const list of days) list.sort((x, y) => sortForDay(x.e, y.e));
+    return { bars, lanes, tops, days };
+  }
+
+  /** One entry of a day list: emoji, time and the whole title, wrapped over up to DENSE_LINES lines. */
+  private denseHtml(sg: Placed, today: string, nowMs: number, tz: string): string {
+    const { cfg } = ctx;
+    const c = cfg.calendar;
+    const e = sg.e;
+    const col = chipColors(e.color);
+    const pastEv = e.timed ? e.endMs <= nowMs : e.spanLast < today;
+    const ongoing = e.timed && e.startMs <= nowMs && e.endMs > nowMs;
+    const cls = ['ev', 'wrap', 'dl', e.timed ? 'timed' : 'bar single', pastEv ? 'past' : '', ongoing ? 'ongoing' : ''].filter(Boolean).join(' ');
+    // emoji + time glued to the first word (U+2060 word joiner), as in the chips that wrap
+    let tx = e.emoji ? `<span class="em">${esc(e.emoji)}</span>\u2060` : '';
+    if (e.timed) tx += `<span class="tm">${esc(timeLabel(e, tz, cfg.datetime.format24, cfg.datetime.showAmPm, c.showEndTime, true))}</span> `;
+    tx += `<span class="tt">${esc(e.title)}</span>`;
+    if (c.showLocation && e.ev.location) tx += ` <span class="loc">${esc(e.ev.location)}</span>`;
+    return `<div class="${cls}" style="--clamp:${DENSE_LINES};--c:${col.base};--on:${col.onSolid};--tint:${col.tint};--shade:${col.shade}"><span class="tx">${tx}</span></div>`;
+  }
+
+  private denseSpecs(ws: string, plan: DensePlan, today: string, nowMs: number, t: Ctx['t'], tz: string): Spec[] {
+    const specs = this.daySpecs(ws, today, false);
+    for (const sg of plan.bars) specs.push(this.chipSpec(sg, ws, today, nowMs, t, tz));
+    for (let d = 0; d < 7; d++) {
+      const key = addDays(ws, d);
+      const col = `grid-column:${2 * d + 1} / span 2`;
+      if (plan.days[d].length) {
+        specs.push({
+          key: `d${key}`,
+          className: 'dstack',
+          style: `${col};grid-row:${plan.tops[d] + 2} / -1`,
+          html: plan.days[d].map((sg) => this.denseHtml(sg, today, nowMs, tz)).join(''),
+          data: { day: key, top: String(plan.tops[d]) },
+        });
+      }
+      // "+N" for the entries that do not fit: renderDense() writes it once the rows have their height
+      specs.push({ key: `m${key}`, className: `more dm${key < today ? ' past' : ''}`, style: col, html: '', data: { day: key } });
+    }
+    return specs;
+  }
+
+  /**
+   * Day lists: draw every week, measure what each one needs and share the height by it (shareRows), then count the
+   * entries that still do not fit. The lists are wrapping flex columns, so an entry that does not fit whole moves to
+   * a second column that the list clips: no entry is ever cut in half.
+   */
+  private renderDense(
+    weekRows: { key: string; start: string }[], rowEls: HTMLElement[], events: NEvent[], m: Metrics | null,
+    today: string, nowMs: number, t: Ctx['t'], tz: string,
+  ): void {
+    this.busyPages.clear();
+    const plans = weekRows.map((row) => this.planDense(row.start, events));
+    weekRows.forEach((row, w) => {
+      const el = rowEls[w] as HTMLElement & { __tpl?: string };
+      if (!el) return;
+      const lanes = plans[w].lanes;
+      const tpl = m ? `var(--num-h) ${lanes ? `repeat(${lanes}, ${m.laneH.toFixed(2)}px) ` : ''}minmax(0, 1fr)` : '';
+      if (el.__tpl !== tpl) {
+        el.style.gridTemplateRows = tpl;
+        el.__tpl = tpl;
+      }
+      reconcile(el, this.denseSpecs(row.start, plans[w], today, nowMs, t, tz), { flip: true });
+    });
+    this.applyPages();
+    if (!m) return;
+    const stacksOf = (el: HTMLElement) => (Array.from(el.children) as HTMLElement[]).filter((x) => x.classList.contains('dstack') && !(x as any).__leaving);
+    let gap = -1;
+    const needs = rowEls.map((el, w) => {
+      let need = plans[w].lanes * (m.laneH + m.gap);
+      for (const st of stacksOf(el)) {
+        if (gap < 0) gap = parseFloat(getComputedStyle(st).rowGap) || 0;
+        let h = 0;
+        for (const ch of Array.from(st.children) as HTMLElement[]) h += ch.offsetHeight + gap;
+        need = Math.max(need, Number(st.dataset.top || 0) * (m.laneH + m.gap) + h - gap);
+      }
+      return m.numH + m.gap + need + m.pad;
+    });
+    const n = weekRows.length;
+    const minRow = m.numH + m.gap + m.laneH + m.gap;
+    const rows = n > 1 ? shareRows(needs, m.h - n, minRow).map((x) => `minmax(0, ${(x + 1).toFixed(1)}fr)`).join(' ') : '';
+    if (this.weeks.style.gridTemplateRows !== rows) this.weeks.style.gridTemplateRows = rows;
+    for (const el of rowEls) {
+      const stacks = new Map(stacksOf(el).map((st) => [st.dataset.day, st]));
+      for (const more of Array.from(el.querySelectorAll<HTMLElement>(':scope > .more.dm'))) {
+        const st = stacks.get(more.dataset.day);
+        const kids = st ? (Array.from(st.children) as HTMLElement[]) : [];
+        // entries pushed to a second column are the ones that did not fit
+        const left = kids.length ? kids[0].offsetLeft : 0;
+        const over = kids.filter((k) => k.offsetLeft > left + 1).length;
+        setText(more, over ? t('more', { n: over }) : '');
+      }
+    }
   }
 
   /**
@@ -561,15 +701,10 @@ export class MonthCalendar {
     return `<div class="${cls}" style="--c:${col.base};--on:${col.onSolid};--tint:${col.tint};--shade:${col.shade}">${html}</div>`;
   }
 
-  private weekSpecs(
-    ws: string, segs: Placed[], L: number, today: string, nowMs: number, t: Ctx['t'], tz: string, isWeek: boolean,
-    compact: Metrics | null, rowH: number,
-  ): Spec[] {
-    const { cfg, lang } = ctx;
-    const c = cfg.calendar;
+  /** Day cells and day numbers of one week. */
+  private daySpecs(ws: string, today: string, isWeek: boolean): Spec[] {
+    const { lang } = ctx;
     const specs: Spec[] = [];
-
-    // Day cells + numbers
     for (let d = 0; d < 7; d++) {
       const key = addDays(ws, d);
       const wd = weekdayOfKey(key);
@@ -585,6 +720,71 @@ export class MonthCalendar {
       const numHtml = isToday ? `<span class="dot"><span>${label}</span></span>` : `<span>${label}</span>`;
       specs.push({ key: `n${key}`, className: `num${cls}`, style: `${col};grid-row:1`, html: numHtml });
     }
+    return specs;
+  }
+
+  /** A chip or bar in its lane (sg.lane, sg.span). */
+  private chipSpec(sg: Placed, ws: string, today: string, nowMs: number, t: Ctx['t'], tz: string): Spec {
+    const { cfg } = ctx;
+    const c = cfg.calendar;
+    const f24 = cfg.datetime.format24;
+    const ampm = cfg.datetime.showAmPm;
+    const e = sg.e;
+    const col = chipColors(e.color);
+    const kind = e.bar ? 'bar' : 'timed';
+    const pastEv = e.timed ? e.endMs <= nowMs : e.spanLast < today;
+    const ongoing = e.timed && e.startMs <= nowMs && e.endMs > nowMs;
+    const cls = [
+      'ev', kind, e.allDay && !(sg.eSlot - sg.s > 2) ? 'single' : '',
+      sg.contL ? 'cont-l' : '', sg.contR ? 'cont-r' : '',
+      e.halfStart && !sg.contL ? 'half-l' : '', e.halfEnd && !sg.contR ? 'half-r' : '',
+      pastEv ? 'past' : '', ongoing ? 'ongoing' : '', (e.airbnb && !e.checkoutMarker) ? 'airbnb' : '',
+      (sg.span ?? 1) > 1 ? 'wrap' : '', (sg.span ?? 1) > 1 && sg.long ? 'long' : '',
+      sg.pages ? 'pg' : '',
+    ].filter(Boolean).join(' ');
+    let html = e.emoji ? `<span class="em">${esc(e.emoji)}</span>` : '';
+    if (e.timed) {
+      html += `<span class="tm">${esc(timeLabel(e, tz, f24, ampm, c.showEndTime, true))}</span>`;
+    }
+    const short = sg.contL && sg.eSlot - sg.s <= 2;
+    if (short && (e.airbnb && !e.checkoutMarker) && !sg.contR) html = `<span class="em">🚪</span>`;
+    else html += `<span class="tt">${esc(e.title)}</span>`;
+    if (c.showLocation && e.ev.location) html += `<span class="loc">${esc(e.ev.location)}</span>`;
+    if (c.showDayXofY && e.bar && sg.contL && e.days > 1 && !short) {
+      const x = diffDays(e.spanFirst, addDays(ws, Math.floor(sg.s / 2))) + 1; // a part after a busy day starts later
+      html += `<span class="dx">${esc(t('dayXofY', { x, y: (e.airbnb && !e.checkoutMarker) ? e.days + 1 : e.days }))}</span>`;
+    }
+    if ((e.airbnb && !e.checkoutMarker) && !sg.contR && !short && sg.eSlot - sg.s >= 3) html += `<span class="co">🚪</span>`;
+    const span = sg.span ?? 1;
+    if (span > 1) {
+      // multi-line chip: emoji + time glued to the first word (U+2060 word joiner; emoji allow a break after
+      // them), and a real space between time and title so the title wraps naturally.
+      const WJ = '\u2060';
+      let tx = e.emoji ? `<span class="em">${esc(e.emoji)}</span>${WJ}` : '';
+      if (e.timed) tx += `<span class="tm">${esc(timeLabel(e, tz, f24, ampm, c.showEndTime, true))}</span> `;
+      tx += `<span class="tt">${esc(e.title)}</span>`;
+      if (c.showLocation && e.ev.location) tx += ` <span class="loc">${esc(e.ev.location)}</span>`;
+      html = `<span class="tx">${tx}</span>`;
+    }
+    const row = span > 1 ? `${sg.lane + 2} / span ${span};--clamp:${span}` : `${sg.lane + 2}`;
+    return {
+      key: sg.piece ? `e${e.id}@${sg.day}` : `e${e.id}@${ws}${sg.part ?? ''}`,
+      className: cls,
+      style: `grid-column:${sg.s + 1} / ${sg.eSlot + 1};grid-row:${row};--c:${col.base};--on:${col.onSolid};--tint:${col.tint};--shade:${col.shade}`,
+      html,
+      data: sg.pages ? { day: sg.day!, pg: String(sg.page), pgs: String(sg.pages) } : undefined,
+    };
+  }
+
+  private weekSpecs(
+    ws: string, segs: Placed[], L: number, today: string, nowMs: number, t: Ctx['t'], tz: string, isWeek: boolean,
+    compact: Metrics | null, rowH: number,
+  ): Spec[] {
+    const { cfg, lang } = ctx;
+    const c = cfg.calendar;
+    const specs: Spec[] = [];
+
+    specs.push(...this.daySpecs(ws, today, isWeek));
 
     // Overflow: days with items beyond L lanes show "+N" in the last lane.
     const days = (sg: Placed) => {
@@ -617,52 +817,7 @@ export class MonthCalendar {
     const stacks = compact && rowH > 0 ? this.planCompact(ws, segs, hidden, moreCount, L, compact, rowH, done) : [];
     const pieces = c.rotateBusyDays === false ? [] : this.planBusyDays(ws, segs, hidden, moreCount, L, done);
     for (const sg of [...segs, ...pieces]) {
-      if (hidden.has(sg)) continue;
-      const e = sg.e;
-      const col = chipColors(e.color);
-      const kind = e.bar ? 'bar' : 'timed';
-      const pastEv = e.timed ? e.endMs <= nowMs : e.spanLast < today;
-      const ongoing = e.timed && e.startMs <= nowMs && e.endMs > nowMs;
-      const cls = [
-        'ev', kind, e.allDay && !(sg.eSlot - sg.s > 2) ? 'single' : '',
-        sg.contL ? 'cont-l' : '', sg.contR ? 'cont-r' : '',
-        e.halfStart && !sg.contL ? 'half-l' : '', e.halfEnd && !sg.contR ? 'half-r' : '',
-        pastEv ? 'past' : '', ongoing ? 'ongoing' : '', (e.airbnb && !e.checkoutMarker) ? 'airbnb' : '',
-        (sg.span ?? 1) > 1 ? 'wrap' : '', (sg.span ?? 1) > 1 && sg.long ? 'long' : '',
-        sg.pages ? 'pg' : '',
-      ].filter(Boolean).join(' ');
-      let html = e.emoji ? `<span class="em">${esc(e.emoji)}</span>` : '';
-      if (e.timed) {
-        html += `<span class="tm">${esc(timeLabel(e, tz, f24, ampm, c.showEndTime, true))}</span>`;
-      }
-      const short = sg.contL && sg.eSlot - sg.s <= 2;
-      if (short && (e.airbnb && !e.checkoutMarker) && !sg.contR) html = `<span class="em">🚪</span>`;
-      else html += `<span class="tt">${esc(e.title)}</span>`;
-      if (c.showLocation && e.ev.location) html += `<span class="loc">${esc(e.ev.location)}</span>`;
-      if (c.showDayXofY && e.bar && sg.contL && e.days > 1 && !short) {
-        const x = diffDays(e.spanFirst, addDays(ws, Math.floor(sg.s / 2))) + 1; // a part after a busy day starts later
-        html += `<span class="dx">${esc(t('dayXofY', { x, y: (e.airbnb && !e.checkoutMarker) ? e.days + 1 : e.days }))}</span>`;
-      }
-      if ((e.airbnb && !e.checkoutMarker) && !sg.contR && !short && sg.eSlot - sg.s >= 3) html += `<span class="co">🚪</span>`;
-      const span = sg.span ?? 1;
-      if (span > 1) {
-        // multi-line chip: emoji + time glued to the first word (U+2060 word joiner; emoji allow a break after
-        // them), and a real space between time and title so the title wraps naturally.
-        const WJ = '\u2060';
-        let tx = e.emoji ? `<span class="em">${esc(e.emoji)}</span>${WJ}` : '';
-        if (e.timed) tx += `<span class="tm">${esc(timeLabel(e, tz, f24, ampm, c.showEndTime, true))}</span> `;
-        tx += `<span class="tt">${esc(e.title)}</span>`;
-        if (c.showLocation && e.ev.location) tx += ` <span class="loc">${esc(e.ev.location)}</span>`;
-        html = `<span class="tx">${tx}</span>`;
-      }
-      const row = span > 1 ? `${sg.lane + 2} / span ${span};--clamp:${span}` : `${sg.lane + 2}`;
-      specs.push({
-        key: sg.piece ? `e${e.id}@${sg.day}` : `e${e.id}@${ws}${sg.part ?? ''}`,
-        className: cls,
-        style: `grid-column:${sg.s + 1} / ${sg.eSlot + 1};grid-row:${row};--c:${col.base};--on:${col.onSolid};--tint:${col.tint};--shade:${col.shade}`,
-        html,
-        data: sg.pages ? { day: sg.day!, pg: String(sg.page), pgs: String(sg.pages) } : undefined,
-      });
+      if (!hidden.has(sg)) specs.push(this.chipSpec(sg, ws, today, nowMs, t, tz));
     }
     for (const st of stacks) {
       const key = addDays(ws, st.d);

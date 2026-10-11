@@ -13,6 +13,12 @@ export const ROWS_COMPACT: [string, string, string][] = [
     'Size of the events in the grid, relative to the screen text size. Smaller fits more events and longer titles. The clock and weather do not change.',
     'Tamanho dos eventos na grelha em relação ao tamanho de letra do ecrã. Mais pequeno: cabem mais eventos e títulos mais longos. O relógio e o tempo não mudam.',
   ],
+  ['Listas por día (títulos completos)', 'Day lists (full titles)', 'Listas por dia (títulos completos)'],
+  [
+    'Cada día lista todos sus eventos con el título completo en varias líneas, y las semanas ocupan el alto que necesitan. En pantallas verticales, la franja superior ocupa solo lo que necesita. Lo que no cabe se indica con “+N”.',
+    'Each day lists all its events with the full title over several lines, and weeks take the height they need. On portrait screens the top band only takes the height it needs. What does not fit shows as “+N”.',
+    'Cada dia lista todos os eventos com o título completo em várias linhas, e as semanas ocupam a altura de que precisam. Em ecrãs verticais, a faixa superior ocupa só o que precisa. O que não cabe aparece com “+N”.',
+  ],
   ['Empezar en el día de hoy', 'Start on today', 'Começar no dia de hoje'],
   [
     'La cuadrícula empieza en hoy en vez de en el primer día de la semana, así no se muestran días que ya han pasado. Cada fila son siete días a partir de hoy.',

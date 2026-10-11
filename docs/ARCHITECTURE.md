@@ -111,7 +111,7 @@ The stored config has **global** sections shared by every screen and a list of *
                   // source: stock | gallery | mixed · order: random | newest | name · transition: webgl | fade | none · ambient: aurora | particles | none · weatherFx: off | simple | rich
   "calendar":   { "enabled": true, "view": "month", "weeks": 5, "weekStart": 1, "showLocation": false, "showEndTime": false,
                   "showDayXofY": true, "showLegend": true, "hidePast": false, "maxEventsPerDay": 4,
-                  "marquee": true, "rotateBusyDays": true, "compactBusyDays": true, "startToday": false, "fontScale": 1,
+                  "marquee": true, "rotateBusyDays": true, "compactBusyDays": true, "startToday": false, "fontScale": 1, "dense": false,
                   "sourceIds": null },               // null = every enabled source (incl. new ones); array = only these
                   // marquee: titles cut short (calendar chips, agenda-like lists, side panel pills, countdowns, news) slide to show the rest
                   // rotateBusyDays: a month-grid day with more events than fit pages through them every 8 s
@@ -124,6 +124,11 @@ The stored config has **global** sections shared by every screen and a list of *
                   // fontScale (0.4 to 1.5): size of the grid entries relative to screen.fontScale. calendar.ts sets it as --cs
                   //   on .cal; the entry rules multiply text, lanes and paddings by it and metrics() plans with the same
                   //   factor. Day numbers, clock and weather keep the screen's size.
+                  // dense: day lists. Bars over several days keep lanes at the top of the week; every other event goes
+                  //   in its day's list (.dstack) with the whole title wrapped (up to 4 lines). calendar.ts draws the
+                  //   weeks, measures the lists and shares the height with shareRows; a list is a wrapping flex column
+                  //   that clips, so an entry that does not fit whole is left out and counted in "+N" (no paging).
+                  //   #app gets .cal-dense: on a portrait screen the top band is as tall as its content.
   "datetime":   { "enabled": true, "clock": "digital", "format24": true, "showSeconds": true, "showAmPm": false, "dateFormat": "weekday_d_month" },
   "weather":    { "enabled": true, "forecastDays": 5, "showHourly": true, "showPrecipChance": true },
   "news":       { "enabled": true, "rotateSec": 15 },

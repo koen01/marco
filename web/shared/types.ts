@@ -219,6 +219,12 @@ export interface CalendarConfig<S = CalendarSource> {
    * (default 1). The clock, weather and day numbers keep the screen's size.
    */
   fontScale: number;
+  /**
+   * Month / week grid as day lists: every day lists its events with the whole title wrapped over several lines,
+   * week rows get the height their days need, and on a portrait screen the band above the calendar only takes the
+   * height of its content (default false).
+   */
+  dense: boolean;
   /** v2, per screen: null = every enabled source (incl. 'local' + 'birthdays'); array = only these ids. */
   sourceIds?: string[] | null;
   sources: S[];
@@ -1045,7 +1051,7 @@ export interface ScreenProfile {
   screen: Omit<ScreenConfig, 'name'>;
   layout: LayoutConfig;
   background: BackgroundConfig;
-  calendar: Pick<CalendarConfig, 'enabled' | 'view' | 'weeks' | 'weekStart' | 'showLocation' | 'showEndTime' | 'showDayXofY' | 'showLegend' | 'hidePast' | 'maxEventsPerDay' | 'marquee' | 'rotateBusyDays' | 'compactBusyDays' | 'startToday' | 'fontScale'> & { sourceIds: string[] | null };
+  calendar: Pick<CalendarConfig, 'enabled' | 'view' | 'weeks' | 'weekStart' | 'showLocation' | 'showEndTime' | 'showDayXofY' | 'showLegend' | 'hidePast' | 'maxEventsPerDay' | 'marquee' | 'rotateBusyDays' | 'compactBusyDays' | 'startToday' | 'fontScale' | 'dense'> & { sourceIds: string[] | null };
   datetime: Omit<DateTimeConfig, 'timezone'>;
   weather: Pick<WeatherConfig, 'enabled' | 'forecastDays' | 'showHourly' | 'showPrecipChance'>;
   news: { enabled: boolean; rotateSec: number };

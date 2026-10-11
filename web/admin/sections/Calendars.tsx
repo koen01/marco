@@ -752,6 +752,13 @@ export function CalendarsSection(props: SectionProps) {
               onChange={(v) => set((d) => void (d.calendar.compactBusyDays = v))}
             />
             <ToggleRow
+              icon="🧾"
+              label={t('Listas por día (títulos completos)')}
+              hint={t('Cada día lista todos sus eventos con el título completo en varias líneas, y las semanas ocupan el alto que necesitan. En pantallas verticales, la franja superior ocupa solo lo que necesita. Lo que no cabe se indica con “+N”.')}
+              checked={c.dense === true}
+              onChange={(v) => set((d) => void (d.calendar.dense = v))}
+            />
+            <ToggleRow
               icon="📆"
               label={t('Empezar en el día de hoy')}
               hint={t('La cuadrícula empieza en hoy en vez de en el primer día de la semana, así no se muestran días que ya han pasado. Cada fila son siete días a partir de hoy.')}

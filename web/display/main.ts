@@ -225,6 +225,7 @@ function applyLayout(): void {
     cfg.background.enabled ? 'has-photo' : 'no-photo',
     PRESET_BASE[preset] ? `preset-${PRESET_BASE[preset]}` : '',
     preset === 'photoFrame' ? `corner-${['tl', 'tr', 'bl', 'br'].includes(corner) ? corner : 'br'}` : '',
+    cfg.calendar.dense === true ? 'cal-dense' : '',
   ].filter(Boolean).join(' ');
   app.classList.toggle('has-view', VIEW_PRESETS.includes(preset));
   views.setPreset(preset);
@@ -289,6 +290,9 @@ function applyConfig(raw: DisplayConfig): void {
   // ?startToday=0|1 (the grid starts on today instead of the first day of the week)
   const pst = params.get('startToday');
   if (pst === '0' || pst === '1') cfg.calendar.startToday = pst === '1';
+  // ?dense=0|1 (day lists: whole titles wrapped, rows sized by their days)
+  const pdn = params.get('dense');
+  if (pdn === '0' || pdn === '1') cfg.calendar.dense = pdn === '1';
   // ?calfs=0.4..1.5 (size of the grid entries, relative to the screen's text size)
   const pcs = Number(params.get('calfs'));
   if (params.get('calfs') && pcs >= 0.4 && pcs <= 1.5) cfg.calendar.fontScale = pcs;
@@ -855,6 +859,14 @@ try {
       renderCalendar(current());
       fitSide();
     }
+  });
+  // A font that only starts loading once its text is on screen (the bundled emoji, a weight not used before)
+  // changes the height of wrapped entries: day lists (calendar.dense) are measured, so measure them again.
+  let fontT: ReturnType<typeof setTimeout> | null = null;
+  document.fonts?.addEventListener?.('loadingdone', () => {
+    if (!state.config || ctx.cfg.calendar.dense !== true) return;
+    if (fontT) clearTimeout(fontT);
+    fontT = setTimeout(() => renderCalendar(current()), 80);
   });
 } catch { /* old browser */ }
 

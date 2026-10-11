@@ -94,3 +94,32 @@ test('entry size: the entry styles and the grid planning use the same factor', (
   assert.match(read('web/display/main.ts'), /params\.get\('calfs'\)/);
   for (const f of ['README.md', 'README.es.md']) assert.match(read(f), /\?calfs=/, f);
 });
+
+// Day lists (calendar.dense)
+test('day lists: off by default and for older screens, per screen, a boolean', () => {
+  assert.equal(validateConfig(defaultConfig()).value.screens[0].calendar.dense, false);
+  const c = defaultConfig();
+  delete c.screens[0].calendar.dense;
+  assert.equal(validateConfig(mergeDefaults(c)).value.screens[0].calendar.dense, false);
+  assert.ok(SCREEN_SPLIT_KEYS.calendar.includes('dense'));
+  assert.match(read('web/shared/screens.ts'), /'fontScale', 'dense'/);
+  const on = defaultConfig();
+  on.screens[0].calendar.dense = true;
+  const r = validateConfig(on);
+  assert.equal(r.ok, true, JSON.stringify(r.errors));
+  assert.equal(displayConfig(r.value, r.value.screens[0]).calendar.dense, true);
+  const bad = defaultConfig();
+  bad.screens[0].calendar.dense = 'yes';
+  assert.ok(validateConfig(bad).errors.some((e) => e.path === 'screens[0].calendar.dense'));
+});
+
+test('day lists: the display has the list styles, the layout class and ?dense=', () => {
+  const css = read('web/display/styles.css');
+  assert.match(css, /\.dstack \{[^}]*flex-flow: column wrap/);
+  assert.match(css, /#app\.portrait\.cal-dense:not\(\.has-view\) \{ grid-template-rows: auto minmax\(0, 1fr\); \}/);
+  const main = read('web/display/main.ts');
+  assert.match(main, /params\.get\('dense'\)/);
+  assert.match(main, /'cal-dense'/);
+  assert.match(read('web/display/widgets/calendar.ts'), /private renderDense\(/);
+  for (const f of ['README.md', 'README.es.md']) assert.match(read(f), /\?dense=1/, f);
+});
