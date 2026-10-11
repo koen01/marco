@@ -18,7 +18,7 @@ export const DEFAULT_CONFIG: DisplayConfig = {
   },
   calendar: {
     enabled: true, view: 'month', weeks: 5, weekStart: 1, showLocation: false, showEndTime: false, showDayXofY: true,
-    showLegend: true, hidePast: false, maxEventsPerDay: 4, marquee: true, rotateBusyDays: true, compactBusyDays: false, sources: [], iconRules: DEFAULT_ICON_RULES,
+    showLegend: true, hidePast: false, maxEventsPerDay: 4, marquee: true, rotateBusyDays: true, compactBusyDays: false, startToday: false, sources: [], iconRules: DEFAULT_ICON_RULES,
   },
   datetime: {
     enabled: true, timezone: 'Europe/Lisbon', clock: 'digital', format24: true, showSeconds: true, showAmPm: false,

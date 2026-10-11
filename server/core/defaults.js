@@ -23,7 +23,7 @@ export const RESERVED_SOURCE_IDS = [LOCAL_SOURCE_ID, BIRTHDAYS_SOURCE_ID];
 
 /** Per-screen part of the keys that are split between global and per-screen ("merged sections"). */
 export const SCREEN_SPLIT_KEYS = {
-  calendar: ['enabled', 'view', 'weeks', 'weekStart', 'showLocation', 'showEndTime', 'showDayXofY', 'showLegend', 'hidePast', 'maxEventsPerDay', 'marquee', 'rotateBusyDays', 'compactBusyDays', 'sourceIds'],
+  calendar: ['enabled', 'view', 'weeks', 'weekStart', 'showLocation', 'showEndTime', 'showDayXofY', 'showLegend', 'hidePast', 'maxEventsPerDay', 'marquee', 'rotateBusyDays', 'compactBusyDays', 'startToday', 'sourceIds'],
   datetime: ['enabled', 'clock', 'format24', 'showSeconds', 'showAmPm', 'dateFormat', 'dateCustom'],
   weather: ['enabled', 'forecastDays', 'showHourly', 'showPrecipChance'],
   news: ['enabled', 'rotateSec'],
@@ -59,6 +59,8 @@ export function defaultScreenProfile({ id = 's_main', slug = 'living-room', name
       // compactBusyDays: a month-grid day that cannot fit its events shows them as small one-line entries, and week
       // rows share the height by how many events they have (on for new screens, off for screens saved before it)
       compactBusyDays: true,
+      // startToday: the grid starts on today instead of the first day of the week (no past days on screen)
+      startToday: false,
       sourceIds: null, // null = every enabled source (incl. local + birthdays); array = only these ids
     },
     datetime: { enabled: true, clock: 'digital', format24: true, showSeconds: true, showAmPm: false, dateFormat: 'weekday_d_month', dateCustom: '{dddd}, {d} {mmmm} {yyyy}' },

@@ -9,7 +9,7 @@ import './styles-modern.css';
 import type {
   Announcement, CountdownsResponse, DisplayConfig, EventsResponse, NewsResponse, NightCommand, StreamHello, WeatherResponse,
 } from '../shared/types';
-import { addDays, startOfWeek } from '../shared/i18n';
+import { addDays, gridWeekStart, startOfWeek } from '../shared/i18n';
 import { api, ApiError } from './api';
 import { parseColor, toHex } from './color';
 import { ctx, setCtxConfig } from './ctx';
@@ -286,6 +286,9 @@ function applyConfig(raw: DisplayConfig): void {
   // ?compact=0|1 (busy days as small one-line entries, rows sized by their events) and ?weeks=1..8
   const pcp = params.get('compact');
   if (pcp === '0' || pcp === '1') cfg.calendar.compactBusyDays = pcp === '1';
+  // ?startToday=0|1 (the grid starts on today instead of the first day of the week)
+  const pst = params.get('startToday');
+  if (pst === '0' || pst === '1') cfg.calendar.startToday = pst === '1';
   const pw = Number(params.get('weeks'));
   if (Number.isInteger(pw) && pw >= 1 && pw <= 8) cfg.calendar.weeks = pw;
   const pa = params.get('ambient');
@@ -655,7 +658,8 @@ function deniedBy(e: unknown): boolean {
 // ---------------------------------------------------------------------------------------------
 function eventsRange(): [string, string] {
   const today = current().dayKey;
-  const from = startOfWeek(today, ctx.cfg.calendar.weekStart);
+  const cal = ctx.cfg.calendar;
+  const from = startOfWeek(today, gridWeekStart(today, cal.weekStart, cal.startToday === true));
   const to = addDays(from, Math.max(ctx.cfg.calendar.weeks * 7, 21) + 1);
   return [from, to];
 }
@@ -1055,7 +1059,7 @@ function onHello(d: Partial<StreamHello>): void {
 
 /** What each live event does, whichever transport brought it (live.ts dispatch). */
 const liveHandlers: StreamHandlers = {
-  // Config can change the event range (weeks/weekStart), colours, icons and countdowns → refetch them too.
+  // Config can change the event range (weeks/weekStart/startToday), colours, icons and countdowns → refetch them too.
   config: () => void fetchConfig().then((ok) => (ok ? Promise.all([fetchEvents(), fetchCountdowns()]) : undefined)),
   // gallery changed in the admin (upload, replace, delete, focal point, shown / hidden) → fresh list;
   // a photo taken out of the rotation while on screen is replaced right away

@@ -1,5 +1,5 @@
 // Month / week grid: huge thin day numbers, lane-allocated event chips and continuous multi-day bars.
-import { addDays, diffDays, monthName, startOfWeek, weekdayNames, weekdayOfKey } from '../../shared/i18n';
+import { addDays, diffDays, gridWeekStart, monthName, startOfWeek, weekdayNames, weekdayOfKey } from '../../shared/i18n';
 import { chipColors } from '../color';
 import { ctx } from '../ctx';
 import { esc, reconcile, setHTML, type Spec } from '../dom';
@@ -106,7 +106,9 @@ export class MonthCalendar {
     const L = Math.max(1, Math.min(wantL, m ? this.lanesFor(m.h / nWeeks - 1, m) : 99));
     const today = tick.dayKey;
     const nowMs = tick.now.getTime();
-    const gridStart = startOfWeek(today, c.weekStart);
+    // startToday: the first column is today, so every row is seven days from today on
+    const weekStart = gridWeekStart(today, c.weekStart, c.startToday === true);
+    const gridStart = startOfWeek(today, weekStart);
     this.root.style.setProperty('--weeks', String(nWeeks));
     this.root.style.setProperty('--lanes', String(L));
 
@@ -125,13 +127,13 @@ export class MonthCalendar {
     setHTML(this.head.querySelector('.legend') as HTMLElement, legend);
 
     // ---- weekday header
-    const names = weekdayNames(lang, c.weekStart, 'short');
-    const todayCol = (weekdayOfKey(today) - c.weekStart + 7) % 7;
+    const names = weekdayNames(lang, weekStart, 'short');
+    const todayCol = (weekdayOfKey(today) - weekStart + 7) % 7;
     setHTML(
       this.dow,
       names
         .map((n, i) => {
-          const wd = (c.weekStart + i) % 7;
+          const wd = (weekStart + i) % 7;
           return `<div class="${i === todayCol ? 'is-today' : ''}${wd === 0 || wd === 6 ? ' we' : ''}">${esc(n)}</div>`;
         })
         .join(''),

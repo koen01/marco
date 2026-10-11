@@ -744,6 +744,13 @@ export function CalendarsSection(props: SectionProps) {
               checked={c.compactBusyDays === true}
               onChange={(v) => set((d) => void (d.calendar.compactBusyDays = v))}
             />
+            <ToggleRow
+              icon="📆"
+              label={t('Empezar en el día de hoy')}
+              hint={t('La cuadrícula empieza en hoy en vez de en el primer día de la semana, así no se muestran días que ya han pasado. Cada fila son siete días a partir de hoy.')}
+              checked={c.startToday === true}
+              onChange={(v) => set((d) => void (d.calendar.startToday = v))}
+            />
           </div>
         </div>
       </Card>

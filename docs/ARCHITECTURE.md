@@ -111,7 +111,7 @@ The stored config has **global** sections shared by every screen and a list of *
                   // source: stock | gallery | mixed · order: random | newest | name · transition: webgl | fade | none · ambient: aurora | particles | none · weatherFx: off | simple | rich
   "calendar":   { "enabled": true, "view": "month", "weeks": 5, "weekStart": 1, "showLocation": false, "showEndTime": false,
                   "showDayXofY": true, "showLegend": true, "hidePast": false, "maxEventsPerDay": 4,
-                  "marquee": true, "rotateBusyDays": true, "compactBusyDays": true,
+                  "marquee": true, "rotateBusyDays": true, "compactBusyDays": true, "startToday": false,
                   "sourceIds": null },               // null = every enabled source (incl. new ones); array = only these
                   // marquee: titles cut short (calendar chips, agenda-like lists, side panel pills, countdowns, news) slide to show the rest
                   // rotateBusyDays: a month-grid day with more events than fit pages through them every 8 s
@@ -119,6 +119,8 @@ The stored config has **global** sections shared by every screen and a list of *
                   //   one-line entries (time + title) below its multi-day bars, and week rows share the height by what
                   //   their events need (equal rows while every week fits). Only what still does not fit falls back to
                   //   rotateBusyDays or "+N". On for new screens; screens stored without the key get false (mergeDefaults).
+                  // startToday: the month / week grid starts on today instead of the first day of the week (weekStart only
+                  //   applies while it is off): each row is seven days from today, so `weeks` rows show no past days.
   "datetime":   { "enabled": true, "clock": "digital", "format24": true, "showSeconds": true, "showAmPm": false, "dateFormat": "weekday_d_month" },
   "weather":    { "enabled": true, "forecastDays": 5, "showHourly": true, "showPrecipChance": true },
   "news":       { "enabled": true, "rotateSec": 15 },

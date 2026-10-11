@@ -327,6 +327,14 @@ export function weekdayName(lang: Lang, key: string, style: 'long' | 'short' | '
   return capitalize(s);
 }
 
+/**
+ * First weekday column of the calendar grid: the configured one, or today's weekday when the grid starts on today
+ * (calendar.startToday), which makes startOfWeek(today, …) today itself.
+ */
+export function gridWeekStart(today: string, weekStart = 1, startToday = false): number {
+  return startToday ? weekdayOfKey(today) : weekStart;
+}
+
 /** Weekday names ordered from weekStart (0=Sunday). */
 export function weekdayNames(lang: Lang, weekStart = 1, style: 'long' | 'short' | 'narrow' = 'short'): string[] {
   // 2023-01-01 was a Sunday
