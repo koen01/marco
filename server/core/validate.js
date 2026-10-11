@@ -285,6 +285,7 @@ function sanitizeScreenProfile(ctx, p, raw, seenIds, seenSlugs) {
     // screens saved before the option keep the look they had (new screens get it on from defaultConfig)
     compactBusyDays: bool(ctx, `${p}.calendar.compactBusyDays`, ca.compactBusyDays, false),
     startToday: bool(ctx, `${p}.calendar.startToday`, ca.startToday, D.calendar.startToday),
+    fontScale: num(ctx, `${p}.calendar.fontScale`, ca.fontScale, D.calendar.fontScale, 0.4, 1.5),
     sourceIds: ca.sourceIds === null || ca.sourceIds === undefined ? null : idList(ctx, `${p}.calendar.sourceIds`, ca.sourceIds),
   };
 

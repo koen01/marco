@@ -18,7 +18,7 @@ export const DEFAULT_CONFIG: DisplayConfig = {
   },
   calendar: {
     enabled: true, view: 'month', weeks: 5, weekStart: 1, showLocation: false, showEndTime: false, showDayXofY: true,
-    showLegend: true, hidePast: false, maxEventsPerDay: 4, marquee: true, rotateBusyDays: true, compactBusyDays: false, startToday: false, sources: [], iconRules: DEFAULT_ICON_RULES,
+    showLegend: true, hidePast: false, maxEventsPerDay: 4, marquee: true, rotateBusyDays: true, compactBusyDays: false, startToday: false, fontScale: 1, sources: [], iconRules: DEFAULT_ICON_RULES,
   },
   datetime: {
     enabled: true, timezone: 'Europe/Lisbon', clock: 'digital', format24: true, showSeconds: true, showAmPm: false,
@@ -67,6 +67,7 @@ export function normalizeConfig(raw: unknown): DisplayConfig {
   c.layout.sideWidth = Math.min(0.6, Math.max(0.2, Number(c.layout.sideWidth) || 0.36));
   if (!['tl', 'tr', 'bl', 'br'].includes(c.layout.corner as string)) c.layout.corner = 'br';
   c.layout.people = Array.isArray(c.layout.people) ? c.layout.people.filter((x) => typeof x === 'string').slice(0, 5) : null;
+  c.calendar.fontScale = Math.min(1.5, Math.max(0.4, Number(c.calendar.fontScale) || 1));
   c.screen.fontScale = Math.min(2, Math.max(0.5, Number(c.screen.fontScale) || 1));
   c.background.intervalSec = Math.max(10, Number(c.background.intervalSec) || 120);
   c.background.brightness = Math.min(1.2, Math.max(0.1, Number(c.background.brightness) || 0.85));

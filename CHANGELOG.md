@@ -9,6 +9,9 @@ All notable changes to this project are documented here. The format is based on
 - Start on today (`calendar.startToday`, per screen, *Calendars → Calendar view*): the month, two weeks and week grids
   start on today instead of the first day of the week, so days that have passed take no room. Each row is seven days
   from today and the weekday header follows. Off by default; `?startToday=0|1` tries it on one display.
+- Entry size (`calendar.fontScale`, per screen, *Calendars → Calendar view*, 40% to 150%): the size of the events in
+  the month, two weeks and week grids, separate from the screen's text size. A smaller size fits more events and
+  longer titles per day while the clock, weather and day numbers stay as they are. `?calfs=0.6` tries it on one display.
 
 ## [0.6.1] - 2026-10-11
 

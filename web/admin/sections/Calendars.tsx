@@ -713,6 +713,13 @@ export function CalendarsSection(props: SectionProps) {
             <Field label={t('Semanas a mostrar')} error={errors['calendar.weeks']}>
               <Segmented full value={c.weeks} options={[1, 2, 3, 4, 5, 6].map((n) => ({ value: n, label: String(n) }))} onChange={(v) => set((d) => void (d.calendar.weeks = v))} />
             </Field>
+            <Field
+              label={t('Tamaño de las entradas')}
+              hint={t('Tamaño de los eventos en la cuadrícula respecto al tamaño de letra de la pantalla. Más pequeño: caben más eventos y títulos más largos. El reloj y el tiempo no cambian.')}
+              error={errors['calendar.fontScale']}
+            >
+              <Slider value={c.fontScale ?? 1} min={0.4} max={1.5} step={0.05} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set((d) => void (d.calendar.fontScale = v))} />
+            </Field>
             <Field label={t('Máx. eventos visibles por día')} error={errors['calendar.maxEventsPerDay']}>
               <Slider value={c.maxEventsPerDay} min={1} max={8} step={1} onChange={(v) => set((d) => void (d.calendar.maxEventsPerDay = v))} />
             </Field>

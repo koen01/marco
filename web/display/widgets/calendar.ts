@@ -102,6 +102,9 @@ export class MonthCalendar {
     const wantL = Math.max(1, isWeek ? Math.min(14, c.maxEventsPerDay * 3) : c.maxEventsPerDay);
     this.root.classList.toggle('is-week', isWeek);
     const compact = c.compactBusyDays === true;
+    // entry size (calendar.fontScale): the CSS scales text, lanes and paddings with --cs, and so do metrics() / measureGeom()
+    this.scale = Math.min(1.5, Math.max(0.4, Number(c.fontScale) || 1));
+    this.root.style.setProperty('--cs', String(this.scale));
     const m = this.metrics();
     const L = Math.max(1, Math.min(wantL, m ? this.lanesFor(m.h / nWeeks - 1, m) : 99));
     const today = tick.dayKey;
@@ -209,16 +212,18 @@ export class MonthCalendar {
     }
   }
 
+  /** calendar.fontScale of the last render (1 = the screen's text size). */
+  private scale = 1;
   private geom: { colW: number; rem: number; chipPx: number } | null = null;
 
-  /** Column width + chip font size in px (null while the grid is not laid out yet). */
+  /** Column width, chip font size and the chips' own rem (both scaled by calendar.fontScale) in px (null while the grid is not laid out yet). */
   private measureGeom(): { colW: number; rem: number; chipPx: number } | null {
     const w = this.weeks.clientWidth;
     if (!w) return null;
-    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 10;
+    const rem = (parseFloat(getComputedStyle(document.documentElement).fontSize) || 10) * this.scale;
     const raw = getComputedStyle(this.root).getPropertyValue('--chip-fs').trim();
     const n = parseFloat(raw);
-    const chipPx = Number.isFinite(n) ? (raw.endsWith('px') ? n : n * rem) : 1.68 * rem;
+    const chipPx = Number.isFinite(n) ? (raw.endsWith('px') ? n * this.scale : n * rem) : 1.68 * rem;
     return { colW: w / 7, rem, chipPx };
   }
 
@@ -409,7 +414,8 @@ export class MonthCalendar {
       if (!Number.isFinite(n)) return def * rem;
       return raw.endsWith('px') ? n : n * rem;
     };
-    const lineFs = v('--chip-fs', 1.68) * COMPACT_FONT;
+    const s = this.scale;
+    const lineFs = v('--chip-fs', 1.68) * s * COMPACT_FONT;
     const lineH = Math.round(lineFs * COMPACT_LINE);
     // the CSS draws the compact entries with these sizes, so what is planned is what shows
     const set = (k: string, px: number) => {
@@ -418,10 +424,11 @@ export class MonthCalendar {
     };
     set('--cline-fs', lineFs);
     set('--cline-h', lineH);
-    set('--cline-gap', Math.round(COMPACT_GAP_U * rem));
+    const lineGap = Math.max(1, Math.round(COMPACT_GAP_U * rem * s));
+    set('--cline-gap', lineGap);
     return {
-      h, rem, numH: v('--num-h', 5.8), laneH: v('--lane-h', 2.9), laneMin: v('--lane-min', 2.45), gap: v('--lane-gap', 0.42),
-      lineFs, lineH, lineGap: Math.round(COMPACT_GAP_U * rem), pad: COMPACT_PAD_U * rem,
+      h, rem, numH: v('--num-h', 5.8), laneH: v('--lane-h', 2.9) * s, laneMin: v('--lane-min', 2.45) * s, gap: v('--lane-gap', 0.42) * s,
+      lineFs, lineH, lineGap, pad: COMPACT_PAD_U * rem * s,
     };
   }
 

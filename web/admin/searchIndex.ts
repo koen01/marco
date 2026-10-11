@@ -40,7 +40,7 @@ export const SETTINGS_INDEX: SettingEntry[] = [
   { label: 'Cuentas de Google Calendar', route: 'calendars', anchor: 'cal-accounts', keywords: 'google account cuenta oauth vincular cuentas vinculadas', feature: 'googleCalendar' },
   { label: 'Cuentas de Microsoft', route: 'calendars', anchor: 'cal-accounts', keywords: 'microsoft outlook hotmail office 365 account cuenta oauth vincular', feature: 'microsoftCalendar' },
   { label: 'Calendarios visibles en esta pantalla', route: 'calendars', anchor: 'cal-screen-sources', keywords: 'sources filter screen mostrar ocultar fuentes por pantalla' },
-  { label: 'Vista del calendario (mes, semana, agenda)', route: 'calendars', anchor: 'cal-view', keywords: 'view month week agenda semanas weeks start lunes marquee desplazar slide rotar rotate textos largos long titles compacto compact días llenos busy days empezar hoy start today começar hoje días pasados past days' },
+  { label: 'Vista del calendario (mes, semana, agenda)', route: 'calendars', anchor: 'cal-view', keywords: 'view month week agenda semanas weeks start lunes marquee desplazar slide rotar rotate textos largos long titles compacto compact días llenos busy days empezar hoy start today começar hoje días pasados past days tamaño entradas entry size tamanho letra font densidad density' },
   { label: 'Eventos máximos por día', route: 'calendars', anchor: 'cal-view', keywords: 'max events per day más' },
   { label: 'Eventos locales', route: 'local', anchor: 'local-list', keywords: 'local events eventos familia recurrente repetir crear evento' },
   { label: 'Cumpleaños', route: 'birthdays', anchor: 'bday-list', keywords: 'birthday aniversário cumple edad age' },

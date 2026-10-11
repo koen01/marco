@@ -289,6 +289,9 @@ function applyConfig(raw: DisplayConfig): void {
   // ?startToday=0|1 (the grid starts on today instead of the first day of the week)
   const pst = params.get('startToday');
   if (pst === '0' || pst === '1') cfg.calendar.startToday = pst === '1';
+  // ?calfs=0.4..1.5 (size of the grid entries, relative to the screen's text size)
+  const pcs = Number(params.get('calfs'));
+  if (params.get('calfs') && pcs >= 0.4 && pcs <= 1.5) cfg.calendar.fontScale = pcs;
   const pw = Number(params.get('weeks'));
   if (Number.isInteger(pw) && pw >= 1 && pw <= 8) cfg.calendar.weeks = pw;
   const pa = params.get('ambient');

@@ -111,7 +111,7 @@ The stored config has **global** sections shared by every screen and a list of *
                   // source: stock | gallery | mixed · order: random | newest | name · transition: webgl | fade | none · ambient: aurora | particles | none · weatherFx: off | simple | rich
   "calendar":   { "enabled": true, "view": "month", "weeks": 5, "weekStart": 1, "showLocation": false, "showEndTime": false,
                   "showDayXofY": true, "showLegend": true, "hidePast": false, "maxEventsPerDay": 4,
-                  "marquee": true, "rotateBusyDays": true, "compactBusyDays": true, "startToday": false,
+                  "marquee": true, "rotateBusyDays": true, "compactBusyDays": true, "startToday": false, "fontScale": 1,
                   "sourceIds": null },               // null = every enabled source (incl. new ones); array = only these
                   // marquee: titles cut short (calendar chips, agenda-like lists, side panel pills, countdowns, news) slide to show the rest
                   // rotateBusyDays: a month-grid day with more events than fit pages through them every 8 s
@@ -121,6 +121,9 @@ The stored config has **global** sections shared by every screen and a list of *
                   //   rotateBusyDays or "+N". On for new screens; screens stored without the key get false (mergeDefaults).
                   // startToday: the month / week grid starts on today instead of the first day of the week (weekStart only
                   //   applies while it is off): each row is seven days from today, so `weeks` rows show no past days.
+                  // fontScale (0.4 to 1.5): size of the grid entries relative to screen.fontScale. calendar.ts sets it as --cs
+                  //   on .cal; the entry rules multiply text, lanes and paddings by it and metrics() plans with the same
+                  //   factor. Day numbers, clock and weather keep the screen's size.
   "datetime":   { "enabled": true, "clock": "digital", "format24": true, "showSeconds": true, "showAmPm": false, "dateFormat": "weekday_d_month" },
   "weather":    { "enabled": true, "forecastDays": 5, "showHourly": true, "showPrecipChance": true },
   "news":       { "enabled": true, "rotateSec": 15 },

@@ -7,6 +7,12 @@ export const ROWS_COMPACT: [string, string, string][] = [
     'When a day cannot fit its events, they show as small one-line entries, and weeks with more events get more height. What still does not fit takes turns or shows “+N”.',
     'Se num dia não cabem os eventos, aparecem em linhas pequenas, e as semanas com mais eventos ocupam mais altura. O que mesmo assim não cabe aparece à vez ou com “+N”.',
   ],
+  ['Tamaño de las entradas', 'Entry size', 'Tamanho das entradas'],
+  [
+    'Tamaño de los eventos en la cuadrícula respecto al tamaño de letra de la pantalla. Más pequeño: caben más eventos y títulos más largos. El reloj y el tiempo no cambian.',
+    'Size of the events in the grid, relative to the screen text size. Smaller fits more events and longer titles. The clock and weather do not change.',
+    'Tamanho dos eventos na grelha em relação ao tamanho de letra do ecrã. Mais pequeno: cabem mais eventos e títulos mais longos. O relógio e o tempo não mudam.',
+  ],
   ['Empezar en el día de hoy', 'Start on today', 'Começar no dia de hoje'],
   [
     'La cuadrícula empieza en hoy en vez de en el primer día de la semana, así no se muestran días que ya han pasado. Cada fila son siete días a partir de hoy.',
