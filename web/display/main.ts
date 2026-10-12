@@ -202,6 +202,9 @@ const PRESETS = ['bigCalendar', 'leftRight', 'topBottom', 'bigTime', 'agenda', '
 /** Newer layouts built on an older one's frame: they also get its class, so its rules (and the Modern ones) apply. */
 const PRESET_BASE: Record<string, string> = { today: 'bigCalendar', twoWeeks: 'bigCalendar', people: 'topBottom', board: 'topBottom' };
 
+/** Layouts whose photo only fills the side panel or the top band (the others have a full-screen photo or none). */
+const PANEL_PHOTO_PRESETS = ['bigCalendar', 'agenda', 'topBottom', 'today', 'twoWeeks', 'people'];
+
 function effectivePreset(cfg: DisplayConfig): string {
   const p = params.get('preset') || cfg.layout.preset;
   return PRESETS.includes(p) ? p : 'bigCalendar';
@@ -212,6 +215,11 @@ function isPortrait(cfg: DisplayConfig): boolean {
   if (o === 'portrait') return true;
   if (o === 'landscape') return false;
   return window.innerHeight > window.innerWidth * 1.05;
+}
+
+/** background.fullScreen in effect: the photo is stretched over the whole screen, behind the calendar pane. */
+function photoFullScreen(cfg: DisplayConfig): boolean {
+  return cfg.background.enabled && cfg.background.fullScreen === true && PANEL_PHOTO_PRESETS.includes(effectivePreset(cfg));
 }
 
 function applyLayout(): void {
@@ -226,6 +234,7 @@ function applyLayout(): void {
     PRESET_BASE[preset] ? `preset-${PRESET_BASE[preset]}` : '',
     preset === 'photoFrame' ? `corner-${['tl', 'tr', 'bl', 'br'].includes(corner) ? corner : 'br'}` : '',
     cfg.calendar.dense === true ? 'cal-dense' : '',
+    photoFullScreen(cfg) ? 'bg-full' : '',
   ].filter(Boolean).join(' ');
   app.classList.toggle('has-view', VIEW_PRESETS.includes(preset));
   views.setPreset(preset);
@@ -304,6 +313,9 @@ function applyConfig(raw: DisplayConfig): void {
   if (ptr === 'webgl' || ptr === 'fade' || ptr === 'none') cfg.background.transition = ptr;
   const pfx = params.get('wxfx');
   if (pfx === 'off' || pfx === 'simple' || pfx === 'rich') cfg.background.weatherFx = pfx;
+  // ?bgfull=0|1 (the photo over the whole screen, behind the calendar too)
+  const pbf = params.get('bgfull');
+  if (pbf === '0' || pbf === '1') cfg.background.fullScreen = pbf === '1';
   // the top-bottom preset has a shorter calendar: cap the number of week rows so chips stay readable
   if (effectivePreset(cfg) === 'topBottom') cfg.calendar.weeks = Math.min(cfg.calendar.weeks, 4);
   // Two weeks: the month grid with two roomy rows (more events per day)
@@ -349,7 +361,8 @@ function applyConfig(raw: DisplayConfig): void {
 
   // WebGL needs
   const preset = effectivePreset(cfg);
-  const wantAmbient = !lite && cfg.background.ambient !== 'none' && ['bigCalendar', 'agenda', 'topBottom', 'today', 'twoWeeks', 'people'].includes(preset);
+  // the ambient effect is drawn behind the calendar pane, where a full-screen photo already is
+  const wantAmbient = !lite && cfg.background.ambient !== 'none' && PANEL_PHOTO_PRESETS.includes(preset) && !photoFullScreen(cfg);
   const wantGLPhoto = !lite && cfg.background.enabled && cfg.background.transition === 'webgl';
   if ((wantAmbient || wantGLPhoto) && !engine && !glFailed) {
     void initGL().then(() => {

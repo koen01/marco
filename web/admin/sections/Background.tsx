@@ -115,6 +115,12 @@ export function BackgroundSection({ cfg, set, errors }: SectionProps) {
           </div>
           <ToggleRow label={t('Mostrar autor / título de la foto')} checked={b.showMeta} onChange={(v) => set((d) => void (d.background.showMeta = v))} />
           <ToggleRow label={t('Recortar para llenar la pantalla')} hint={t('Si se desactiva, la foto se muestra completa con bandas.')} checked={b.cover} onChange={(v) => set((d) => void (d.background.cover = v))} />
+          <ToggleRow
+            label={t('Foto en toda la pantalla')}
+            hint={t('La foto también se ve detrás del calendario, no solo en el panel lateral o la franja superior. El efecto ambiental no se muestra. Algunos diseños ya usan la foto en toda la pantalla.')}
+            checked={b.fullScreen === true}
+            onChange={(v) => set((d) => void (d.background.fullScreen = v))}
+          />
           <Field label={t('Transición entre fotos')}>
             <Segmented
               value={b.transition}

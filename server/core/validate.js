@@ -266,6 +266,7 @@ function sanitizeScreenProfile(ctx, p, raw, seenIds, seenSlugs) {
     panelBlur: num(ctx, `${p}.background.panelBlur`, bg.panelBlur, D.background.panelBlur, 0, 40, true),
     panelShade: num(ctx, `${p}.background.panelShade`, bg.panelShade, D.background.panelShade, 0, 1),
     weatherFx: oneOf(ctx, `${p}.background.weatherFx`, bg.weatherFx, D.background.weatherFx, ['off', 'simple', 'rich']),
+    fullScreen: bool(ctx, `${p}.background.fullScreen`, bg.fullScreen, D.background.fullScreen),
   };
 
   const ca = obj(ctx, `${p}.calendar`, x.calendar);

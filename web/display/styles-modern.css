@@ -655,6 +655,17 @@
 .lite.style-modern.theme-light .preset-leftRight .main { background: rgb(242 242 247 / 0.94); }
 .style-modern .preset-leftRight #news { margin-bottom: 1.6rem; }
 
+/* full-screen photo (background.fullScreen): the calendar pane is the same sheet glass, edge to edge */
+.style-modern #app.bg-full .side { background: none; }
+.style-modern #app.bg-full .main {
+  background: rgb(var(--g-sheet-rgb, 18 18 22) / var(--g-sheet-a, 0.46));
+  -webkit-backdrop-filter: var(--g-sheet-filter, blur(4rem) saturate(1.6));
+  backdrop-filter: var(--g-sheet-filter, blur(4rem) saturate(1.6));
+}
+.style-modern.theme-light #app.bg-full .main { background: rgb(242 242 247 / 0.78); }
+.lite.style-modern #app.bg-full .main { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgb(var(--g-sheet-rgb, 18 18 22) / var(--g-sheet-a, 0.86)); }
+.lite.style-modern.theme-light #app.bg-full .main { background: rgb(242 242 247 / 0.94); }
+
 /* big time: the news line becomes a floating glass bar */
 .style-modern .preset-bigTime .main {
   margin: 0 4rem 3.2rem;

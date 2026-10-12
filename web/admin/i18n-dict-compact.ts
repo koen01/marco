@@ -19,6 +19,12 @@ export const ROWS_COMPACT: [string, string, string][] = [
     'Each day lists all its events with the full title over several lines, and weeks take the height they need. On portrait screens the top band only takes the height it needs. What does not fit shows as “+N”.',
     'Cada dia lista todos os eventos com o título completo em várias linhas, e as semanas ocupam a altura de que precisam. Em ecrãs verticais, a faixa superior ocupa só o que precisa. O que não cabe aparece com “+N”.',
   ],
+  ['Foto en toda la pantalla', 'Photo on the whole screen', 'Foto em todo o ecrã'],
+  [
+    'La foto también se ve detrás del calendario, no solo en el panel lateral o la franja superior. El efecto ambiental no se muestra. Algunos diseños ya usan la foto en toda la pantalla.',
+    'The photo also shows behind the calendar, not only in the side panel or the top band. The ambient effect is not shown. Some layouts already use the photo on the whole screen.',
+    'A foto também aparece atrás do calendário, não só no painel lateral ou na faixa superior. O efeito ambiente não é mostrado. Alguns layouts já usam a foto em todo o ecrã.',
+  ],
   ['Empezar en el día de hoy', 'Start on today', 'Começar no dia de hoje'],
   [
     'La cuadrícula empieza en hoy en vez de en el primer día de la semana, así no se muestran días que ya han pasado. Cada fila son siete días a partir de hoy.',

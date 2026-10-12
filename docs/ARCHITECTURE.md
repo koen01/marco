@@ -107,8 +107,14 @@ The stored config has **global** sections shared by every screen and a list of *
                   //   .preset-bigCalendar), people and board the top / bottom one (.preset-topBottom). twoWeeks is the month
                   //   grid with weeks = 2. Each view drops whole rows that do not fit (never a row cut in half).
   "background": { "enabled": true, "source": "stock", "stockTopic": "nature", "order": "random", "intervalSec": 120, "brightness": 0.85,
-                  "showMeta": false, "cover": true, "transition": "webgl", "ambient": "aurora", "panelBlur": 18, "panelShade": 0.5, "weatherFx": "simple" },
+                  "showMeta": false, "cover": true, "transition": "webgl", "ambient": "aurora", "panelBlur": 18, "panelShade": 0.5, "weatherFx": "simple",
+                  "fullScreen": false },
                   // source: stock | gallery | mixed · order: random | newest | name · transition: webgl | fade | none · ambient: aurora | particles | none · weatherFx: off | simple | rich
+                  // fullScreen: the photo fills the whole screen instead of the side panel (landscape) or the top band
+                  //   (portrait, top / bottom). #app gets .bg-full for bigCalendar, agenda, topBottom, today, twoWeeks and
+                  //   people (the other layouts already have a full-screen photo or none): .photo-area spans the whole
+                  //   grid, .main is translucent (Modern: the sheet glass of screen.glass) and the ambient layer is off,
+                  //   since the photo is drawn where it would be.
   "calendar":   { "enabled": true, "view": "month", "weeks": 5, "weekStart": 1, "showLocation": false, "showEndTime": false,
                   "showDayXofY": true, "showLegend": true, "hidePast": false, "maxEventsPerDay": 4,
                   "marquee": true, "rotateBusyDays": true, "compactBusyDays": true, "startToday": false, "fontScale": 1, "dense": false,

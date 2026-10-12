@@ -933,6 +933,7 @@ Back up the whole folder (or use *Export*) to keep everything.
 | `?preset=…` `?view=month\|agenda\|week` `?theme=dark\|light` `?style=classic\|modern` `?side=left\|right` `?clock=analog` | Override layout options (handy for testing) |
 | `?preset=today\|people\|photoFrame\|twoWeeks\|board\|bedside` `?people=<calendar ids, comma separated>` `?corner=tl\|tr\|bl\|br` | Preview the newer layouts, the *Per person* columns and the *Photo frame* corner |
 | `?glass=clear\|tinted\|auto` `?glassOpacity=0..1` `?glassBlur=0..40` `?glassTint=dark\|light\|photo` `?glassEdge=0\|1` | Override the glass options of the Modern style |
+| `?bgfull=0\|1` | Turn on (or off) the photo on the whole screen, behind the calendar too (*Background → Background photos*) |
 | `?wxfx=off\|simple\|rich` | Override the weather effect; with `?demo=1`, `?wx=rain\|drizzle\|thunder\|snow\|clear` (or a WMO code, e.g. `45` for fog) forces the weather |
 | `?ambient=aurora\|particles\|none` | Override the ambient backdrop behind the calendar |
 | `?demo=1&pair=1` `?demo=1&pair=invalid` `&pairLen=6\|8` | Preview the pairing screen or the “link no longer valid” screen with a sample code (no server needed) |

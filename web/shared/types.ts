@@ -79,6 +79,12 @@ export interface BackgroundConfig {
   panelShade?: number;
   /** effect over the photo for the current weather: none, light rain/snow particles, or drops on the glass with sun rays */
   weatherFx?: 'off' | 'simple' | 'rich';
+  /**
+   * The photo fills the whole screen, behind the calendar too, instead of only the side panel (landscape) or the
+   * top band (portrait, top / bottom). The calendar pane becomes translucent and the ambient effect is not drawn
+   * (default false). Layouts that already use a full-screen photo ignore it.
+   */
+  fullScreen?: boolean;
 }
 
 export interface CalendarSource {

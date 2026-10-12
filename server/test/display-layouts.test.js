@@ -157,3 +157,34 @@ test('the layout stylesheet only touches the new layouts, so the others look exa
   const scoped = new RegExp(`preset-(${NEW.join('|')})|#view|\\.has-view|\\.view-|\\.(td|pp|bd|pf|bs|v)(-|\\b)|\\.corner-|\\.bedside-late`);
   assert.deepEqual(selectors.filter((s) => !scoped.test(s)), []);
 });
+
+// Photo on the whole screen (background.fullScreen)
+test('full-screen photo: off by default and for older screens, per screen, a boolean', () => {
+  assert.equal(defaultScreenProfile().background.fullScreen, false);
+  const c = defaultConfig();
+  delete c.screens[0].background.fullScreen;
+  assert.equal(validateConfig(c).value.screens[0].background.fullScreen, false);
+  const on = defaultConfig();
+  on.screens[0].background.fullScreen = true;
+  const r = validateConfig(on);
+  assert.equal(r.ok, true, JSON.stringify(r.errors));
+  assert.equal(displayConfig(r.value, r.value.screens[0]).background.fullScreen, true);
+  const bad = defaultConfig();
+  bad.screens[0].background.fullScreen = 'yes';
+  assert.ok(validateConfig(bad).errors.some((e) => e.path === 'screens[0].background.fullScreen'));
+});
+
+test('full-screen photo: the display has the layout class, its styles in both styles and ?bgfull=', () => {
+  const main = read('web/display/main.ts');
+  assert.match(main, /photoFullScreen\(cfg\) \? 'bg-full' : ''/);
+  assert.match(main, /params\.get\('bgfull'\)/);
+  // the ambient layer would be painted over by the photo
+  assert.match(main, /const wantAmbient = [^;]*!photoFullScreen\(cfg\);/);
+  const css = read('web/display/styles.css');
+  assert.match(css, /#app\.bg-full \.photo-area \{ grid-column: 1 \/ -1 !important; grid-row: 1 \/ -1 !important; \}/);
+  assert.match(css, /#app\.bg-full \.main \{ background: rgb\(0 0 0 \/ 0\.66\); \}/);
+  const modern = read('web/display/styles-modern.css');
+  assert.match(modern, /\.style-modern #app\.bg-full \.main \{[^}]*--g-sheet-a/);
+  assert.match(modern, /\.lite\.style-modern #app\.bg-full \.main \{[^}]*backdrop-filter: none/);
+  for (const f of ['README.md', 'README.es.md']) assert.match(read(f), /\?bgfull=/, f);
+});

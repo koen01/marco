@@ -977,6 +977,7 @@ Haz copia de seguridad de toda la carpeta (o usa *Exportar*) para conservarlo to
 | `?preset=…` `?view=month\|agenda\|week` `?theme=dark\|light` `?style=classic\|modern` `?side=left\|right` `?clock=analog` | Fuerza opciones de diseño (útil para hacer pruebas) |
 | `?preset=today\|people\|photoFrame\|twoWeeks\|board\|bedside` `?people=<ids de calendario, separados por comas>` `?corner=tl\|tr\|bl\|br` | Prueba los diseños nuevos, las columnas de *Por persona* y la esquina de *Marco de fotos* |
 | `?glass=clear\|tinted\|auto` `?glassOpacity=0..1` `?glassBlur=0..40` `?glassTint=dark\|light\|photo` `?glassEdge=0\|1` | Fuerza las opciones de cristal del estilo Moderno |
+| `?bgfull=0\|1` | Activa (o desactiva) la foto en toda la pantalla, también detrás del calendario (*Fondo → Fotos de fondo*) |
 | `?wxfx=off\|simple\|rich` | Fuerza el efecto del tiempo; con `?demo=1`, `?wx=rain\|drizzle\|thunder\|snow\|clear` (o un código WMO, p. ej. `45` para niebla) fuerza el tiempo |
 | `?ambient=aurora\|particles\|none` | Fuerza el fondo ambiental detrás del calendario |
 | `?demo=1&pair=1` `?demo=1&pair=invalid` `&pairLen=6\|8` | Muestra la pantalla de vinculación o la de “enlace ya no válido” con un código de ejemplo (sin servidor) |

@@ -21,6 +21,10 @@ All notable changes to this project are documented here. The format is based on
   end time and place. Events over several days stay as bars on top. Week rows get the height their days need, an
   entry that does not fit is left out whole and counted in "+N", and on a portrait screen the band above the
   calendar only takes the height of its content. `?dense=1` tries it on one display.
+- Photo on the whole screen (`background.fullScreen`, per screen, *Background → Background photos*): the photo fills
+  the whole screen, behind the calendar too, instead of only the side panel (landscape) or the top band (portrait,
+  top / bottom). The calendar pane becomes translucent (with the Modern style it uses the glass settings) and the
+  ambient effect is not drawn. `?bgfull=1` tries it on one display.
 
 ## [0.6.1] - 2026-10-11
 
