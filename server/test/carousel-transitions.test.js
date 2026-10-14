@@ -9,7 +9,7 @@ import { carouselBlock, CAROUSEL_RANDOM_POOL, CAROUSEL_SPEEDS, CAROUSEL_TRANSITI
 import { loadWebModules } from './webModules.js';
 
 const [plan, sw, admin] = await loadWebModules('/web/display/switchPlan.ts', '/web/display/screenSwitch.ts', '/web/admin/sections/Carousels.tsx');
-const { randomPick, planSwitch, switchNumber, isLowPower, isLowPowerGPU, isArmDesktop, SHORT_FADE_MS } = plan;
+const { randomPick, planSwitch, switchNumber, isLowPower, SHORT_FADE_MS } = plan;
 
 function config(carousels) {
   const c = defaultConfig();
@@ -95,25 +95,12 @@ test('planSwitch: speeds, reduced motion and low power give a short fade, dissol
   assert.deepEqual(planSwitch(info('slide'), { ...env, force: 'nonsense' }), { effect: 'slide', ms: 800 });
 });
 
-test('isLowPower: Raspberry Pi Chromium yes, desktops and Android no', () => {
-  assert.equal(isLowPower('Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'), true);
-  assert.equal(isLowPower('Mozilla/5.0 (X11; Linux armv7l) AppleWebKit/537.36 Chrome/120.0 Safari/537.36'), true);
-  assert.equal(isLowPower('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36', 8, 8), false);
-  assert.equal(isLowPower('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36 aarch64'), false);
-  assert.equal(isLowPower('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', 1, 8), true, 'very little memory');
-});
-
-test('low power: the Pi GPU and ARM client hints (recent Chromium says x86_64 on ARM too)', () => {
-  assert.equal(isLowPowerGPU('V3D 4.2'), true);
-  assert.equal(isLowPowerGPU('ANGLE (Broadcom, V3D 7.1.7, OpenGL ES 3.1)'), true);
-  assert.equal(isLowPowerGPU('Mali-G52'), true);
-  assert.equal(isLowPowerGPU('ANGLE (Intel, Mesa Intel(R) UHD Graphics 620, OpenGL 4.6)'), false);
-  assert.equal(isLowPowerGPU(''), false);
-  assert.equal(isArmDesktop('arm', 'Linux', false), true);
-  assert.equal(isArmDesktop('x86', 'Linux', false), false);
-  assert.equal(isArmDesktop('arm', 'macOS', false), false, 'Apple silicon is fast enough');
-  assert.equal(isArmDesktop('arm', 'Windows', false), false);
-  assert.equal(isArmDesktop('arm', 'Android', true), false);
+test('isLowPower: only very little memory or one core (a Raspberry Pi gets the real animation)', () => {
+  assert.equal(isLowPower(), false);
+  assert.equal(isLowPower(8, 8), false);
+  assert.equal(isLowPower(4, 4), false, 'a Raspberry Pi');
+  assert.equal(isLowPower(1, 8), true, 'very little memory');
+  assert.equal(isLowPower(8, 1), true, 'one core');
 });
 
 test('screenSwitch: the module loads (the switch itself needs a browser)', () => {

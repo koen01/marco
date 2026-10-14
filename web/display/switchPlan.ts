@@ -4,7 +4,8 @@
 // - 'random' picks from CAROUSEL_RANDOM_POOL by the switch number (the count of step starts since the epoch, see
 //   switchNumber) and the carousel id, so every TV on the same carousel picks the same one, and two switches in a
 //   row never use the same one.
-// - Reduced motion (the system setting), ?lite=1 and low-power devices (a Raspberry Pi) get a short fade instead.
+// - Reduced motion (the system setting), ?lite=1 and browsers with very little memory get a short fade instead. A
+//   Raspberry Pi runs the chosen animation like any other screen.
 // - 'dissolve' needs the WebGL layer; without it the switch is a fade.
 import type { CarouselSpeed, CarouselStep, CarouselTransition } from '../shared/types';
 import { CAROUSEL_RANDOM_POOL, CAROUSEL_SPEEDS, CAROUSEL_TRANSITIONS, carouselSlot, speedOf } from '../shared/carousels';
@@ -37,11 +38,11 @@ export interface SwitchEnv {
 export interface SwitchPlan {
   effect: SwitchEffect;
   ms: number;
-  /** a plain fade of #app, with no copy of the page (reduced motion, lite mode, a Raspberry Pi) */
+  /** a plain fade of #app, with no copy of the page (reduced motion, lite mode, very little memory) */
   light?: boolean;
 }
 
-/** The fade used where motion is unwelcome or too heavy (reduced motion, lite mode, Raspberry Pi). */
+/** The fade used where motion is unwelcome or too heavy (reduced motion, lite mode, very little memory). */
 export const SHORT_FADE_MS = 300;
 
 /** Count of step starts since the Unix epoch at `nowMs` (the same on every TV with the same clock). */
@@ -115,27 +116,8 @@ export function planSwitch(info: SwitchInfo, env: SwitchEnv): SwitchPlan {
   return { effect, ms };
 }
 
-/**
- * A Raspberry Pi or a similar small ARM board running desktop Chromium (Android phones and tablets are fine), or
- * a browser that says it has very little memory. `ua`, `mem` and `cores` come from navigator. Recent Chromium says
- * "X11; Linux x86_64" on every Linux machine, ARM too, so the display also asks lowPowerHints() below.
- */
-export function isLowPower(ua: string, mem?: number, cores?: number): boolean {
-  if (/Linux (armv\d+l?|aarch64)/i.test(ua) && !/Android/i.test(ua)) return true;
+/** A browser that says it has very little memory or a single core (`mem` and `cores` come from navigator). */
+export function isLowPower(mem?: number, cores?: number): boolean {
   if (typeof mem === 'number' && mem > 0 && mem < 2) return true;
   return typeof cores === 'number' && cores > 0 && cores < 2;
-}
-
-/** The GPU of a Raspberry Pi (VideoCore / V3D) or of a similar small ARM board (Mali), from the WebGL renderer name. */
-export function isLowPowerGPU(renderer: string | null | undefined): boolean {
-  return !!renderer && /V3D|VideoCore|Mali/i.test(renderer);
-}
-
-/**
- * Desktop Linux on ARM (a Pi and the like) from the client hints (Chromium): `architecture` and `platform` of
- * userAgentData. Macs and Windows on ARM are fast enough, and Android is not desktop Linux.
- */
-export function isArmDesktop(architecture: string | null | undefined, platform: string | null | undefined, mobile?: boolean): boolean {
-  if (mobile || !/^Linux$/i.test(platform ?? '')) return false;
-  return /^arm/i.test(architecture ?? '');
 }

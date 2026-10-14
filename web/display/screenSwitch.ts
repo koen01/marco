@@ -12,7 +12,7 @@
 //    the GL dissolve layer (web/display/gl/dissolveLayer.ts) and crossfades the content above it.
 // 4. The overlay is removed. A switch that arrives while one runs finishes that one at once.
 //
-// A light plan (reduced motion, lite mode, a Raspberry Pi) skips all of that: #app fades out, the new screen goes
+// A light plan (reduced motion, lite mode, very little memory) skips all of that: #app fades out, the new screen goes
 // in and #app fades back in, with no copy of the page or of the GL frame.
 import type { SwitchPlan } from './switchPlan';
 

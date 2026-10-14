@@ -374,10 +374,10 @@ export class Photos {
 
   /**
    * A carousel switch: show `list[idx]` right now if prepare() has it ready, with no crossfade (the switch animation
-   * carries the change) and the tone set at once. `glSec` > 0 runs a short WebGL transition instead (the light
-   * switch, where the GL canvas does not fade with the page). False when it is not ready: go on as before.
+   * carries the change) and the tone set at once. `crossfade`: the slideshow's usual crossfade instead (the light
+   * switch on a Raspberry Pi is too short to carry a photo change). False when it is not ready: go on as before.
    */
-  takeover(list: Photo[], idx: number, glSec = 0): boolean {
+  takeover(list: Photo[], idx: number, crossfade = false): boolean {
     const a = this.ahead;
     const p = list[idx];
     const l = a?.loaded;
@@ -389,7 +389,7 @@ export class Photos {
     this.restart();
     this.list = list.slice();
     this.idx = idx;
-    this.display(p, l, glSec > 0 ? glSec : 0);
+    this.display(p, l, crossfade ? undefined : 0);
     applyTone(l.tone, true);
     this.failures = 0;
     this.schedule(true);

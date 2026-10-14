@@ -8,6 +8,9 @@ All notable changes to this project are documented here. The format is based on
 ### Security
 - Gallery photos shown on a screen in private mode are no longer kept in the browser cache. Thanks to @scootmandoo.
 
+### Fixed
+- Carousels on a Raspberry Pi now use the animation chosen for the carousel instead of a short fade. Where the short fade is still used (lite mode, reduced motion), the new screen's photo comes in with the usual crossfade again.
+
 ## [0.15.0] - 2026-10-13
 
 ### Added

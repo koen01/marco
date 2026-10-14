@@ -22,7 +22,7 @@ import {
 } from './identity';
 import { CarouselController, type Bundle, type BundlePart } from './carousel';
 import { ScreenSwitcher, type SwitchGL } from './screenSwitch';
-import { isArmDesktop, isLowPower, isLowPowerGPU, planSwitch, type SwitchInfo, type SwitchPlan } from './switchPlan';
+import { isLowPower, planSwitch, type SwitchInfo, type SwitchPlan } from './switchPlan';
 import { $ } from './dom';
 import { type NEvent, normalizeEvents } from './eventModel';
 import type { AmbientLayer } from './gl/ambientLayer';
@@ -1307,33 +1307,9 @@ const switchGL = (): SwitchGL | null => {
 const switcher = new ScreenSwitcher(app, switchGL);
 // the new screen sits still now: measure its titles again (they were off screen or moving during the switch)
 switcher.onDone = refreshMarquee;
-/** ?lite=1, ?lowpower=1, or a Raspberry Pi and the like: every switch is a short fade of #app. */
-let lowPower = lite || params.get('lowpower') === '1'
-  || isLowPower(navigator.userAgent, (navigator as { deviceMemory?: number }).deviceMemory, navigator.hardwareConcurrency);
-/** Recent Chromium says "Linux x86_64" on ARM too: ask the client hints and the GPU name. */
-function detectLowPower(): void {
-  if (lowPower) return;
-  const uad = (navigator as { userAgentData?: { mobile?: boolean; platform?: string; getHighEntropyValues?: (h: string[]) => Promise<{ architecture?: string }> } }).userAgentData;
-  void uad?.getHighEntropyValues?.(['architecture']).then(
-    (v) => {
-      if (isArmDesktop(v.architecture, uad.platform, uad.mobile)) lowPower = true;
-    },
-    () => undefined,
-  );
-}
-detectLowPower();
-/** The GL renderer name, read once the engine runs (no extra context just for this). */
-let gpuChecked = false;
-function checkGPU(): void {
-  if (lowPower || gpuChecked || !engine) return;
-  gpuChecked = true;
-  try {
-    const gl = engine.renderer.getContext();
-    const ext = gl.getExtension('WEBGL_debug_renderer_info');
-    const name = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
-    if (isLowPowerGPU(String(name ?? ''))) lowPower = true;
-  } catch { /* no name: keep what we know */ }
-}
+/** ?lite=1, ?lowpower=1 or very little memory: every switch is a short fade of #app (a Raspberry Pi gets the real one). */
+const lowPower = lite || params.get('lowpower') === '1'
+  || isLowPower((navigator as { deviceMemory?: number }).deviceMemory, navigator.hardwareConcurrency);
 
 /** Carousel screens with other photos: where each slideshow was when its screen left (by photo settings). */
 const photoSpots = new Map<string, { photos: PhotosResponse; at: SlideshowPosition }>();
@@ -1392,9 +1368,8 @@ function showScreen(id: string, b: Bundle, sw: SwitchInfo): void {
     }
     saveShown(b);
     const spot = newPhotos ? photoSpots.get(sig) : undefined;
-    // the light switch fades #app only, not the GL canvas: there the photo changes with a short GL transition
-    const glSec = plan?.light ? plan.ms / 2000 : 0;
-    const takeover = () => !!start && photos.takeover(start.list, start.idx, glSec);
+    // the light switch (lite mode, reduced motion) is a short fade of #app only: the photo keeps the slideshow's own crossfade
+    const takeover = () => !!start && photos.takeover(start.list, start.idx, !!plan?.light);
     // a photo of the screen that left, still loading, is not shown on this one
     if (newPhotos) photos.restart();
     if (spot) {
@@ -1415,7 +1390,6 @@ function showScreen(id: string, b: Bundle, sw: SwitchInfo): void {
   const go = () => {
     if (getActiveScreen() !== id) return; // another switch came meanwhile
     // ?tr=<name> forces one animation and ?trSpeed= its speed (filming, the admin's "Probar")
-    checkGPU();
     plan = planSwitch(sw, { reduced: reducedMotion(), lowPower, gl: !!dissolve && !!engine, force: params.get('tr'), forceSpeed: params.get('trSpeed') });
     switcher.switch(plan, apply);
   };
