@@ -137,7 +137,7 @@ export function createApp({ version, dist = path.join(ROOT, 'dist'), updater = n
   // display reads only photos in the rotation of a screen its credential may read (photos.js galleryMedia).
   app.use('/media/photos', galleryMedia, express.static(paths.photos, {
     maxAge: '30d', dotfiles: 'deny', index: false, fallthrough: false,
-    setHeaders: (res) => res.set('cache-control', 'private, max-age=2592000'),
+    setHeaders: (res) => res.set('cache-control', res.locals.mediaNoStore ? 'private, no-store' : 'private, max-age=2592000'),
   }));
   // Browser-made thumbnails (always JPEG, whatever the photo's extension) for the admin gallery grid (admin only).
   app.use('/media/thumbs', thumbMedia, express.static(path.join(paths.photos, '.thumbs'), {

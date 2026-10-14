@@ -9,6 +9,7 @@ import { defaultScreen } from './core/screens.js';
 import { getConfig, paths, writeFileAtomic } from './store.js';
 import { immichItems, warm } from './immich.js';
 import { mediaScreens, showsGallery } from './displayAccess.js';
+import { screenPrivacy } from './privacy.js';
 import { IMMICH_ID_RE, placeOf } from './core/immichCore.js';
 import {
   ALLOWED_EXT, ALLOWED_MIME, imageInfo as imageInfoOf, imageHeaderNeed, isJpeg, isGalleryFile, uploadName as coreUploadName,
@@ -273,6 +274,10 @@ export function galleryMedia(req, res, next) {
   const screens = mediaScreens(getConfig(), req.displayAccess);
   if (screens === null) return next();
   if (!showsGallery(screens) || readMeta()[file]?.hidden === true) return notFound();
+  // While one of its screens is private, the browser keeps nothing: a photo a guest could see must not stay cached for
+  // 30 days on a device the owner no longer controls (app.js reads this flag when it sets the cache header).
+  const cfg = getConfig();
+  if (screens.some((s) => screenPrivacy(cfg, s).active)) res.locals.mediaNoStore = true;
   next();
 }
 

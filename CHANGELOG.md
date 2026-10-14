@@ -3,6 +3,11 @@
 All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Security
+- Gallery photos shown on a screen in private mode are no longer kept in the browser cache. Thanks to @scootmandoo.
+
 ## [0.15.0] - 2026-10-13
 
 ### Added

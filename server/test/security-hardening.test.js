@@ -246,6 +246,29 @@ test('gallery files: only for a screen that shows the gallery, never hidden phot
   });
 });
 
+test('gallery files of a screen that is private (without "hide photos") are not cached by the browser', async () => {
+  await withServer(async ({ call, login, keyOf }) => {
+    const cookie = await login();
+    const main = keyOf('living-room');
+    const cfg = (await call('GET', '/api/admin/config', { cookie })).json;
+    cfg.screens[0].privacy = { ...cfg.screens[0].privacy, hidePhotos: false };
+    assert.equal((await call('PUT', '/api/admin/config', { cookie, body: cfg })).status, 200);
+    const get = () => call('GET', `/media/photos/img_0043.jpg?k=${main}`);
+    // normal: kept for 30 days
+    assert.match((await get()).headers.get('cache-control'), /max-age=2592000/);
+    // private mode: still shown (no "hide photos"), but never kept
+    assert.equal((await call('POST', '/api/admin/privacy', { cookie, body: { mode: 'on', hours: 2, screens: ['living-room'] } })).status, 200);
+    const priv = await get();
+    assert.equal(priv.status, 200);
+    assert.equal(priv.headers.get('cache-control'), 'private, no-store');
+    // the admin's own view is not affected
+    assert.match((await call('GET', '/media/photos/img_0043.jpg', { cookie })).headers.get('cache-control'), /max-age=2592000/);
+    // back to normal when private mode ends
+    assert.equal((await call('POST', '/api/admin/privacy', { cookie, body: { mode: 'off', screens: ['living-room'] } })).status, 200);
+    assert.match((await get()).headers.get('cache-control'), /max-age=2592000/);
+  });
+});
+
 test('hiding a photo tells its name only to displays that show the gallery', async () => {
   await withServer(async ({ call, login, keyOf }) => {
     const cookie = await login();
