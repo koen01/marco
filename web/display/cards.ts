@@ -121,6 +121,29 @@ export function planDayCards(heights: number[], space: number, gap: number, rota
   return { pages: [pages[0]], more: heights.length - pages[0].length };
 }
 
+/** Smallest size (share of the normal card) calendar.fitBusyDays draws a busy day's cards at, and the step it tries. */
+export const FIT_MIN_SCALE = 0.6;
+export const FIT_STEP = 0.05;
+
+/** Card sizes drawn at `scale` of the normal ones (the border keeps its width). */
+export function scaleCards(m: CardMetrics, scale: number): CardMetrics {
+  return { pad: m.pad * scale, timeH: m.timeH * scale, lineH: m.lineH * scale, gap: m.gap * scale, border: m.border };
+}
+
+/**
+ * calendar.fitBusyDays: the largest scale (1, then FIT_STEP smaller, down to `min`) at which a day's cards fit in
+ * `space` px. `heightsAt(scale)` gives the card heights at that scale (titles may take fewer lines when smaller).
+ * Returns `min` when even that does not fit (the caller pages or shows "+N" for the rest).
+ */
+export function fitScale(heightsAt: (scale: number) => number[], space: number, gapAt: (scale: number) => number, min = FIT_MIN_SCALE): number {
+  const steps = Math.max(0, Math.round((1 - min) / FIT_STEP));
+  for (let i = 0; i <= steps; i++) {
+    const scale = Math.max(min, 1 - i * FIT_STEP);
+    if (planCardPages(heightsAt(scale), space, gapAt(scale)).length <= 1) return scale;
+  }
+  return min;
+}
+
 /**
  * Lanes for the bars of a week in the cards style (multi-day events; one-day events are cards): at most `max`,
  * leaving room for at least one card under them. `rowH` px row, `numH` px day number, `laneH` px lane, `gap` px.

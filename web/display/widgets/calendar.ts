@@ -12,7 +12,7 @@ import {
 import type { Tick } from '../time';
 import {
   CARD_BORDER_PX, CARD_GAP_U, CARD_PAD_U, CARD_TIME_FONT, CARD_TIME_LINE, CARD_TITLE_FONT, CARD_TITLE_LINE, type CardMetrics,
-  AUTO_WEEKS_MAX, barLanesFor, cardHeight, cardRowNeed, lineRowNeed, planDayCards, resolveWeeks, titleLines,
+  AUTO_WEEKS_MAX, barLanesFor, cardHeight, cardRowNeed, fitScale, lineRowNeed, planDayCards, resolveWeeks, scaleCards, titleLines,
 } from '../cards';
 
 /** Grid metrics in px, read from the calendar's CSS variables (see lanesFor / planCompact). */
@@ -596,6 +596,9 @@ export class MonthCalendar {
     return specs;
   }
 
+  /** Card font sizes (px) from the last cardMetrics(), for the smaller cards of calendar.fitBusyDays. */
+  private cardFs = { title: 0, time: 0 };
+
   /** Card sizes in px from the chip font (set as CSS variables too, so the cards are drawn the size planned). */
   private cardMetrics(rem: number): CardMetrics {
     const raw = getComputedStyle(this.root).getPropertyValue('--chip-fs').trim();
@@ -610,6 +613,7 @@ export class MonthCalendar {
       gap: Math.round(CARD_GAP_U * rem),
       border: this.cardBorder(),
     };
+    this.cardFs = { title: titleFs, time: timeFs };
     const set = (k: string, px: number) => {
       const val = `${px.toFixed(2)}px`;
       if (this.root.style.getPropertyValue(k) !== val) this.root.style.setProperty(k, val);
@@ -632,11 +636,11 @@ export class MonthCalendar {
     return Number.isFinite(b) ? b : CARD_BORDER_PX;
   }
 
-  /** Title lines a card needs (1 or 2), from the measured title width and the column width. */
-  private cardLines(e: NEvent, withEmoji: boolean): number {
+  /** Title lines a card needs (1 or 2), from the measured title width and the column width (`scale`: fitBusyDays). */
+  private cardLines(e: NEvent, withEmoji: boolean, scale = 1): number {
     const g = this.geom;
     if (!g) return 1;
-    const px = g.chipPx * CARD_TITLE_FONT;
+    const px = g.chipPx * CARD_TITLE_FONT * scale;
     // card: 0.35rem margins, 0.95rem padding on the stripe side, 0.6rem on the other
     const inner = g.colW - 0.7 * g.rem - 1.55 * g.rem - 2;
     let w = textWidth(e.title, px, 560);
@@ -757,12 +761,31 @@ export class MonthCalendar {
       }));
       const items = [...segs.filter((sg) => isCard(sg) && dayOf(sg) === d), ...cut].sort((x, y) => sortForDay(x.e, y.e));
       if (!items.length) continue;
-      const lines = items.map((sg) => this.cardLines(sg.e, !sg.e.timed));
+      const linesAt = (scale: number) => items.map((sg) => this.cardLines(sg.e, !sg.e.timed, scale));
+      let lines = linesAt(1);
       let pages: number[][] = [items.map((_, i) => i)];
       let more = 0;
+      // calendar.fitBusyDays: the cards of a day that does not fit are drawn smaller (CSS variables on its stack)
+      let fitStyle = '';
       if (m && cm) {
         const space = rowH - m.numH - m.gap - top * (m.laneH + m.gap) - cm.pad;
-        const plan = planDayCards(items.map((sg, i) => cardHeight(lines[i], sg.e.timed, cm)), space, cm.gap, rotate);
+        let dm = cm;
+        if (c.fitBusyDays === true) {
+          const heightsAt = (scale: number) => {
+            const sm = scaleCards(cm, scale);
+            const ln = scale === 1 ? lines : linesAt(scale);
+            return items.map((sg, i) => cardHeight(ln[i], sg.e.timed, sm));
+          };
+          const scale = fitScale(heightsAt, space, (sc) => cm.gap * sc);
+          if (scale < 1) {
+            lines = linesAt(scale);
+            dm = scaleCards(cm, scale);
+            const px = (n: number) => `${n.toFixed(2)}px`;
+            fitStyle = `;--card-fs:${px(this.cardFs.title * scale)};--card-tm-fs:${px(this.cardFs.time * scale)}` +
+              `;--card-pad:${px(dm.pad)};--card-tm-h:${px(dm.timeH)};--card-line-h:${px(dm.lineH)};--card-gap:${px(dm.gap)}`;
+          }
+        }
+        const plan = planDayCards(items.map((sg, i) => cardHeight(lines[i], sg.e.timed, dm)), space, dm.gap, rotate);
         pages = plan.pages;
         more = plan.more;
       }
@@ -771,7 +794,7 @@ export class MonthCalendar {
       specs.push({
         key: `k${key}`,
         className: `cstack cards${n > 1 ? ' paged' : ''}`,
-        style: `grid-column:${2 * d + 1} / span 2;grid-row:${top + 2} / -1`,
+        style: `grid-column:${2 * d + 1} / span 2;grid-row:${top + 2} / -1${fitStyle}`,
         // pages are stacked in the same place; applyPages() shows one at a time
         html: n > 1 ? pages.map((idx, p) => `<div class="cpg" data-day="${key}" data-pg="${p}" data-pgs="${n}">${html(idx)}</div>`).join('') : html(pages[0]),
       });

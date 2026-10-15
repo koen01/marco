@@ -762,6 +762,17 @@ export function CalendarsSection(props: SectionProps) {
               onChange={(v) => set((d) => void (d.calendar.rotateBusyDays = v))}
             />
             <ToggleRow
+              icon="🔍"
+              label={t('Encoger las tarjetas de los días llenos')}
+              hint={
+                c.eventStyle === 'cards'
+                  ? t('Si en un día no caben todas las tarjetas, se dibujan más pequeñas (hasta un 60 %) para que se vean todas a la vez. Lo que aun así no cabe se muestra por turnos o con “+N”.')
+                  : t('Solo con el estilo de tarjetas.')
+              }
+              checked={c.fitBusyDays === true}
+              onChange={(v) => set((d) => void (d.calendar.fitBusyDays = v))}
+            />
+            <ToggleRow
               icon="🗜️"
               label={t('Días llenos en compacto')}
               hint={

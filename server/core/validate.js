@@ -332,6 +332,7 @@ function sanitizeScreenProfile(ctx, p, raw, seenIds, seenSlugs, familyMemberIds 
     rotateBusyDays: bool(ctx, `${p}.calendar.rotateBusyDays`, ca.rotateBusyDays, D.calendar.rotateBusyDays),
     // screens saved before the option keep the look they had (new screens get it on from defaultConfig)
     compactBusyDays: bool(ctx, `${p}.calendar.compactBusyDays`, ca.compactBusyDays, false),
+    fitBusyDays: bool(ctx, `${p}.calendar.fitBusyDays`, ca.fitBusyDays, D.calendar.fitBusyDays),
     // how events look in the month / week grid: one-line chips (default, what every screen had) or stacked cards
     eventStyle: oneOf(ctx, `${p}.calendar.eventStyle`, ca.eventStyle, D.calendar.eventStyle, EVENT_STYLES),
     // how far the agenda view looks ahead: 7, 14 or 30 days, or 'auto' (the default for every screen: it only adds
