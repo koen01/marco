@@ -13,7 +13,8 @@ All notable changes to this project are documented here. The format is based on
 ### Fixed
 - Planner layout on a portrait screen: the clock, the date and the next-event pill sit on the left again, with the
   weather on the right, instead of being pushed against the right edge. The left column is as tall as the weather
-  card: the date lines up with its top and the pills with its bottom. An ongoing event and the next one both show. The band above the calendar is as tall as its content, so the
+  card: the date lines up with its top and the pills with its bottom. An ongoing event and the next one both show. With the Modern style and the photo behind the whole screen, the
+  weather card lines up with the right edge of the calendar card. The band above the calendar is as tall as its content, so the
   calendar gets the rest of the height.
 
 ### Security

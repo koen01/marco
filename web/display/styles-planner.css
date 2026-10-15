@@ -89,6 +89,9 @@
    as the weather card: the date lines up with the card's top, the next-event pill with its bottom. */
 #app.preset-planner.portrait { grid-template-rows: auto minmax(0, 1fr); }
 .preset-planner.portrait .side { padding: 2.4rem 3.6rem 1.8rem; gap: 2rem; align-items: center; }
+/* Modern with the photo behind the whole screen: the calendar is a card 2.4rem from the screen edges
+   (styles-modern.css #app.bg-screen .main), so the band uses the same inset and the weather card lines up with it */
+.style-modern #app.bg-screen.preset-planner.portrait .side { padding-left: 2.4rem; padding-right: 2.4rem; }
 #app.preset-planner.portrait .side-top { align-self: stretch; justify-content: center; align-items: flex-start; text-align: left; }
 #app.preset-planner.portrait .side-top:has(.hl-pill) { justify-content: space-between; }
 #app.preset-planner.portrait .highlights { align-items: flex-start; }
