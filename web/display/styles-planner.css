@@ -84,11 +84,14 @@
 
 /* --------------------------------------------------------------------------- planner layout */
 /* portrait: a short band with the clock and the date on the left, the weather and its forecast on the right */
-/* the band is as tall as its content (the calendar gets the rest); the clock column stays on the left, against the
-   portrait rule that right-aligns it (styles.css #app.portrait .side-top) */
+/* the band is as tall as its content (the calendar gets the rest). The clock column stays on the left, against the
+   portrait rules that right-align it and its pill (styles.css #app.portrait .side-top / .highlights), and is as tall
+   as the weather card: the date lines up with the card's top, the next-event pill with its bottom. */
 #app.preset-planner.portrait { grid-template-rows: auto minmax(0, 1fr); }
 .preset-planner.portrait .side { padding: 2.4rem 3.6rem 1.8rem; gap: 2rem; align-items: center; }
-#app.preset-planner.portrait .side-top { align-self: center; align-items: flex-start; text-align: left; }
+#app.preset-planner.portrait .side-top { align-self: stretch; justify-content: center; align-items: flex-start; text-align: left; }
+#app.preset-planner.portrait .side-top:has(.hl-pill) { justify-content: space-between; }
+#app.preset-planner.portrait .highlights { align-items: flex-start; }
 /* countdowns show in the strip under the calendar: the band never has a middle area (with a fixed height it used to
    overflow and fitSide() hid it) */
 #app.preset-planner.portrait .side-mid { display: none; }

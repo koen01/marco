@@ -11,8 +11,9 @@ All notable changes to this project are documented here. The format is based on
   shown in turns or as "+N". Off by default; `?fit=1` tries it on one display.
 
 ### Fixed
-- Planner layout on a portrait screen: the clock and the date sit on the left again, with the weather on the right,
-  instead of both being pushed against the right edge. The band above the calendar is as tall as its content, so the
+- Planner layout on a portrait screen: the clock, the date and the next-event pill sit on the left again, with the
+  weather on the right, instead of being pushed against the right edge. The left column is as tall as the weather
+  card: the date lines up with its top and the pill with its bottom. The band above the calendar is as tall as its content, so the
   calendar gets the rest of the height.
 
 ## [0.16.0] - 2026-10-16
