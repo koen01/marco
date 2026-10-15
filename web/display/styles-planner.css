@@ -84,9 +84,14 @@
 
 /* --------------------------------------------------------------------------- planner layout */
 /* portrait: a short band with the clock and the date on the left, the weather and its forecast on the right */
-#app.preset-planner.portrait { grid-template-rows: 23% minmax(0, 1fr); }
+/* the band is as tall as its content (the calendar gets the rest); the clock column stays on the left, against the
+   portrait rule that right-aligns it (styles.css #app.portrait .side-top) */
+#app.preset-planner.portrait { grid-template-rows: auto minmax(0, 1fr); }
 .preset-planner.portrait .side { padding: 2.4rem 3.6rem 1.8rem; gap: 2rem; align-items: center; }
-.preset-planner.portrait .side-top { align-self: center; }
+#app.preset-planner.portrait .side-top { align-self: center; align-items: flex-start; text-align: left; }
+/* countdowns show in the strip under the calendar: the band never has a middle area (with a fixed height it used to
+   overflow and fitSide() hid it) */
+#app.preset-planner.portrait .side-mid { display: none; }
 .preset-planner.portrait .side-bottom { align-self: center; }
 #app.preset-planner.portrait .clock.digital { font-size: 11.5rem; }
 .style-modern #app.preset-planner.portrait .clock.digital { font-size: 14rem; }
