@@ -10,6 +10,11 @@ All notable changes to this project are documented here. The format is based on
   day whose cards do not fit draws them smaller, down to 60%, so they all show at once. What still does not fit is
   shown in turns or as "+N". Off by default; `?fit=1` tries it on one display.
 
+### Fixed
+- Planner layout on a portrait screen: the clock and the date sit on the left again, with the weather on the right,
+  instead of both being pushed against the right edge. The band above the calendar is as tall as its content, so the
+  calendar gets the rest of the height.
+
 ## [0.16.0] - 2026-10-16
 
 ### Added
