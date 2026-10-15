@@ -101,7 +101,8 @@
 /* Classic: the next days side by side as small columns (the row form of the taller band does not fit here) */
 #app.preset-planner.portrait .dp { flex-direction: column; gap: 0.3rem; padding: 0.6rem 0.4rem; }
 #app.preset-planner.portrait .dp svg { width: 3.8rem; height: 4rem; }
-.preset-planner.portrait .hl-pill:nth-child(n + 2) { display: none; }
+/* the ongoing event and the next one (two pills fit under the clock, beside the weather card) */
+.preset-planner.portrait .hl-pill:nth-child(n + 3) { display: none; }
 .preset-planner.portrait .highlights { margin-top: 1.2rem; }
 .preset-planner.portrait .main { padding-top: 0.6rem; }
 /* the date stays on one line: the column is as wide as the clock and the date (the pills below never widen it) */
