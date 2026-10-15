@@ -112,6 +112,9 @@ export class MonthCalendar {
     this.root.classList.toggle('is-week', isWeek);
     this.root.classList.toggle('ev-cards', cards);
     const compact = c.compactBusyDays === true && !cards;
+    // entry size (calendar.fontScale): the CSS scales text, lanes and paddings with --cs, and so do metrics() / measureGeom()
+    this.scale = Math.min(1.5, Math.max(0.4, Number(c.fontScale) || 1));
+    this.root.style.setProperty('--cs', String(this.scale));
     const m = this.metrics();
     const cm = cards && m ? this.cardMetrics(m.rem) : null;
     // a number of weeks is used as it is; 'auto' fits maxEventsPerDay events (chips or cards) in every day
@@ -229,16 +232,18 @@ export class MonthCalendar {
     }
   }
 
+  /** calendar.fontScale of the last render (1 = the screen's text size). */
+  private scale = 1;
   private geom: { colW: number; rem: number; chipPx: number } | null = null;
 
-  /** Column width + chip font size in px (null while the grid is not laid out yet). */
+  /** Column width, chip font size and the chips' own rem (both scaled by calendar.fontScale) in px (null while the grid is not laid out yet). */
   private measureGeom(): { colW: number; rem: number; chipPx: number } | null {
     const w = this.weeks.clientWidth;
     if (!w) return null;
-    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 10;
+    const rem = (parseFloat(getComputedStyle(document.documentElement).fontSize) || 10) * this.scale;
     const raw = getComputedStyle(this.root).getPropertyValue('--chip-fs').trim();
     const n = parseFloat(raw);
-    const chipPx = Number.isFinite(n) ? (raw.endsWith('px') ? n : n * rem) : 1.68 * rem;
+    const chipPx = Number.isFinite(n) ? (raw.endsWith('px') ? n * this.scale : n * rem) : 1.68 * rem;
     return { colW: w / 7, rem, chipPx };
   }
 
@@ -429,7 +434,8 @@ export class MonthCalendar {
       if (!Number.isFinite(n)) return def * rem;
       return raw.endsWith('px') ? n : n * rem;
     };
-    const lineFs = v('--chip-fs', 1.68) * COMPACT_FONT;
+    const s = this.scale;
+    const lineFs = v('--chip-fs', 1.68) * s * COMPACT_FONT;
     const lineH = Math.round(lineFs * COMPACT_LINE);
     // the CSS draws the compact entries with these sizes, so what is planned is what shows
     const set = (k: string, px: number) => {
@@ -438,10 +444,11 @@ export class MonthCalendar {
     };
     set('--cline-fs', lineFs);
     set('--cline-h', lineH);
-    set('--cline-gap', Math.round(COMPACT_GAP_U * rem));
+    const lineGap = Math.max(1, Math.round(COMPACT_GAP_U * rem * s));
+    set('--cline-gap', lineGap);
     return {
-      h, rem, numH: v('--num-h', 5.8), laneH: v('--lane-h', 2.9), laneMin: v('--lane-min', 2.45), gap: v('--lane-gap', 0.42),
-      lineFs, lineH, lineGap: Math.round(COMPACT_GAP_U * rem), pad: COMPACT_PAD_U * rem,
+      h, rem, numH: v('--num-h', 5.8), laneH: v('--lane-h', 2.9) * s, laneMin: v('--lane-min', 2.45) * s, gap: v('--lane-gap', 0.42) * s,
+      lineFs, lineH, lineGap, pad: COMPACT_PAD_U * rem * s,
     };
   }
 
@@ -596,11 +603,15 @@ export class MonthCalendar {
     return specs;
   }
 
-  /** Card sizes in px from the chip font (set as CSS variables too, so the cards are drawn the size planned). */
-  private cardMetrics(rem: number): CardMetrics {
+  /**
+   * Card sizes in px from the chip font (set as CSS variables too, so the cards are drawn the size planned). Both
+   * the chip font and the spacing follow calendar.fontScale, like the chips.
+   */
+  private cardMetrics(rootRem: number): CardMetrics {
+    const rem = rootRem * this.scale;
     const raw = getComputedStyle(this.root).getPropertyValue('--chip-fs').trim();
     const n = parseFloat(raw);
-    const chip = Number.isFinite(n) ? (raw.endsWith('px') ? n : n * rem) : 1.68 * rem;
+    const chip = Number.isFinite(n) ? (raw.endsWith('px') ? n * this.scale : n * rem) : 1.68 * rem;
     const titleFs = chip * CARD_TITLE_FONT;
     const timeFs = chip * CARD_TIME_FONT;
     const cm: CardMetrics = {
@@ -712,7 +723,7 @@ export class MonthCalendar {
     const maxBars = m && cm ? barLanesFor(rowH, m.numH, m.laneH, m.gap, minCard) : 2;
     const shown = bars.filter((sg) => sg.lane < maxBars);
     const nb = shown.reduce((n, sg) => Math.max(n, sg.lane + 1), 0);
-    const rows = `var(--num-h) ${'var(--lane-h) '.repeat(nb)}minmax(0, 1fr)`;
+    const rows = `var(--num-h) ${'calc(var(--lane-h) * var(--cs, 1)) '.repeat(nb)}minmax(0, 1fr)`;
     if (el.style.gridTemplateRows !== rows) el.style.gridTemplateRows = rows;
 
     // bars: the same chips as the lines style draws for them

@@ -337,6 +337,7 @@ function sanitizeScreenProfile(ctx, p, raw, seenIds, seenSlugs, familyMemberIds 
     // how far the agenda view looks ahead: 7, 14 or 30 days, or 'auto' (the default for every screen: it only adds
     // days with events where the agenda had empty room)
     agendaDays: oneOf(ctx, `${p}.calendar.agendaDays`, ca.agendaDays, D.calendar.agendaDays, AGENDA_DAYS),
+    fontScale: num(ctx, `${p}.calendar.fontScale`, ca.fontScale, D.calendar.fontScale, 0.4, 1.5),
     sourceIds: ca.sourceIds === null || ca.sourceIds === undefined ? null : idList(ctx, `${p}.calendar.sourceIds`, ca.sourceIds),
   };
 

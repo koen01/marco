@@ -5,6 +5,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- Entry size (`calendar.fontScale`, per screen, *Calendars → Calendar view*, 40% to 150%): the size of the events in
+  the month, two weeks and week grids (one-line chips, cards and compact lines), separate from the screen's text size.
+  A smaller size fits more events and longer titles per day while the clock, weather and day numbers stay as they
+  are. With *Weeks to show: Auto*, a smaller size also fits more weeks. `?calfs=0.6` tries it on one display.
+
 ### Security
 - Gallery photos shown on a screen in private mode are no longer kept in the browser cache. Thanks to @scootmandoo.
 

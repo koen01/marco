@@ -23,18 +23,18 @@
   justify-content: center;
   gap: 0;
   row-gap: 0;
-  margin: 0 0.35rem;
-  padding: var(--card-pad, 0.4rem) 0.6rem var(--card-pad, 0.4rem) 0.95rem;
-  border-radius: 0.35rem 0.7rem 0.7rem 0.35rem;
+  margin: 0 calc(0.35rem * var(--cs, 1));
+  padding: var(--card-pad, 0.4rem) calc(0.6rem * var(--cs, 1)) var(--card-pad, 0.4rem) calc(0.95rem * var(--cs, 1));
+  border-radius: calc(0.35rem * var(--cs, 1)) calc(0.7rem * var(--cs, 1)) calc(0.7rem * var(--cs, 1)) calc(0.35rem * var(--cs, 1));
   font-size: var(--card-fs, 1.58rem);
   line-height: normal;
   white-space: normal;
 }
-.cal .cstack.cards .ev.card.bar { padding-left: 0.6rem; border-radius: 0.7rem; box-shadow: none; }
+.cal .cstack.cards .ev.card.bar { padding-left: calc(0.6rem * var(--cs, 1)); border-radius: calc(0.7rem * var(--cs, 1)); box-shadow: none; }
 .cal .cstack.cards .ev.card .ch {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: calc(0.4rem * var(--cs, 1));
   min-width: 0;
   height: var(--card-tm-h, 1.75rem);
   font-size: var(--card-tm-fs, 1.34rem);
@@ -58,21 +58,21 @@
   font-weight: 600;
 }
 .cal .cstack.cards .ev.card .tx > span { display: inline; }
-.cal .cstack.cards .ev.card .tx .em { margin-right: 0.4rem; font-size: 1em; }
+.cal .cstack.cards .ev.card .tx .em { margin-right: calc(0.4rem * var(--cs, 1)); font-size: 1em; }
 .cal .cstack.cards .ev.card .tt { overflow: visible; line-height: inherit; padding: 0; }
 .cal .cstack.cards .ev.card .tx.mqv { max-height: none; }
 .theme-light .cal .cstack.cards .ev.card .ch .tm { color: var(--shade); }
 
 /* Modern: a tinted card with a colour stripe (as in its week view) instead of the dot of the one-line chips */
-.style-modern .cal .cstack.cards .ev.card { border-radius: 0.4rem 0.8rem 0.8rem 0.4rem; }
-.style-modern .cal .cstack.cards .ev.card.bar { border-radius: 0.8rem; }
-.style-modern .cal .cstack.cards .ev.card.timed { background: rgb(var(--c) / 0.2); padding-left: 1rem; }
+.style-modern .cal .cstack.cards .ev.card { border-radius: calc(0.4rem * var(--cs, 1)) calc(0.8rem * var(--cs, 1)) calc(0.8rem * var(--cs, 1)) calc(0.4rem * var(--cs, 1)); }
+.style-modern .cal .cstack.cards .ev.card.bar { border-radius: calc(0.8rem * var(--cs, 1)); }
+.style-modern .cal .cstack.cards .ev.card.timed { background: rgb(var(--c) / 0.2); padding-left: calc(1rem * var(--cs, 1)); }
 .style-modern .cal .cstack.cards .ev.card.timed::before {
   display: block;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 0.4rem;
+  width: calc(0.4rem * var(--cs, 1));
   height: auto;
   border-radius: 0;
   transform: none;

@@ -472,6 +472,11 @@ export interface CalendarConfig<S = CalendarSource> {
    * with events, as many as fit (never fewer than 14 days would show). The compact side agenda always shows 3 days.
    */
   agendaDays: AgendaDays;
+  /**
+   * Month / week grid: size of the entries (chips, cards, compact lines: text, lanes, paddings) relative to the
+   * screen's text size, 0.4 to 1.5 (default 1). The clock, weather and day numbers keep the screen's size.
+   */
+  fontScale: number;
   /** v2, per screen: null = every enabled source (incl. 'local' + 'birthdays'); array = only these ids. */
   sourceIds?: string[] | null;
   sources: S[];
@@ -1650,7 +1655,7 @@ export interface ScreenProfile {
   screen: Omit<ScreenConfig, 'name'>;
   layout: LayoutConfig;
   background: BackgroundConfig;
-  calendar: Pick<CalendarConfig, 'enabled' | 'view' | 'weeks' | 'weekStart' | 'startOn' | 'showLocation' | 'showEndTime' | 'showDayXofY' | 'showLegend' | 'hidePast' | 'maxEventsPerDay' | 'marquee' | 'rotateBusyDays' | 'compactBusyDays' | 'eventStyle' | 'agendaDays'> & { sourceIds: string[] | null };
+  calendar: Pick<CalendarConfig, 'enabled' | 'view' | 'weeks' | 'weekStart' | 'startOn' | 'showLocation' | 'showEndTime' | 'showDayXofY' | 'showLegend' | 'hidePast' | 'maxEventsPerDay' | 'marquee' | 'rotateBusyDays' | 'compactBusyDays' | 'eventStyle' | 'agendaDays' | 'fontScale'> & { sourceIds: string[] | null };
   datetime: Omit<DateTimeConfig, 'timezone'>;
   weather: Pick<WeatherConfig, 'enabled' | 'forecastDays' | 'showHourly' | 'showPrecipChance'>;
   news: { enabled: boolean; rotateSec: number };

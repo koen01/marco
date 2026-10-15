@@ -1675,6 +1675,8 @@ export const NL: Record<string, string> = {
   'Los títulos que no caben se deslizan despacio para leerlos enteros: en el calendario, junto al reloj, en las cuentas atrás y en las noticias. Los que ocupan varias líneas suben línea a línea.': 'Titels die niet passen schuiven langzaam, zodat je ze helemaal kunt lezen: in de agenda, naast de klok, bij aftellingen en in het nieuws. Titels over meerdere regels schuiven regel voor regel omhoog.',
   'Rotar los días con muchos eventos': 'Volle dagen laten wisselen',
   'Si en un día no caben todos, se van mostrando por turnos.': 'Als een dag meer afspraken heeft dan er passen, komen ze om de beurt in beeld.',
+  'Tamaño de las entradas': 'Grootte van de afspraken',
+  'Tamaño de los eventos en la cuadrícula respecto al tamaño de letra de la pantalla. Más pequeño: caben más eventos y títulos más largos. El reloj y el tiempo no cambian.': 'Grootte van de afspraken in het raster, ten opzichte van de tekstgrootte van het scherm. Kleiner: er passen meer afspraken en langere titels. De klok en het weer veranderen niet.',
   'Días llenos en compacto': 'Volle dagen compact',
   'Si en un día no caben sus eventos, se muestran en líneas pequeñas, y las semanas con más eventos ocupan más alto. Lo que aun así no cabe se muestra por turnos o con “+N”.': 'Als de afspraken van een dag niet passen, worden ze in kleine regels getoond, en weken met meer afspraken worden hoger. Wat dan nog niet past, komt om de beurt in beeld of staat als “+N”.',
   'Los días con más eventos pasan a líneas cortas y los muestran todos. Con 3 o 4, los días normales se ven grandes.': 'Dagen met meer afspraken gaan over op korte regels en tonen ze allemaal. Bij 3 of 4 blijven gewone dagen groot.',

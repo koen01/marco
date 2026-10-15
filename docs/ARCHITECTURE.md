@@ -133,7 +133,11 @@ The stored config has **global** sections shared by every screen and a list of *
   "calendar":   { "enabled": true, "view": "month", "weeks": 5, "weekStart": 1, "startOn": "week",
                   "showLocation": false, "showEndTime": false, "showDayXofY": true, "showLegend": true, "hidePast": false, "maxEventsPerDay": 4,
                   "marquee": true, "rotateBusyDays": true, "compactBusyDays": true, "eventStyle": "lines",
-                  "agendaDays": "auto", "sourceIds": null },               // null = every enabled source (incl. new ones); array = only these
+                  "agendaDays": "auto", "fontScale": 1, "sourceIds": null }, // null = every enabled source (incl. new ones); array = only these
+                  // fontScale (0.4 to 1.5): size of the grid entries (chips, cards, compact lines) relative to screen.fontScale.
+                  //   calendar.ts sets it as --cs on .cal; the entry rules multiply text, lanes and paddings by it, and
+                  //   metrics(), measureGeom() and cardMetrics() plan with the same factor. Day numbers, clock and weather
+                  //   keep the screen's size.
                   // startOn: week (the grid starts on the first day of this week, weekStart) | today (no past days: the first cell is today)
                   // marquee: titles cut short (calendar chips, agenda-like lists, side panel pills, countdowns, news) slide to show the rest
                   // rotateBusyDays: a month-grid day with more events than fit pages through them every 8 s

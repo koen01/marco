@@ -361,6 +361,9 @@ function applyConfig(raw: DisplayConfig): void {
   // (calendar.eventStyle: cards or one-line chips)
   const pcp = params.get('compact');
   if (pcp === '0' || pcp === '1') cfg.calendar.compactBusyDays = pcp === '1';
+  // ?calfs=0.4..1.5 (size of the grid entries, relative to the screen's text size)
+  const pcs = Number(params.get('calfs'));
+  if (params.get('calfs') && pcs >= 0.4 && pcs <= 1.5) cfg.calendar.fontScale = pcs;
   const pw = Number(params.get('weeks'));
   if (Number.isInteger(pw) && pw >= 1 && pw <= 8) cfg.calendar.weeks = pw;
   if (params.get('weeks') === 'auto') cfg.calendar.weeks = 'auto';

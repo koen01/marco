@@ -726,6 +726,13 @@ export function CalendarsSection(props: SectionProps) {
             </Field>
             <WeeksField cfg={props.cfg} set={set} error={errors['calendar.weeks']} />
             <EventStyleField cfg={props.cfg} set={set} />
+            <Field
+              label={t('Tamaño de las entradas')}
+              hint={t('Tamaño de los eventos en la cuadrícula respecto al tamaño de letra de la pantalla. Más pequeño: caben más eventos y títulos más largos. El reloj y el tiempo no cambian.')}
+              error={errors['calendar.fontScale']}
+            >
+              <Slider value={c.fontScale ?? 1} min={0.4} max={1.5} step={0.05} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set((d) => void (d.calendar.fontScale = v))} />
+            </Field>
             {(c.view === 'agenda' || props.cfg.layout.preset === 'agenda') && <AgendaDaysField cfg={props.cfg} set={set} />}
             <Field
               label={t('Máx. eventos visibles por día')}

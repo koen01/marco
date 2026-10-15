@@ -1675,6 +1675,8 @@ export const DA: Record<string, string> = {
   'Los títulos que no caben se deslizan despacio para leerlos enteros: en el calendario, junto al reloj, en las cuentas atrás y en las noticias. Los que ocupan varias líneas suben línea a línea.': 'Titler, der ikke er plads til, glider langsomt, så du kan læse dem helt: i kalenderen, ved siden af uret, i nedtællinger og i nyhederne. Titler på flere linjer rykker én linje op ad gangen.',
   'Rotar los días con muchos eventos': 'Travle dage på skift',
   'Si en un día no caben todos, se van mostrando por turnos.': 'Når en dag har flere begivenheder, end der er plads til, vises de på skift.',
+  'Tamaño de las entradas': 'Størrelse på begivenheder',
+  'Tamaño de los eventos en la cuadrícula respecto al tamaño de letra de la pantalla. Más pequeño: caben más eventos y títulos más largos. El reloj y el tiempo no cambian.': 'Størrelsen på begivenhederne i gitteret i forhold til skærmens tekststørrelse. Mindre: der er plads til flere begivenheder og længere titler. Uret og vejret ændres ikke.',
   'Días llenos en compacto': 'Kompakte travle dage',
   'Si en un día no caben sus eventos, se muestran en líneas pequeñas, y las semanas con más eventos ocupan más alto. Lo que aun así no cabe se muestra por turnos o con “+N”.': 'Når en dags begivenheder ikke kan være der, vises de som små linjer, og uger med flere begivenheder får mere højde. Det, der stadig ikke er plads til, vises på skift eller med “+N”.',
   'Los días con más eventos pasan a líneas cortas y los muestran todos. Con 3 o 4, los días normales se ven grandes.': 'Dage med flere begivenheder skifter til korte linjer og viser dem alle. Med 3 eller 4 forbliver almindelige dage store.',
