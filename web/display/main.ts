@@ -470,6 +470,9 @@ function applyConfig(raw: DisplayConfig): void {
   // (calendar.eventStyle: cards or one-line chips)
   const pcp = params.get('compact');
   if (pcp === '0' || pcp === '1') cfg.calendar.compactBusyDays = pcp === '1';
+  // ?fit=0|1 (cards of a busy day drawn smaller so they all show)
+  const pft = params.get('fit');
+  if (pft === '0' || pft === '1') cfg.calendar.fitBusyDays = pft === '1';
   const pw = Number(params.get('weeks'));
   if (Number.isInteger(pw) && pw >= 1 && pw <= 8) cfg.calendar.weeks = pw;
   if (params.get('weeks') === 'auto') cfg.calendar.weeks = 'auto';

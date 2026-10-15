@@ -61,6 +61,14 @@ export const ROWS_PLANNER: [string, string, string][] = [
     'Not used with the cards style: cards already stack up in each day.',
     'Não se usa com o estilo de cartões: os cartões já se empilham em cada dia.',
   ],
+  // cards of a busy day drawn smaller (calendar.fitBusyDays)
+  ['Encoger las tarjetas de los días llenos', 'Shrink the cards of busy days', 'Encolher os cartões dos dias cheios'],
+  [
+    'Si en un día no caben todas las tarjetas, se dibujan más pequeñas (hasta un 60 %) para que se vean todas a la vez. Lo que aun así no cabe se muestra por turnos o con “+N”.',
+    'If a day cannot fit all its cards, they are drawn smaller (down to 60%) so they all show at once. What still does not fit is shown in turns or as “+N”.',
+    'Se num dia não cabem todos os cartões, são desenhados mais pequenos (até 60 %) para se verem todos ao mesmo tempo. O que mesmo assim não cabe aparece por turnos ou com “+N”.',
+  ],
+  ['Solo con el estilo de tarjetas.', 'Only with the cards style.', 'Só com o estilo de cartões.'],
   // how far the agenda view looks ahead (calendar.agendaDays)
   ['Días en la agenda', 'Days in the agenda', 'Dias na agenda'],
   [

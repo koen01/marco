@@ -135,7 +135,7 @@ The stored config has **global** sections shared by every screen and a list of *
                   // immich: albums played with source immich (UUIDs, at most 20, merged without duplicates; [] = stock photos)
   "calendar":   { "enabled": true, "view": "month", "weeks": 5, "weekStart": 1, "startOn": "week",
                   "showLocation": false, "showEndTime": false, "showDayXofY": true, "showLegend": true, "hidePast": false, "maxEventsPerDay": 4,
-                  "marquee": true, "rotateBusyDays": true, "compactBusyDays": true, "eventStyle": "lines",
+                  "marquee": true, "rotateBusyDays": true, "compactBusyDays": true, "fitBusyDays": false, "eventStyle": "lines",
                   "agendaDays": "auto", "sourceIds": null },               // null = every enabled source (incl. new ones); array = only these
                   // startOn: week (the grid starts on the first day of this week, weekStart) | today (no past days: the first cell is today)
                   // marquee: titles cut short (calendar chips, agenda-like lists, side panel pills, countdowns, news) slide to show the rest
@@ -152,6 +152,8 @@ The stored config has **global** sections shared by every screen and a list of *
                   //   2 lines) below the bars of events that span days (a few lanes at most; the others show a one-day
                   //   card on each day). Rows stay equal. A day with more cards than fit pages (rotateBusyDays) or shows
                   //   "+N"; clamped titles scroll up with marquee. compactBusyDays is not used with cards.
+                  // fitBusyDays (cards only): a day whose cards do not fit draws them smaller, down to 60%, so they all
+                  //   show; only what does not fit even then pages (rotateBusyDays) or shows "+N".
                   //   Pure planning helpers: web/display/cards.ts (tested in server/test/display-planner.test.js).
                   // agendaDays: how far the agenda view looks ahead: 7, 14 or 30 days, or "auto" (default, also for older
                   //   screens): Today and Tomorrow, then the next days with events. The display lays every candidate

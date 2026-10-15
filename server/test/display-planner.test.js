@@ -230,6 +230,48 @@ test('cards: heights, title lines and how a busy day is split into pages', () =>
   assert.equal(barLanesFor(60, 40, 29, 4, 44), 1);
 });
 
+test('fitBusyDays: per screen, off by default and for screens stored without it, rejected when not a boolean', () => {
+  assert.ok(SCREEN_SPLIT_KEYS.calendar.includes('fitBusyDays'));
+  assert.match(read('web/shared/screens.ts'), /'fitBusyDays'/);
+  assert.equal(displayDefaults.DEFAULT_CONFIG.calendar.fitBusyDays, false);
+  const fresh = validateConfig(defaultConfig());
+  assert.equal(fresh.value.screens[0].calendar.fitBusyDays, false);
+  const old = defaultConfig();
+  delete old.screens[0].calendar.fitBusyDays;
+  assert.equal(validateConfig(mergeDefaults(old)).value.screens[0].calendar.fitBusyDays, false);
+  const on = defaultConfig();
+  on.screens[0].calendar.fitBusyDays = true;
+  const r = validateConfig(on);
+  assert.equal(r.ok, true, JSON.stringify(r.errors));
+  assert.equal(displayConfig(r.value, r.value.screens[0]).calendar.fitBusyDays, true);
+  const bad = defaultConfig();
+  bad.screens[0].calendar.fitBusyDays = 'yes';
+  const rb = validateConfig(bad);
+  assert.equal(rb.ok, false);
+  assert.ok(rb.errors.some((e) => e.path === 'screens[0].calendar.fitBusyDays'), JSON.stringify(rb.errors));
+});
+
+test('fitBusyDays: the largest scale at which a busy day fits, never below the minimum', () => {
+  const { cardHeight, fitScale, scaleCards, planCardPages, FIT_MIN_SCALE } = cards;
+  const m = { pad: 4, timeH: 17, lineH: 19, gap: 4, border: 2 };
+  assert.deepEqual(scaleCards(m, 0.5), { pad: 2, timeH: 8.5, lineH: 9.5, gap: 2, border: 2 });
+  const lines = [1, 1, 2, 1, 1, 2, 1];
+  const heightsAt = (s) => lines.map((n) => cardHeight(n, true, scaleCards(m, s)));
+  const gapAt = (s) => m.gap * s;
+  // everything fits already: normal size
+  assert.equal(fitScale(heightsAt, 1000, gapAt), 1);
+  // 7 cards (365 px at full size) in 300 px: a smaller size that fits, and the next step up would not
+  const s = fitScale(heightsAt, 300, gapAt);
+  assert.ok(s < 1 && s >= FIT_MIN_SCALE, String(s));
+  assert.equal(planCardPages(heightsAt(s), 300, gapAt(s)).length, 1);
+  assert.ok(planCardPages(heightsAt(s + 0.05), 300, gapAt(s + 0.05)).length > 1);
+  // far too many: the minimum (the caller pages or shows "+N" for the rest)
+  assert.equal(fitScale(heightsAt, 60, gapAt), FIT_MIN_SCALE);
+  // titles that take fewer lines when smaller are counted
+  const wrapAt = (sc) => [0, 1].map(() => cardHeight(sc < 0.9 ? 1 : 2, true, scaleCards(m, sc)));
+  assert.equal(fitScale(wrapAt, 83, gapAt), 0.85);
+});
+
 test('the planner has texts in Spanish, English and Portuguese, and the docs mention it', () => {
   const dict = read('web/admin/i18n-dict-planner.ts');
   assert.match(read('web/admin/i18n-dict.ts'), /\.\.\.ROWS_PLANNER[,\]]/);

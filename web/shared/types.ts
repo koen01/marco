@@ -468,6 +468,11 @@ export interface CalendarConfig<S = CalendarSource> {
    */
   compactBusyDays: boolean;
   /**
+   * Cards style: a day whose cards do not fit draws them smaller (down to 60%) so they all show; only what still does
+   * not fit pages (rotateBusyDays) or shows "+N" (default false).
+   */
+  fitBusyDays: boolean;
+  /**
    * Month / week grid: 'lines' (one-line chips, the original look) or 'cards' (time on top, title below on up to two
    * lines, stacked in the day; multi-day events stay bars). Cards take precedence over compactBusyDays inside a day.
    */
@@ -2026,7 +2031,7 @@ export interface ScreenProfile {
   screen: Omit<ScreenConfig, 'name'>;
   layout: LayoutConfig;
   background: BackgroundConfig;
-  calendar: Pick<CalendarConfig, 'enabled' | 'view' | 'weeks' | 'weekStart' | 'startOn' | 'showLocation' | 'showEndTime' | 'showDayXofY' | 'showLegend' | 'hidePast' | 'maxEventsPerDay' | 'marquee' | 'rotateBusyDays' | 'compactBusyDays' | 'eventStyle' | 'agendaDays'> & { sourceIds: string[] | null };
+  calendar: Pick<CalendarConfig, 'enabled' | 'view' | 'weeks' | 'weekStart' | 'startOn' | 'showLocation' | 'showEndTime' | 'showDayXofY' | 'showLegend' | 'hidePast' | 'maxEventsPerDay' | 'marquee' | 'rotateBusyDays' | 'compactBusyDays' | 'fitBusyDays' | 'eventStyle' | 'agendaDays'> & { sourceIds: string[] | null };
   datetime: Omit<DateTimeConfig, 'timezone'>;
   weather: Pick<WeatherConfig, 'enabled' | 'forecastDays' | 'showHourly' | 'showPrecipChance'>;
   news: { enabled: boolean; rotateSec: number };

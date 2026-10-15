@@ -5,6 +5,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- Cards style: busy days can shrink their cards instead of rotating (*Calendars → Shrink the cards of busy days*). A
+  day whose cards do not fit draws them smaller, down to 60%, so they all show at once. What still does not fit is
+  shown in turns or as "+N". Off by default; `?fit=1` tries it on one display.
+
 ## [0.16.0] - 2026-10-16
 
 ### Added
