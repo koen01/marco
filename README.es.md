@@ -18,7 +18,7 @@ Un *marco* de fotos que también enmarca el día de tu familia.
 
 [English](README.md) · **Español**
 
-<a href="https://github.com/mr-reb00t/marco/releases/download/media/marco-demo.mp4"><img src="docs/media/hero.webp" width="100%" alt="Marco en la pantalla del salón: foto de fondo, reloj, tiempo y calendario mensual; llega un aviso de Home Assistant que dice que la lavadora ha terminado"></a>
+<a href="https://github.com/mr-reb00t/marco/releases/download/media/marco-demo.mp4"><img src="docs/media/hero.webp" width="100%" alt="Marco en la pantalla del salón: el calendario Moderno con reloj, tiempo y vista mensual; llega un aviso de Home Assistant que dice que la lavadora ha terminado, luego una pantalla de Home Assistant, una tarjeta arrastrada al editor de pantallas y tarjetas de datos en directo"></a>
 
 [Web: marcohome.app](https://marcohome.app) · [Marco Cloud](https://app.marcohome.app/signup) · [Vídeo de demostración (MP4, en inglés)](https://github.com/mr-reb00t/marco/releases/download/media/marco-demo.mp4)
 

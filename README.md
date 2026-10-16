@@ -18,7 +18,7 @@
 
 **English** · [Español](README.es.md)
 
-<a href="https://github.com/mr-reb00t/marco/releases/download/media/marco-demo.mp4"><img src="docs/media/hero.webp" width="100%" alt="Marco on a living room screen: photo background, clock, weather and a month calendar; an alert from Home Assistant slides in saying the washing machine is done"></a>
+<a href="https://github.com/mr-reb00t/marco/releases/download/media/marco-demo.mp4"><img src="docs/media/hero.webp" width="100%" alt="Marco on a living room screen: the Modern calendar with clock, weather and month view; a Home Assistant alert says the washing machine is done, then a Home Assistant screen, a card dragged into the screen builder and live data cards"></a>
 
 [Website: marcohome.app](https://marcohome.app) · [Marco Cloud](https://app.marcohome.app/signup) · [Demo video (MP4)](https://github.com/mr-reb00t/marco/releases/download/media/marco-demo.mp4)
 
