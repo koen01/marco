@@ -50,6 +50,7 @@ import { agendaFetchDays } from './agendaFill';
 import { Announcements, IdentifyOverlay, ScheduleBanners, serverNow, setServerNow } from './widgets/alerts';
 import { Countdowns } from './widgets/countdowns';
 import { DoorbellOverlay, type FrameSource } from './widgets/doorbell';
+import { webrtcSource } from './doorbellLive';
 import { mockDoorbellFrame, mockDoorbellRing } from './mockDoorbell';
 import { MonthCalendar } from './widgets/calendar';
 import { AUTO_WEEKS_MAX, rangeWeeks } from './cards';
@@ -124,9 +125,15 @@ const doorbellFrames: FrameSource = async (n, signal) => {
   return r.blob();
 };
 // a ring that ends lets a carousel held by it move on right away
+// live video first (WebRTC, for cameras with no pictures such as Google Nest), never in the demo
+const doorbellLive = webrtcSource((path, init) => {
+  const headers = new Headers(init?.headers);
+  for (const [k, v] of Object.entries(authHeaders())) headers.set(k, v);
+  return fetch(withScreen(path, doorbellScreen || undefined), { ...init, headers, cache: 'no-store' });
+});
 const doorbell = new DoorbellOverlay($('#doorbell'), doorbellFrames, (on) => {
   if (!on) carousel?.tick();
-});
+}, (video, signal) => (state.demo ? Promise.resolve(null) : doorbellLive(video, signal)));
 const views = new Views($('#view'));
 const kids = new Kids($('#kids'), (id, done) => toggleChore(id, done));
 const custom = new CustomWidgets();

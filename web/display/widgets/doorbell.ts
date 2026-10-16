@@ -5,6 +5,9 @@
 // not know whether the server answers with a live camera frame (self-hosted, Home Assistant) or with the latest
 // uploaded snapshot: it shows whatever comes back, keeps the last good picture on an error, and stops asking when the
 // server says the ring is over (null).
+// With a LiveSource (doorbellLive.ts) a ring first tries live video over WebRTC, for cameras that have no pictures at
+// all (Google Nest): while it is being set up the bell card shows, once it plays it replaces the pictures, and when
+// it is not offered, fails or drops the overlay goes back to asking for pictures. One try per ring.
 import type { DoorbellRing } from '../../shared/types';
 import { formatHM } from '../../shared/i18n';
 import { ctx } from '../ctx';
@@ -12,6 +15,7 @@ import { reducedMotion } from '../dom';
 import { current } from '../time';
 import { serverNow } from './alerts';
 import { doorChime } from './chime';
+import type { LiveSession, LiveSource } from '../doorbellLive';
 
 /**
  * One frame for request number `n`: an image Blob, or null when there is no picture to ask for (no ring on this
@@ -42,17 +46,29 @@ export class DoorbellOverlay {
   private chimed = new Set<string>();
   private imgs: [HTMLImageElement, HTMLImageElement];
   private back: HTMLImageElement;
+  private video: HTMLVideoElement;
   private onChange: (on: boolean) => void;
+  /** live video: tried once per ring; `liveCtl` is set from the try until the session ends (no pictures meanwhile) */
+  private liveTried = false;
+  private liveCtl: AbortController | null = null;
+  private liveSession: LiveSession | null = null;
+  private videoOn = false;
 
-  constructor(private root: HTMLElement, private source: FrameSource, onChange: (on: boolean) => void = () => undefined) {
+  constructor(private root: HTMLElement, private source: FrameSource, onChange: (on: boolean) => void = () => undefined, private live: LiveSource | null = null) {
     this.onChange = onChange;
     // .db-back: the same picture blurred, filling the bands a picture of another shape leaves (portrait screens)
-    root.innerHTML = `<div class="db-stage"><img class="db-back" alt=""><img class="db-frame" alt=""><img class="db-frame" alt=""></div>
+    root.innerHTML = `<div class="db-stage"><img class="db-back" alt=""><img class="db-frame" alt=""><img class="db-frame" alt=""><video class="db-video" muted playsinline autoplay></video></div>
       <div class="db-empty"><div class="db-bell">🔔</div><div class="db-msg"></div></div>
       <div class="db-top"><span class="db-pill"><span class="db-ic">🔔</span><b class="db-label"></b><span class="db-time"></span><span class="db-live"></span></span></div>
       <div class="db-bar"><i></i></div>`;
     this.imgs = [...root.querySelectorAll<HTMLImageElement>('.db-frame')] as [HTMLImageElement, HTMLImageElement];
     this.back = root.querySelector('.db-back') as HTMLImageElement;
+    this.video = root.querySelector('.db-video') as HTMLVideoElement;
+    this.video.addEventListener('playing', () => this.setVideo(true));
+    // the "live" dot stays red while the video moves
+    this.video.addEventListener('timeupdate', () => {
+      if (this.videoOn) this.lastFrameAt = Date.now();
+    });
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden && this.ring && !this.stopped) this.schedule(0);
     });
@@ -79,7 +95,7 @@ export class DoorbellOverlay {
       if (r.frames && this.stopped) {
         this.stopped = false;
         this.failed = false;
-        this.schedule(0);
+        this.begin(this.ring);
       }
       return;
     }
@@ -93,7 +109,59 @@ export class DoorbellOverlay {
     this.onChange(true);
     this.tickClock();
     this.clockTimer = setInterval(() => this.tickClock(), 1000);
-    if (r.frames) this.schedule(0);
+    if (r.frames) this.begin(this.ring);
+  }
+
+  /** The picture of a ring: live video when the camera has it (once per ring), else the frames. */
+  private begin(r: DoorbellRing): void {
+    if (this.live && !this.liveTried) void this.startLive(r);
+    else this.schedule(0);
+  }
+
+  private async startLive(r: DoorbellRing): Promise<void> {
+    this.liveTried = true;
+    const ctl = new AbortController();
+    this.liveCtl = ctl;
+    let s: LiveSession | null = null;
+    try {
+      s = await this.live!(this.video, ctl.signal);
+    } catch {
+      s = null;
+    }
+    if (this.ring !== r || ctl.signal.aborted) {
+      s?.close();
+      return;
+    }
+    if (!s) {
+      // no live video for this camera (or it could not be set up): the pictures
+      this.liveCtl = null;
+      this.schedule(0);
+      return;
+    }
+    this.liveSession = s;
+    void s.ended.then(() => {
+      if (this.liveSession !== s) return;
+      this.liveSession = null;
+      this.liveCtl = null;
+      this.setVideo(false);
+      // the video dropped while the ring lasts: back to the pictures
+      if (this.ring === r && !this.stopped) this.schedule(0);
+    });
+  }
+
+  private setVideo(on: boolean): void {
+    if (on === this.videoOn || (on && !this.liveSession)) return;
+    this.videoOn = on;
+    this.root.classList.toggle('has-video', on);
+    if (on) {
+      this.lastFrameAt = Date.now();
+      this.failed = false;
+      if (this.frameTimer) clearTimeout(this.frameTimer);
+      this.frameTimer = null;
+      this.ctl?.abort();
+    }
+    this.paint();
+    this.tickClock();
   }
 
   /** End the ring `id` (null = whatever is on screen). */
@@ -130,6 +198,12 @@ export class DoorbellOverlay {
     this.timer = this.frameTimer = this.clockTimer = null;
     this.ctl?.abort();
     this.ctl = null;
+    this.liveCtl?.abort();
+    this.liveSession?.close();
+    this.liveCtl = this.liveSession = null;
+    this.liveTried = false;
+    this.videoOn = false;
+    this.root.classList.remove('has-video');
   }
 
   private maybeChime(r: DoorbellRing): void {
@@ -175,7 +249,7 @@ export class DoorbellOverlay {
 
   /** Picture or the bell card (no camera, or no picture yet after an error). */
   private paint(): void {
-    const has = this.lastFrameAt > 0;
+    const has = this.lastFrameAt > 0 || this.videoOn;
     this.root.classList.toggle('has-frame', has);
     const msg = this.root.querySelector('.db-msg')!;
     msg.textContent = this.ring?.frames && this.failed ? ctx.t('doorbellNoPicture') : ctx.t('doorbellRinging');
@@ -190,7 +264,7 @@ export class DoorbellOverlay {
   private async next(): Promise<void> {
     this.frameTimer = null;
     const r = this.ring;
-    if (!r || this.stopped || this.ctl) return;
+    if (!r || this.stopped || this.ctl || this.liveCtl) return;
     if (document.hidden) return; // asked again on visibilitychange
     const ctl = new AbortController();
     this.ctl = ctl;

@@ -122,6 +122,7 @@ export function createApp({ version, dist = path.join(ROOT, 'dist'), updater = n
   app.use(['/api/admin/import/preview', '/api/admin/import/apply'], express.json({ limit: '5mb' }));
   app.use('/api/display/heartbeat', express.json({ limit: '4kb' }));
   app.use('/api/display/ha/action', express.json({ limit: '2kb' }));
+  app.use('/api/display/doorbell/webrtc', express.json({ limit: '40kb' })); // core/doorbellRtcCore.js RTC_LIMITS
   app.use('/api/pair', express.json({ limit: '2kb' }));
   app.use('/api/hooks/values', express.json({ limit: '8kb' })); // core/valuesCore.js VALUES_LIMITS.bodyBytes
   app.use('/api/hooks', express.json({ limit: '16kb' }));

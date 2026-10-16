@@ -2427,6 +2427,30 @@ export interface DoorbellRing {
   screenId?: string;
 }
 
+/** GET /api/display/doorbell/webrtc: the camera of the ring streams over WebRTC (404 when it does not) */
+export interface DoorbellRtcConfig {
+  iceServers: { urls: string[]; username?: string; credential?: string }[];
+  /** label of the data channel the camera wants in the offer (Google Nest), or null */
+  dataChannel: string | null;
+}
+
+/** POST /api/display/doorbell/webrtc { sdp } */
+export interface DoorbellRtcAnswer {
+  session: string;
+  answer: string;
+  candidates: RTCIceCandidateInit[];
+  /** index for GET /api/display/doorbell/webrtc/<session>?after= */
+  next: number;
+}
+
+/** GET /api/display/doorbell/webrtc/<session>?after=n */
+export interface DoorbellRtcCandidates {
+  candidates: RTCIceCandidateInit[];
+  next: number;
+  /** the session is over: stop asking */
+  closed: boolean;
+}
+
 /** POST /api/hooks/doorbell, POST /api/admin/doorbell. Omitted fields take homeassistant.doorbell. */
 export interface DoorbellRequest {
   action?: 'ring' | 'dismiss';

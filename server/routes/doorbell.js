@@ -2,6 +2,8 @@
 //   POST /api/hooks/doorbell             (bearer token, mounted by hooks.js)  → { ok, action, delivered, screens, expiresAt? }
 //   POST /api/admin/doorbell             (admin session: the "Test" button)   → same answer
 //   GET  /api/display/doorbell/frame     (display credential)                 → the camera picture, only while ringing
+//   GET|POST /api/display/doorbell/webrtc, GET|DELETE …/webrtc/:session, POST …/webrtc/:session/candidate
+//                                        (display credential)                 → live video negotiation (doorbellRtc.js)
 import { Router } from 'express';
 import { requireAuth } from '../auth.js';
 import { getConfig } from '../store.js';
@@ -11,6 +13,8 @@ import { logActivity } from '../activity.js';
 import { isLanClient } from '../lib/net.js';
 import { sanitizeDoorbell } from '../core/doorbellCore.js';
 import { frameFor, runDoorbell } from '../doorbell.js';
+import { rtcAddCandidate, rtcCandidates, rtcClose, rtcConfigFor, startRtcSession } from '../doorbellRtc.js';
+import { sanitizeOffer } from '../core/doorbellRtcCore.js';
 
 /**
  * Shared by the webhook and the admin: validate, ring or dismiss, log. Returns [status, body].
@@ -65,5 +69,31 @@ export function doorbellPublicRouter() {
       next(err);
     }
   });
+
+  // Live video (WebRTC): Marco relays the negotiation with Home Assistant, the video goes straight to the display.
+  // The same rules as the frames (only while this screen rings, open access only on the LAN), never for the admin's
+  // preview, and a session belongs to the credential that opened it.
+  const rtc = (fn) => async (req, res, next) => {
+    res.set('cache-control', 'private, no-store, max-age=0');
+    if (req.displayAccess?.via === 'open' && !isLanClient(req)) return res.status(404).json({ error: 'not found', code: 'no_ring' });
+    if (req.displayAccess?.via === 'session') return res.status(403).json({ error: 'not in the preview', code: 'preview' });
+    const cred = req.displayAccess?.credHash || `${req.displayAccess?.via}:${req.ip}`;
+    try {
+      res.json((await fn(req, cred)) ?? { ok: true });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.code, code: err.code });
+      next(err);
+    }
+  };
+  const screenOf = (req) => requestScreen(getConfig(), req).screen.id;
+  r.get('/display/doorbell/webrtc', rtc((req) => rtcConfigFor(screenOf(req))));
+  r.post('/display/doorbell/webrtc', rtc((req, c) => {
+    const v = sanitizeOffer(req.body);
+    if (!v.ok) throw Object.assign(new Error(v.error), { status: 400, code: 'invalid_offer' });
+    return startRtcSession(screenOf(req), c, v.sdp);
+  }));
+  r.get('/display/doorbell/webrtc/:session', rtc((req, c) => rtcCandidates(req.params.session, c, Number(req.query.after) || 0)));
+  r.post('/display/doorbell/webrtc/:session/candidate', rtc((req, c) => rtcAddCandidate(req.params.session, c, req.body?.candidate)));
+  r.delete('/display/doorbell/webrtc/:session', rtc((req, c) => rtcClose(req.params.session, c)));
   return r;
 }

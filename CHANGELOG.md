@@ -9,6 +9,11 @@ All notable changes to this project are documented here. The format is based on
 - Cards style: busy days can shrink their cards instead of rotating (*Calendars → Shrink the cards of busy days*). A
   day whose cards do not fit draws them smaller, down to 60%, so they all show at once. What still does not fit is
   shown in turns or as "+N". Off by default; `?fit=1` tries it on one display.
+- Doorbell: live video from cameras that stream over WebRTC, such as Google Nest doorbells, which have no picture Home
+  Assistant can hand out (the overlay showed a grey placeholder). The screen negotiates the stream through Marco and
+  Home Assistant (2024.11 or later) and plays it itself, so no video goes through Marco and the token stays on the
+  server. Other cameras keep the pictures, and a stream that cannot be set up or drops falls back to them. Needs a
+  WebSocket in Node (Node 22, or Node 20 with `--experimental-websocket`).
 
 ### Fixed
 - Planner layout on a portrait screen: the clock, the date and the next-event pill sit on the left again, with the
