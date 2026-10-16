@@ -35,6 +35,8 @@ export interface CanvasRefs {
   widgets?: Map<string, unknown>;
   /** family member ids */
   memberIds?: Set<string> | null;
+  /** saved screen ids ("Ir a pantalla"); null = any well-formed id */
+  screenIds?: Set<string> | null;
 }
 export interface CanvasOpts {
   canvasKinds?: readonly string[];
@@ -59,6 +61,10 @@ export interface CanvasKindDef {
   family?: boolean;
   private?: boolean;
   reserved?: boolean;
+  /** a navigation card (Navegación) */
+  nav?: boolean;
+  /** drawn only while the screen allows touch (canvas.touch) */
+  taps?: boolean;
   /** the look a new item of this kind starts with (a Sección has no card) */
   defStyle?: Partial<CanvasItemStyle>;
   defaults(): Record<string, unknown>;
@@ -72,6 +78,13 @@ export const CLOUD_CANVAS_KINDS: CanvasKind[];
 export const CANVAS_CATEGORIES: CanvasCategory[];
 export const DATA_KIND_IDS: CanvasKind[];
 export const CHART_STYLES: ('below' | 'background')[];
+export const NAV_SHOW: ('both' | 'icon' | 'text')[];
+export const NAV_RETURN_DEFAULT: number;
+export const NAV_RETURN_MAX: number;
+export const NAV_ICONS: string[];
+export const NAV_HOME: 'home';
+export const NAV_TAP_KINDS: CanvasKind[];
+export function navTargets(screen: unknown): string[];
 export function canvasDataItems(screen: unknown, opts?: { now?: Date; tz?: string }): CanvasItem[];
 
 export function sizeCells(size: CanvasSize | string, orientation?: Orientation | string): [number, number];
@@ -127,7 +140,7 @@ export function itemAliases(item: Pick<CanvasItem, 'id' | 'kind' | 'props'>): { 
 export function deriveCanvasPortrait(items: Pick<CanvasItem, 'id' | 'kind' | 'pos'>[], sidebar?: CanvasConfig['sidebar']): { placed: { id: string; pos: CanvasPos }[]; omitted: string[] };
 export function projectCanvas(
   screen: { layout?: { preset?: string }; screen?: { orientation?: string }; canvas?: CanvasConfig } | null | undefined,
-  opts?: { isPrivate?: boolean; canvasKinds?: readonly string[]; haControls?: boolean; members?: { id: string; calendarId: string | null }[]; now?: Date; tz?: string },
+  opts?: { isPrivate?: boolean; canvasKinds?: readonly string[]; haControls?: boolean; members?: { id: string; calendarId: string | null }[]; screens?: { id: string; name: string }[]; trusted?: boolean; now?: Date; tz?: string },
 ): DisplayCanvas | null;
 export function canvasWidgetIds(screen: { layout?: { preset?: string }; canvas?: CanvasConfig } | null | undefined, opts?: { now?: Date; tz?: string }): string[];
 export function canvasEventsNeed(canvas: { items?: { kind: string; props?: Record<string, unknown> }[] } | null | undefined): number;
@@ -152,7 +165,7 @@ export function canvasFromDesign(
   opts?: CanvasOpts,
 ): { canvas: CanvasConfig; theme: 'light' | 'dark' | null; template: string };
 
-export type CanvasPick = 'calendars' | 'people' | 'entities' | 'widget';
+export type CanvasPick = 'calendars' | 'people' | 'entities' | 'widget' | 'screen';
 export const CANVAS_FILE_FORMAT: 'marco-screen';
 export const CANVAS_FILE_VERSION: number;
 export const CANVAS_FILE_MAX: number;

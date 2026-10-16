@@ -23,7 +23,7 @@ import { itemCfg, posFor, sideTracks, sidebarSide, sourceFilter } from './canvas
 
 export { sidebarSide };
 import { adapterFor } from './canvas/registry';
-import type { AdapterEnv, CanvasAdapter, CanvasTopic, FamilyView } from './canvas/types';
+import type { AdapterEnv, CanvasAdapter, CanvasTopic, FamilyView, NavSource } from './canvas/types';
 import type { HaSource } from '../haFeed';
 import type { ValueSource } from '../valuesFeed';
 import type { DataSource } from '../dataFeed';
@@ -48,6 +48,8 @@ export interface CanvasDeps {
   values: ValueSource;
   /** numbers of this screen's data cards (dataFeed.ts) */
   data: DataSource;
+  /** the navigation cards (main.ts, web/display/nav.ts) */
+  nav: NavSource;
 }
 
 /** Canvas.layoutInfo(): boxes in CSS pixels of this page. */
@@ -70,13 +72,13 @@ export const BLUR_BUDGET = 26;
 
 /** The glass vars a card may carry (written on the card, so its own material wins over the screen's). */
 /**
- * Kinds whose renderers apply the item's "Tamaño del texto" themselves: the Casa and data cards read --cv-scale, the
+ * Kinds whose renderers apply the item's "Tamaño del texto" themselves: the Casa, data and Navegación cards read --cv-scale, the
  * clocks, the date, the weather now, the value, the heading and the HTML card multiply their fitted type (--wk,
  * --size) by it. Every other card is drawn in rem by renderers it shares with the other layouts, so its body is
  * zoomed instead: its text, icons and gaps grow or shrink together inside the same box, and the card's own fitting
  * (the agenda's "+N more", the cramped mark) measures the zoomed content.
  */
-const OWN_SCALE = /^(?:ha\.|clock\.|date$|weather\.now$|value$|heading$|html$|market$|sports$|stocks$)/;
+const OWN_SCALE = /^(?:ha\.|clock\.|nav\.|date$|weather\.now$|value$|heading$|html$|market$|sports$|stocks$)/;
 
 /** The text size of a card on its body: --cv-scale for the kinds that read it, a zoom for the others (none at 100 %). */
 function applyScale(e: { kind: string; item: DisplayCanvasItem; body: HTMLElement }): void {
@@ -364,7 +366,7 @@ export class Canvas {
     // a card grown to its box (FILL) was measured with what it showed then (a "loading" line, last minute's list):
     // with new content it is fitted again, so how it looks never depends on when the data came
     // (Home Assistant, pushed values and data cards draw none of them)
-    if (topic !== 'ha' && topic !== 'values' && topic !== 'data' && topic !== 'photos') for (const e of this.entries.values()) if (FILL[e.kind]) this.relayoutSoon(e.id);
+    if (topic !== 'ha' && topic !== 'values' && topic !== 'data' && topic !== 'photos' && topic !== 'nav') for (const e of this.entries.values()) if (FILL[e.kind]) this.relayoutSoon(e.id);
   }
 
   /** Fit every card to its box again (resize, fonts, the sidebar changed size), or only the cards of `only`. */
@@ -605,6 +607,7 @@ export class Canvas {
       ha: this.deps.ha,
       values: this.deps.values,
       data: this.deps.data,
+      nav: this.deps.nav,
     };
   }
 

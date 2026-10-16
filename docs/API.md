@@ -82,7 +82,7 @@ saved without `security` (old admin builds, backups or exports from before 0.3) 
 | Method & path | Response |
 |---|---|
 | `GET /api/health` | `HealthResponse`: `{ ok, uptime, version, live, edition, tenancy, runtime, pairCodeLength, features, limits?, displayOrigin?, adminOrigin?, lanAddresses? }` (see below). `live` is `'sse'` unless `MARCO_LIVE=poll` is set. A server that answers `'poll'` gets no `/api/stream` connection: the display polls `GET /api/display/poll` instead (see below). A server that answers `404` there gets a config check every 90 s, which refetches events and countdowns when `revision` changes. A missing field means `'sse'` |
-| `GET /api/display/config?screen=&via=` | `DisplayConfig`: flat view of one screen; `calendar.sources` only as `{ id, name, color, emoji, kind }`; enabled `schedules` for this screen; `privacy: { active, until, lock, next }` (see [Privacy mode](#privacy-mode); while active with *hide photos*, `background.source` is `"stock"`); `target: { id, kind: "screen" \| "carousel", slug, name }` (what the display is bound to) and `carousel` (`null`, or `{ id, slug, name, enabled, transition, transitionSpeed, holdOnAlert, nightRotate, offScreenId, schedule[], steps: [{ screenId, slug, name, seconds }] }`). For a carousel (`?screen=<carousel slug>`, or a key or device bound to one) the answer is the screen the carousel shows now, or `?screen=<member id or slug>`; a screen outside the carousel is never served. In open mode a display asks for a member with `?screen=<member>&via=<carousel slug>`. See [Carousels](#carousels). `calendar.weeks` is a number (1 to 8) or `"auto"` (the display picks 2 to 6 rows so each day fits `maxEventsPerDay` events); `calendar.eventStyle` is `"lines"` (default) or `"cards"`; `calendar.agendaDays` is `"auto"` (default) or `7`, `14`, `30` (how far the agenda view looks ahead) |
+| `GET /api/display/config?screen=&via=` | `DisplayConfig`: flat view of one screen; `calendar.sources` only as `{ id, name, color, emoji, kind }`; enabled `schedules` for this screen; `privacy: { active, until, lock, next }` (see [Privacy mode](#privacy-mode); while active with *hide photos*, `background.source` is `"stock"`); `target: { id, kind: "screen" \| "carousel", slug, name }` (what the display is bound to) and `carousel` (`null`, or `{ id, slug, name, enabled, transition, transitionSpeed, holdOnAlert, nightRotate, offScreenId, schedule[], steps: [{ screenId, slug, name, seconds }] }`). For a carousel (`?screen=<carousel slug>`, or a key or device bound to one) the answer is the screen the carousel shows now, or `?screen=<member id or slug>`; a screen outside the carousel is never served, except one its screens' *Ir a pantalla* cards lead to (see *Navigation* under [Carousels](#carousels)). A key or device bound to a plain screen gets that screen, or `?screen=` when one of its *Ir a pantalla* cards leads there. In open mode a display asks for a member with `?screen=<member>&via=<carousel slug>`. See [Carousels](#carousels). `calendar.weeks` is a number (1 to 8) or `"auto"` (the display picks 2 to 6 rows so each day fits `maxEventsPerDay` events); `calendar.eventStyle` is `"lines"` (default) or `"cards"`; `calendar.agendaDays` is `"auto"` (default) or `7`, `14`, `30` (how far the agenda view looks ahead) |
 | `GET /api/events?screen=&from=YYYY-MM-DD&to=YYYY-MM-DD` | `{ generatedAt, hash, events: CalEvent[], errors: [{ sourceId, message }] }`. While the screen is private, events are already filtered (busy blocks, hidden calendars) and `hash` starts with `p` |
 | `GET /api/weather?screen=` | `{ updatedAt, locationName, current, today, daily[], hourly[], indoor, source }` (localized descriptions). `source` = `{ provider, name, model, modelName, url, licence, licenceUrl, also? }`: where the data comes from, for the credit line. Values a source does not give are `null` (MET Norway: no chance of rain outside the Nordics; some Open-Meteo models: no UV). Cached per place for at least 10 minutes (15 for Pirate Weather, MET Norway's `Expires` when longer), the last answer is kept for 6 hours when the source fails |
 | `GET /api/news` | `{ updatedAt, items: [{ id, title, summary, source, date, image? }] }` (cache 15 min) |
@@ -936,9 +936,27 @@ box that is exactly a named size as the name alone, and refuses `w` without `h` 
 drawn from the landscape one keeps a box of its own (at most 8 wide) before it tries the named sizes. The display
 config carries `w` and `h` as they are; sidebar items keep their `span` (2, 3, 4 or `fill`).
 
+**Navigation (touch screens).** Three kinds in the palette category *Navegación* (`cat: "nav"`, every edition):
+`nav.button` (*Ir a pantalla*: `{ target, label, icon, show, returnMin }`), `nav.pause` (*Pausar carrusel*: `{ label,
+icon, show, returnMin }`) and `nav.progress` (`{ style: "dots" | "bar", name, time }`). `target` is a screen id,
+`"home"` (the screen or carousel the device is bound to) or `""` (not chosen; a deleted screen's id becomes `""` on
+save); `icon` is an emoji or a built-in icon `i:<name>` (`NAV_ICONS`: home, back, prev, next, grid, pause, play, star,
+photo, calendar); `show` is `both`, `icon` or `text`; `returnMin` (0 to 120, default 5, 0 = never) is how long the device
+waits without a touch before it goes back to its own screen or carousel. The canvas has `swipe` (boolean, default
+`false`): with touch on, a sideways swipe goes to the carousel's next or previous screen. In `GET /api/display/config`
+the canvas block has `taps` (`touch` on, the screen not private, and a trusted display: a link key, a paired device,
+an admin session, or open mode from the local network) and `swipe` (`swipe` while `taps`); a `nav.button` carries
+`targetName`. The buttons are drawn only while `taps` is on. Everything a tap does happens on the device: a screen of
+its carousel becomes the step on screen with its full time (the carousel goes on from there), any other screen is
+fetched with `?screen=<id>` like a carousel step and stays, and the pause stops the rotation; the device keeps only
+`{ mode, screenId, returnMin, until }` in its own storage, and nothing is written to the server. A key or device may
+read the screens the *Ir a pantalla* cards of its own screens lead to, and the screens those lead to
+(`core/carousels.js reachableScreens`), and their photos; nothing else.
+
 **One screen as a file.** The editor's *Exportar esta pantalla* writes `{ format: "marco-screen", version: 1, canvas,
-picks, theme?, glass? }` with no calendar ids, family member ids, Home Assistant entity ids or saved widget ids (they
-are emptied and `picks` lists, per item id, what each card lost: `calendars`, `people`, `entities`, `widget`). Valor
+picks, theme?, glass? }` with no calendar ids, family member ids, Home Assistant entity ids, saved widget ids or screen
+ids of *Ir a pantalla* (they are emptied and `picks` lists, per item id, what each card lost: `calendars`, `people`,
+`entities`, `widget`, `screen`). Valor
 keys, coins, teams and symbols stay. Importing it (`canvasCore.readCanvasFile`, in the editor) empties those
 references again, gives every item a new id, leaves out the kinds this server does not offer (and, on Marco Cloud,
 Home Assistant conditions), and validates the result like a save; nothing is stored until the editor is saved.

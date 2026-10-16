@@ -26,6 +26,11 @@ const SHOT = {
   html: 'html',
   'ha.camera': 'cameras',
   sports: 'size:sports:l',
+  // a button's text fills its width (a long one is made smaller to fit): the demo's buttons with screen names; the
+  // pause and the progress show on a display that runs a carousel: the demo carousel with the navigation cards
+  'nav.button': 'nav',
+  'nav.pause': 'nav&carousel=1&nav=1&stepSec=600',
+  'nav.progress': 'nav&carousel=1&nav=1&stepSec=600',
 };
 // where the largest text is not the one to follow: the thermostat's temperature is sized by its dial (the room the
 // other lines leave), so its name is measured; a saved widget switches to its compact drawing when a larger text
@@ -34,9 +39,9 @@ const MAIN = { 'ha.climate': '.cv-ha-name', widget: '.pw-title' };
 const LAST = new Set(['widget']);
 // type that fills its box (the flip clock fills its width already at 100 %): above 100 % it grows only as far as the
 // box holds it, so 150 % is never smaller than 100 % and never cramped
-// cards that already fill their box at 100 % (the flip clock; the lists, the forecasts, the message and the next
+// cards that already fill their box at 100 % (the navigation buttons, the flip clock; the lists, the forecasts, the message and the next
 // event grown to a box larger than their content): 150 % may not grow them further, it must not shrink them
-const FILLS = new Set(['clock.flip', 'birthdays', 'calendar.next', 'family.points', 'family.rewards', 'meals.today', 'message', 'news', 'todo', 'weather.forecast', 'weather.hourly']);
+const FILLS = new Set(['nav.button', 'nav.pause', 'clock.flip', 'birthdays', 'calendar.next', 'family.points', 'family.rewards', 'meals.today', 'message', 'news', 'todo', 'weather.forecast', 'weather.hourly']);
 const shotOf = (kind) => {
   if (SHOT[kind]) return SHOT[kind];
   const sizes = CANVAS_KINDS[kind].sizes;
@@ -54,7 +59,7 @@ test('the text size reaches every card: its own type, or the zoom of its body, n
   // the kinds that size their own type read the scale; the others do not (or they would grow twice)
   const readsScale = (k) => re.test(k);
   for (const k of Object.keys(CANVAS_KINDS)) {
-    if (k.startsWith('ha.') || ['market', 'sports', 'stocks', 'clock.digital', 'clock.analog', 'clock.flip', 'clock.world', 'date', 'weather.now', 'value', 'heading', 'html'].includes(k)) assert.ok(readsScale(k), k);
+    if (k.startsWith('ha.') || k.startsWith('nav.') || ['market', 'sports', 'stocks', 'clock.digital', 'clock.analog', 'clock.flip', 'clock.world', 'date', 'weather.now', 'value', 'heading', 'html'].includes(k)) assert.ok(readsScale(k), k);
     else assert.ok(!readsScale(k), k);
   }
 });

@@ -10,8 +10,10 @@
 //       tokens still work (and still bind the screen); an invalid one is still refused.
 //
 // Credentials travel in the X-Marco-Key header (fetch) or ?k= (EventSource and <img>/WebGL photo URLs, where
-// headers are impossible). A credential always decides the screen (?screen= is ignored), so a key for the kitchen
-// never reads the living room. A key or device bound to a carousel may read the carousel's screens, and only those. Comparisons are constant-time (sha256 digests + timingSafeEqual over every entry).
+// headers are impossible). A credential always decides the screen, so a key for the kitchen never reads the living
+// room. A key or device bound to a carousel may read the carousel's screens, and only those; any binding may also
+// read the screens its own "Ir a pantalla" cards lead to (core/carousels.js reachableScreens), never others.
+// Comparisons are constant-time (sha256 digests + timingSafeEqual over every entry).
 import crypto from 'node:crypto';
 import { getConfig, getSecrets, updateSecrets, flushSecrets } from './store.js';
 import { sessionValid, isLanClient, authEvents, SESSION_MAX_AGE } from './auth.js';
@@ -23,6 +25,7 @@ import { untrustedProxy } from './lib/net.js';
 import { screenPrivacy } from './privacy.js';
 import {
   carouselList, carouselMembers, emptyCarouselScreen, carouselScreenNow, findCarousel, findTarget, isTargetId, targetInfo,
+  reachableScreens, readableScreens,
 } from './core/carousels.js';
 
 export const KEY_HEADER = 'x-marco-key';
@@ -165,9 +168,10 @@ const ERRORS = {
 /**
  * The screen a display request is for: the one bound to its key / device token, else ?screen= (admin session,
  * open mode). Same shape as resolveScreen() plus `carousel` (the carousel the display runs, or null):
- *   - bound to a screen: that screen (?screen= is ignored)
- *   - bound to a carousel: ?screen= when it is one of the carousel's screens, else the screen it shows now; never
- *     a screen outside the carousel
+ *   - bound to a screen: that screen, or ?screen= when the screen's "Ir a pantalla" cards lead there
+ *     (core/carousels.js reachableScreens); any other ?screen= is ignored
+ *   - bound to a carousel: ?screen= when it is one of the carousel's screens (or one their "Ir a pantalla" cards lead
+ *     to), else the screen it shows now; never any other screen
  *   - not bound, ?screen=<carousel>: the screen it shows now; ?screen=<screen>&via=<carousel>: that screen, with
  *     the carousel when the screen belongs to it
  *   - a carousel with no screens left: a blank screen (core/carousels.js emptyCarouselScreen), `empty: true`
@@ -180,7 +184,12 @@ export function requestScreen(cfg, req) {
   const id = req.displayAccess?.screenId;
   if (id) {
     const bound = cfg.screens.find((s) => s.id === id);
-    if (bound) return { screen: bound, fallback: false, carousel: null };
+    if (bound) {
+      // a screen its "Ir a pantalla" cards lead to (core/carousels.js reachableScreens), else the bound one
+      const hit = findTarget(cfg, q.screen);
+      if (hit?.kind === 'screen' && hit.id !== bound.id && reachableScreens(cfg, [bound.id]).includes(hit.id)) return { screen: hit.screen, fallback: false, carousel: null };
+      return { screen: bound, fallback: false, carousel: null };
+    }
     const c = carouselList(cfg).find((x) => x.id === id);
     if (c) return carouselRequest(cfg, c, q.screen);
   }
@@ -188,7 +197,7 @@ export function requestScreen(cfg, req) {
   if (t?.kind === 'carousel') return carouselRequest(cfg, t.carousel, '');
   if (t?.kind === 'screen') {
     const via = findCarousel(cfg, q.via);
-    return { screen: t.screen, fallback: false, carousel: via && carouselMembers(cfg, via).includes(t.id) ? via : null };
+    return { screen: t.screen, fallback: false, carousel: via && reachableScreens(cfg, carouselMembers(cfg, via)).includes(t.id) ? via : null };
   }
   return { ...resolveScreen(cfg, q.screen), carousel: null };
 }
@@ -201,7 +210,7 @@ function carouselRequest(cfg, c, key) {
   const members = carouselMembers(cfg, c);
   if (!members.length) return { screen: emptyCarouselScreen(cfg, c), fallback: false, carousel: c, empty: true };
   const hit = findTarget(cfg, key);
-  const id = hit?.kind === 'screen' && members.includes(hit.id) ? hit.id : carouselScreenNow(cfg, c);
+  const id = hit?.kind === 'screen' && reachableScreens(cfg, members).includes(hit.id) ? hit.id : carouselScreenNow(cfg, c);
   return { screen: cfg.screens.find((s) => s.id === id) || cfg.screens.find((s) => s.id === members[0]), fallback: false, carousel: c };
 }
 
@@ -302,7 +311,7 @@ export function mediaAuth(req, res, next) {
 
 /**
  * The screens whose photos a display credential may load (gallery files, Immich assets): the screen it is bound to,
- * or the screens of its carousel; in open mode (no credential) the screen it asks for, else every screen. A screen
+ * or the screens of its carousel, with the screens their "Ir a pantalla" cards lead to; in open mode (no credential) the screen it asks for, else every screen. A screen
  * that is private with "hide photos" right now is left out. null = no limit (an admin session).
  */
 export function mediaScreens(cfg, access, screenId = '') {
@@ -312,7 +321,7 @@ export function mediaScreens(cfg, access, screenId = '') {
   if (id) {
     const bound = cfg.screens.find((s) => s.id === id);
     const c = bound ? null : carouselList(cfg).find((x) => x.id === id);
-    list = bound ? [bound] : c ? carouselMembers(cfg, c).map((sid) => cfg.screens.find((s) => s.id === sid)).filter(Boolean) : [];
+    list = bound || c ? readableScreens(cfg, id).map((sid) => cfg.screens.find((s) => s.id === sid)).filter(Boolean) : [];
   }
   return list.filter((sc) => !(sc.privacy?.hidePhotos && screenPrivacy(cfg, sc).active));
 }

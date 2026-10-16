@@ -16,6 +16,7 @@ export const PICK_TEXT: Record<CanvasPick, string> = {
   people: 'Elige las personas',
   entities: 'Elige las entidades',
   widget: 'Elige un widget',
+  screen: 'Elige la pantalla',
 };
 
 /** True when one of the item's Home Assistant slots (or its Home Assistant condition) is still empty. */
@@ -36,6 +37,7 @@ export function pendingPicks(it: CanvasItem, mark: PickMark | undefined): Canvas
   return mark.cats.filter((c) => {
     if (c === 'entities') return entityEmpty(it);
     if (c === 'widget') return !(it.props as { widgetId?: string }).widgetId;
+    if (c === 'screen') return !(it.props as { target?: string }).target;
     return same;
   });
 }

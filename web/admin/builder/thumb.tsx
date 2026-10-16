@@ -5,7 +5,7 @@ import { CANVAS_KINDS } from '../../../server/core/canvasCore.js';
 import { geometryBoxes } from './thumbGeo';
 
 const CAT_COLOR: Record<string, string> = {
-  time: '#ff9f1c', calendar: '#4c8dff', weather: '#2ec4b6', content: '#9b5de5', family: '#f15bb5', home: '#00bbf9', adv: '#8d99ae',
+  time: '#ff9f1c', calendar: '#4c8dff', weather: '#2ec4b6', content: '#9b5de5', nav: '#06d6a0', family: '#f15bb5', home: '#00bbf9', adv: '#8d99ae',
 };
 export const colorOfKind = (k: CanvasKind | string): string => CAT_COLOR[CANVAS_KINDS[k as CanvasKind]?.cat ?? 'adv'] ?? '#8d99ae';
 

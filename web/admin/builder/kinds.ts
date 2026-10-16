@@ -12,6 +12,7 @@ export const GROUPS: { id: PaletteGroup; name: string; icon: IconName }[] = [
   { id: 'weather', name: 'Tiempo', icon: 'cloud' },
   { id: 'home', name: 'Casa (Home Assistant)', icon: 'home' },
   { id: 'content', name: 'Contenido', icon: 'news' },
+  { id: 'nav', name: 'Navegación', icon: 'monitor' },
   { id: 'family', name: 'Familia y hogar', icon: 'users' },
   { id: 'data', name: 'Datos', icon: 'trend' },
   { id: 'mine', name: 'Mis widgets', icon: 'widget' },
@@ -81,6 +82,9 @@ export const KIND_META: Partial<Record<CanvasKind, KindMeta>> = {
   sports: { name: 'Deportes', help: 'Resultados en directo, próximos partidos y últimos resultados de tus equipos o competiciones.', icon: 'trophy', words: 'fútbol liga partido marcador nba equipo resultados', tags: 'fútbol deportes partidos resultados football soccer sports scores futebol desporto voetbal sport fodbold' },
   stocks: { name: 'Bolsa', help: 'Cotizaciones de acciones y fondos, en una línea que se desplaza o en lista.', icon: 'trend', words: 'acciones cotización mercado índice ticker finnhub', tags: 'bolsa acciones stocks shares ações beurs aandelen aktier børs' },
   heading: { name: 'Sección', help: 'Un título con emoji para agrupar las tarjetas que tiene debajo.', icon: 'tag', words: 'título encabezado grupo', tags: 'sección título section heading title secção kop sectie sektion overskrift home assistant ha hass domótica smart home' },
+  'nav.button': { name: 'Ir a pantalla', help: 'Un botón que lleva a otra pantalla de casa, o de vuelta a la de siempre del dispositivo. Necesita tocar la pantalla.', icon: 'right', words: 'botón navegar pantalla inicio volver carrusel', tags: 'ir pantalla botón navegar inicio go screen button navigate home ir ecrã botão navegar início ga naar scherm knop navigeren start gå til skærm knap naviger' },
+  'nav.pause': { name: 'Pausar carrusel', help: 'Un botón que para el carrusel en esta pantalla y lo deja seguir con otro toque.', icon: 'play', words: 'pausa parar carrusel', tags: 'pausar pausa parar carrusel pause stop carousel pausar carrossel pauzeren carrousel pause karrusel' },
+  'nav.progress': { name: 'Progreso del carrusel', help: 'Qué pantalla del carrusel se ve y cuánto le queda, con puntos o una barra fina.', icon: 'more', words: 'puntos barra tiempo carrusel', tags: 'progreso puntos barra carrusel progress dots bar carousel progresso pontos barra carrossel voortgang punten balk carrousel fremskridt prikker bjælke karrusel' },
   html: { name: 'HTML propio', help: 'Una tarjeta con tu propio HTML y CSS.', icon: 'code', words: 'css plantilla código', tags: 'html css plantilla código template code modelo sjabloon skabelon home assistant ha hass domótica smart home' },
 };
 
@@ -94,6 +98,7 @@ export const GROUP_TAGS: Record<PaletteGroup, string> = {
   weather: 'tiempo clima lluvia temperatura previsión weather forecast rain temperature tempo chuva previsão weer regen voorspelling vejr regn vejrudsigt',
   home: 'home assistant ha hass domótica casa inteligente smart home dispositivos devices dispositivos slim huis apparaten smart hjem enheder',
   content: 'contenido content conteúdo inhoud indhold',
+  nav: 'navegación pantallas táctil tocar navigation screens touch navegação ecrãs tátil navigatie schermen aanraken navigation skærme berøring',
   family: 'familia niños hijos kids children family família crianças gezin kinderen familie børn',
   data: 'datos data dados gegevens',
   mine: 'mis widgets my widgets os meus widgets mijn widgets mine widgets',

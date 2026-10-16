@@ -9,10 +9,13 @@
 // - Missing data (offline, server error): stay on the current screen and try again at the next step.
 // - A doorbell ring or an announcement on screen holds the current step (holdOnAlert); when it is gone the display
 //   jumps straight to the step the clock says.
+// - Touch (web/display/nav.ts): jumpTo() restarts a step on this display only (an offset on the shared clock, so the
+//   carousel goes on from there), visit() holds a screen outside the steps, pause() stops the rotation, home()
+//   drops all three and follows the shared clock again.
 // The controller does no DOM work and no fetches itself: main.ts passes them in (CarouselDeps), so it is tested
 // with a fake clock (server/test/display-carousel.test.js).
 import type { CarouselBlock, CountdownsResponse, DisplayConfig, EventsResponse, PhotosResponse } from '../shared/types';
-import { carouselPhase, speedOf, type CarouselPhase } from '../shared/carousels';
+import { carouselPhase, carouselSlot, cycleMs, speedOf, type CarouselPhase } from '../shared/carousels';
 import { switchNumber, type SwitchInfo } from './switchPlan';
 
 /** Everything one screen needs on the display, fetched for that screen. */
@@ -87,6 +90,14 @@ export class CarouselController {
   private manualBase: number | null = null;
   private setTimer: (fn: () => void, ms: number) => unknown;
   private clearTimer: (t: unknown) => void;
+  /** this display's own rotation: ms added to the shared clock for the slot (a touch jumped to a step) */
+  private offset = 0;
+  /** the rotation is paused on this display ("Pausar carrusel"): what was left of the step when it paused */
+  private pausedLeft: number | null = null;
+  /** a screen outside the steps shown by touch ("Ir a pantalla"), until home() */
+  private visiting: string | null = null;
+  /** told when the step, the pause or the visit changes (the progress card) */
+  onChange: (() => void) | null = null;
 
   constructor(block: CarouselBlock, tz: string, active: string, private d: CarouselDeps) {
     this.block = block;
@@ -124,22 +135,128 @@ export class CarouselController {
     this.d.save?.(screenId, part, value);
   }
 
-  /** What the clock says now (no pin, no hold). */
+  /** What the clock says now (no pin, no hold), with this display's own offset. */
   phase(nowMs = this.d.now()): CarouselPhase {
     const off = this.bundles.get(this.block.offScreenId)?.config ?? null;
-    return carouselPhase(this.block, nowMs, { tz: this.tz, night: this.d.night(off) });
+    return carouselPhase(this.block, nowMs, { tz: this.tz, night: this.d.night(off), offset: this.offset });
   }
 
-  /** The screen that should be on: the pinned one, the first step while frozen, else the clock's. */
+  /** The screen that should be on: a visit, the pinned one, the first step while frozen, the paused one, else the clock's. */
   wanted(nowMs = this.d.now()): string {
     const steps = this.block.steps;
+    if (this.visiting) return this.visiting;
     if (this.manual && steps.some((s) => s.screenId === this.manual)) return this.manual;
     if (this.d.pin) {
       const hit = steps.find((s) => s.slug === this.d.pin || s.screenId === this.d.pin);
       if (hit) return hit.screenId;
     }
     if (this.d.frozen && steps.length) return steps[0].screenId;
+    if (this.pausedLeft !== null) return this.active;
     return this.phase(nowMs).screenId || this.active;
+  }
+
+  /** The step on screen now: its index (-1 outside the steps), whether it rotates, and when it started and ends. */
+  where(nowMs = this.d.now()): { index: number; rotating: boolean; startsAt: number | null; endsAt: number | null; paused: boolean; visiting: string | null } {
+    const steps = this.block.steps;
+    const ph = this.phase(nowMs);
+    const rotating = ph.mode === 'rotate' && !this.visiting && !this.d.pin && !this.d.frozen && this.manual === null;
+    let index = steps.findIndex((s) => s.screenId === this.active);
+    if (ph.mode === 'rotate' && ph.index >= 0 && steps[ph.index]?.screenId === this.active) index = ph.index;
+    if (this.visiting) index = -1;
+    const len = index >= 0 ? Math.max(1, Number(steps[index].seconds) || 0) * 1000 : 0;
+    if (this.pausedLeft !== null) return { index, rotating: false, startsAt: null, endsAt: null, paused: true, visiting: this.visiting };
+    if (!rotating || index < 0 || ph.index !== index || ph.endsAt === null) return { index, rotating: false, startsAt: null, endsAt: null, paused: false, visiting: this.visiting };
+    // the slot's own end (a schedule boundary may cut it shorter)
+    const slot = carouselSlot(steps, nowMs + this.offset);
+    const end = slot ? slot.endsAt - this.offset : ph.endsAt;
+    return { index, rotating: true, startsAt: end - len, endsAt: end, paused: false, visiting: null };
+  }
+
+  /** Paused on this display ("Pausar carrusel"). */
+  get paused(): boolean {
+    return this.pausedLeft !== null;
+  }
+
+  /** The screen held by touch outside the steps, or null. */
+  get visit(): string | null {
+    return this.visiting;
+  }
+
+  /** True while the clock rotates the steps (inside the schedule, not held at night, not pinned or frozen). */
+  rotates(nowMs = this.d.now()): boolean {
+    return this.phase(nowMs).mode === 'rotate' && !this.d.pin && !this.d.frozen;
+  }
+
+  /**
+   * Show step `index` now and start its time from the beginning, on this display only: the carousel goes on from
+   * there (the steps after it, each for its time). A visit and a pause end.
+   */
+  jumpTo(index: number, nowMs = this.d.now()): void {
+    const steps = this.block.steps;
+    if (this.stopped || index < 0 || index >= steps.length) return;
+    const total = cycleMs(steps);
+    let start = 0;
+    for (let i = 0; i < index; i++) start += Math.max(1, Number(steps[i].seconds) || 0) * 1000;
+    // (now + offset) mod total = the step's start in the loop
+    this.offset = (((start - nowMs) % total) + total) % total;
+    this.visiting = null;
+    this.pausedLeft = null;
+    this.manual = null;
+    this.manualBase = null;
+    this.manualN = 0;
+    this.tick();
+    this.onChange?.();
+  }
+
+  /** The next (+1) or the previous (-1) step from the one on screen (a swipe). */
+  stepBy(dir: 1 | -1, nowMs = this.d.now()): void {
+    const n = this.block.steps.length;
+    if (n < 2) return;
+    let i = this.where(nowMs).index;
+    if (i < 0) i = Math.max(0, this.phase(nowMs).index);
+    this.jumpTo((((i + dir) % n) + n) % n, nowMs);
+  }
+
+  /** Show a screen that is not one of the steps and stay on it, until home() (or another touch). */
+  visitScreen(screenId: string): void {
+    if (this.stopped || !screenId) return;
+    this.visiting = screenId;
+    this.pausedLeft = null;
+    this.tick();
+    this.onChange?.();
+  }
+
+  /** Pause the rotation on this display, or go on: the step on screen then starts its time again. */
+  pause(on: boolean, nowMs = this.d.now()): void {
+    if (this.stopped || on === this.paused) return;
+    if (on) {
+      const w = this.where(nowMs);
+      this.pausedLeft = w.endsAt !== null ? Math.max(0, w.endsAt - nowMs) : 0;
+      this.tick();
+      this.onChange?.();
+      return;
+    }
+    this.pausedLeft = null;
+    const i = this.where(nowMs).index;
+    if (i >= 0 && this.rotates(nowMs)) this.jumpTo(i, nowMs);
+    else {
+      this.tick();
+      this.onChange?.();
+    }
+  }
+
+  /** Back to the shared clock: no visit, no pause, no offset (the display's normal carousel). */
+  home(): void {
+    const had = this.visiting !== null || this.pausedLeft !== null || this.offset !== 0 || this.manual !== null;
+    this.visiting = null;
+    this.pausedLeft = null;
+    this.offset = 0;
+    this.manual = null;
+    this.manualBase = null;
+    this.manualN = 0;
+    if (!had) return;
+    this.tick();
+    this.onChange?.();
   }
 
   /**
@@ -177,7 +294,7 @@ export class CarouselController {
   update(block: CarouselBlock, tz: string): void {
     this.block = block;
     this.tz = tz;
-    for (const id of [...this.bundles.keys()]) if (!this.members().includes(id)) this.bundles.delete(id);
+    for (const id of [...this.bundles.keys()]) if (!this.members().includes(id) && id !== this.visiting) this.bundles.delete(id);
     this.tick();
   }
 
@@ -235,7 +352,8 @@ export class CarouselController {
       this.timer = this.setTimer(() => this.tick(), HOLD_CHECK_MS);
       return;
     }
-    const pinned = Boolean(this.d.pin && this.block.steps.some((s) => s.slug === this.d.pin || s.screenId === this.d.pin)) || (this.d.frozen && this.block.steps.length > 0);
+    const pinned = Boolean(this.d.pin && this.block.steps.some((s) => s.slug === this.d.pin || s.screenId === this.d.pin)) || (this.d.frozen && this.block.steps.length > 0)
+      || this.visiting !== null || this.pausedLeft !== null;
     const ph = pinned ? null : this.phase(now);
     const endsAt = ph?.endsAt ?? null;
     if (endsAt === null) {
@@ -262,7 +380,7 @@ export class CarouselController {
 
   /** When the screen on display changes next by the clock (ms, server time), or null (paused, held, pinned, try mode). */
   nextSwitchAt(now = this.d.now()): number | null {
-    if (this.stopped || this.manual !== null || this.d.frozen || this.d.pin) return null;
+    if (this.stopped || this.manual !== null || this.d.frozen || this.d.pin || this.visiting !== null || this.pausedLeft !== null) return null;
     const ph = this.phase(now);
     if (ph.mode !== 'rotate' || ph.endsAt === null) return null;
     const next = this.phase(ph.endsAt + 1);
@@ -335,8 +453,9 @@ export class CarouselController {
     this.d.show(screenId, b, {
       transition: this.block.transition || 'fade',
       speed: speedOf(this.block.transitionSpeed),
-      n: this.manual && this.manualBase !== null ? this.manualBase + this.manualN : switchNumber(this.block.steps, this.d.now()),
+      n: this.manual && this.manualBase !== null ? this.manualBase + this.manualN : switchNumber(this.block.steps, this.d.now() + this.offset),
       seed: this.block.id,
     });
+    this.onChange?.();
   }
 }

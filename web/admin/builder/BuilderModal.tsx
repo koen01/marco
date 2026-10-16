@@ -171,7 +171,10 @@ export function BuilderModal(props: SectionProps & { onClose: () => void; startW
   // ---- the references validation checks against: the screen's calendars, the saved widgets, the family
   const refs = useMemo(() => {
     const pool = allSourceOptions(cfg).map((s) => s.id).filter((id) => !Array.isArray(cfg.calendar.sourceIds) || cfg.calendar.sourceIds.includes(id));
-    return { sourceIds: new Set(pool), widgets: new Map((full.widgets ?? []).map((w) => [w.id, w])), memberIds: new Set((full.family?.members ?? cfg.family?.members ?? []).map((m) => m.id)) };
+    return {
+      sourceIds: new Set(pool), widgets: new Map((full.widgets ?? []).map((w) => [w.id, w])), memberIds: new Set((full.family?.members ?? cfg.family?.members ?? []).map((m) => m.id)),
+      screenIds: new Set((full.screens ?? []).map((x) => x.id)),
+    };
   }, [cfg, full]);
   const opts = useMemo(() => ({ canvasKinds: allowed, haControls: !cloud, cameraLive: !cloud }), [cloud]);
   // values pushed by POST /api/hooks/values: the Valor card's key picker and the frame's preview
@@ -183,6 +186,8 @@ export function BuilderModal(props: SectionProps & { onClose: () => void; startW
     const pool = refs.sourceIds;
     return {
       sources: allSourceOptions(cfg).filter((s) => pool.has(s.id)),
+      screens: (full.screens ?? []).map((x) => ({ id: x.id, name: x.name })),
+      screenId,
       members: cfg.family?.members ?? [],
       widgets: (full.widgets ?? []).filter((w) => !(cloud && w.type === 'web')),
       go: (r: string) => goRef.current(r),
@@ -600,7 +605,7 @@ export function BuilderModal(props: SectionProps & { onClose: () => void; startW
   // why each card is not on the screen now: a badge on the stage, a line in the inspector
   const why = new Map<string, HiddenWhy>();
   {
-    const ctx = { allowed, omitted: new Set(omitted), portraitMatters: fixed !== 'landscape', schedOff, condOff };
+    const ctx = { allowed, omitted: new Set(omitted), portraitMatters: fixed !== 'landscape', schedOff, condOff, touch: cv.touch };
     for (const it of cv.items) {
       const w = hiddenWhy(it, ctx);
       if (w) why.set(it.id, w);
@@ -636,6 +641,7 @@ export function BuilderModal(props: SectionProps & { onClose: () => void; startW
       haStates={haPv?.states ?? {}}
       haRaw={haPv?.raw ?? {}}
       openMode={full.security?.displayAccess === 'open'}
+      inCarousel={(full.carousels?.items ?? []).some((c) => c.steps.some((st) => st.screenId === screenId))}
       edit={(c, merge) => commit({ cv: c }, merge)}
       apply={(r) => apply(r)}
       refuse={refuse}

@@ -24,6 +24,25 @@ const S = (order: number, span: 2 | 3 | 4 | 'fill') => ({ zone: 'side' as const,
 const SHOWCASE: typeof CANVAS_FIXTURES = Object.fromEntries(Object.entries(SHOWCASES).map(([k, v]) => [k, v.fixture]));
 
 export const CANVAS_FIXTURES: Record<string, { canvas: Partial<CanvasConfig>; items: Raw[]; orientation?: 'portrait' | 'landscape' }> = {
+  // the navigation cards (&carousel=1&nav=1 puts this screen first in the demo carousel): buttons to the carousel's
+  // screens, one to a screen outside it, Inicio, the pause and the progress card, touch and swipe on
+  nav: {
+    canvas: { background: 'ambient', touch: true, swipe: true },
+    items: [
+      { kind: 'clock.digital', pos: M(0, 0, 'm') },
+      { kind: 'nav.progress', pos: M(4, 0, 'w'), props: { style: 'dots' } },
+      { kind: 'nav.pause', pos: M(10, 0, 'xs') },
+      { kind: 'nav.button', pos: M(4, 2, 's'), props: { target: 's_photos', icon: 'i:photo' } },
+      { kind: 'nav.button', pos: M(7, 2, 's'), props: { target: 's_agenda', icon: 'i:calendar' } },
+      { kind: 'nav.button', pos: M(10, 2, 'xs'), props: { target: 'home', show: 'icon' } },
+      { kind: 'calendar.agenda', pos: M(0, 3, 't'), props: { days: 4 } },
+      { kind: 'nav.button', pos: M(3, 4, 'w'), props: { target: 's_kitchen', icon: '🍳' } },
+      { kind: 'nav.button', pos: M(9, 4, 'row'), props: { target: 's_today', show: 'text' } },
+      { kind: 'nav.button', pos: M(9, 5, 'row'), props: { target: 's_photos', icon: '🖼️' } },
+      { kind: 'nav.progress', pos: M(3, 6, 'w'), props: { style: 'bar' } },
+      { kind: 'nav.button', pos: B(9, 6, 3, 2), props: { target: 's_agenda', label: 'Agenda', icon: '📅', show: 'both' } },
+    ],
+  },
   starter: {
     canvas: { background: 'ambient' },
     items: [
@@ -518,8 +537,8 @@ function sizeFixture(name: string): (typeof CANVAS_FIXTURES)[string] | null {
   return { canvas: { ...back, touch: true, ...(sidebar ? { sidebar } : {}) }, items, orientation: o };
 }
 
-/** The demo canvas of `name` (unknown: starter), as the server would send it. */
-export function mockCanvas(name: string | null): { canvas: DisplayCanvas; orientation?: 'portrait' | 'landscape' } {
+/** The demo canvas of `name` (unknown: starter), as the server would send it; `screens`: the household's (names of the "Ir a pantalla" targets). */
+export function mockCanvas(name: string | null, screens?: { id: string; name: string }[]): { canvas: DisplayCanvas; orientation?: 'portrait' | 'landscape' } {
   const fx = (name?.startsWith('size:') ? sizeFixture(name) : null) ?? CANVAS_FIXTURES[name ?? ''] ?? CANVAS_FIXTURES.starter;
   const raw = {
     ...defaultCanvas(),
@@ -536,6 +555,6 @@ export function mockCanvas(name: string | null): { canvas: DisplayCanvas; orient
     })),
   };
   const canvas = sanitizeCanvas({ err: (p: string, m: string) => console.warn('[demo canvas]', p, m) }, 'canvas', raw, { widgets: new Map([[DEMO_WIDGET, {}]]) }, {});
-  const projected = projectCanvas({ layout: { preset: 'canvas' }, screen: { orientation: fx.orientation ?? 'auto' }, canvas }, {})!;
+  const projected = projectCanvas({ layout: { preset: 'canvas' }, screen: { orientation: fx.orientation ?? 'auto' }, canvas }, screens ? { screens } : {})!;
   return { canvas: projected, orientation: fx.orientation };
 }

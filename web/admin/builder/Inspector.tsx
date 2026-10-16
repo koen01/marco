@@ -2,7 +2,7 @@
 // background, the sidebar, the default look of the cards, portrait and templates. With a widget selected it shows
 // three tabs: Contenido (its own options and its title), Tamaño (the sizes it allows, the text size) and Estilo.
 import type { CanvasConfig, CanvasGlass, CanvasItem, CanvasItemStyle, CanvasSize, GlassConfig, HaState, SideSpan } from '../../shared/types';
-import { CANVAS_KINDS, INK_PROPS, defaultItemStyle, type CanvasPick } from '../../../server/core/canvasCore.js';
+import { CANVAS_KINDS, INK_PROPS, NAV_TAP_KINDS, defaultItemStyle, type CanvasPick } from '../../../server/core/canvasCore.js';
 import { normalizeGlass } from '../../shared/glass';
 import { Icon } from '../components/icons';
 import { Button, Callout, ColorPicker, Field, Segmented, Select, Slider, TextInput, ToggleRow } from '../components/ui';
@@ -137,6 +137,8 @@ export interface InspectorProps {
   haRaw: Record<string, string>;
   /** displays may open without a link or a pairing (Home Assistant controls do not work there) */
   openMode: boolean;
+  /** this screen is a step of a carousel (the swipe applies) */
+  inCarousel?: boolean;
   /** a new canvas from the inspector (`merge`: consecutive changes with this key are one undo step) */
   edit: (cv: CanvasConfig, merge?: string) => void;
   apply: (r: Result) => void;
@@ -187,12 +189,25 @@ function PagePanel(p: InspectorProps) {
   const g = normalizeGlass(p.glass);
   const putGlass = <K extends keyof GlassConfig>(k: K, v: GlassConfig[K]) => p.setGlass({ ...g, [k]: v }, `glass.${k}`);
   const sideOn = cv.sidebar.side !== 'none';
-  const touchy = cv.items.some((i) => CANVAS_KINDS[i.kind]?.controls);
+  const touchy = cv.items.some((i) => CANVAS_KINDS[i.kind]?.controls || CANVAS_KINDS[i.kind]?.nav) || p.inCarousel;
+  const haTouchy = cv.items.some((i) => CANVAS_KINDS[i.kind]?.controls);
   const canPortrait = p.screenOrientation !== 'landscape';
   return (
     <div class="stack bld-page">
       <h4 class="bld-h">{t('Página')}</h4>
-      <Field label={t('Fondo')}>
+      <Field
+        label={t('Fondo')}
+        hint={
+          cv.background === 'ambient' ? (
+            <>
+              {t('La animación (aurora, partículas) se elige en Fondo, en Efecto ambiental.')}{' '}
+              <button type="button" class="link-btn" onClick={() => p.env.go('background/bg-ambient')}>
+                {t('Ir a Efecto ambiental')}
+              </button>
+            </>
+          ) : undefined
+        }
+      >
         <Segmented
           full
           value={cv.background}
@@ -322,12 +337,21 @@ function PagePanel(p: InspectorProps) {
           <ToggleRow label={t('Borde de luz')} checked={g.edge} onChange={(v) => putGlass('edge', v)} />
         </div>
       )}
-      {touchy && (
+      {/* touch: the Home Assistant controls, the Navegación buttons and the swipe (shown once one of them is useful) */}
+      {(touchy || cv.touch) && (
         <>
-          <ToggleRow label={t('Permitir tocar en la pantalla')} checked={cv.touch} onChange={(v) => set((c) => void (c.touch = v))} />
-          {cv.touch && <Callout kind="warn">{t('Cualquiera que toque la pantalla podrá usar estos controles.')}</Callout>}
-          {cv.touch && p.openMode && <Callout kind="warn">{t('En modo abierto los controles no funcionan: vincula la pantalla o ábrela con su enlace privado.')}</Callout>}
+          <ToggleRow label={t('Permitir tocar en la pantalla')} hint={t('Para los controles de Home Assistant, los botones de Navegación y deslizar entre pantallas.')} checked={cv.touch} onChange={(v) => set((c) => void (c.touch = v))} />
+          {cv.touch && haTouchy && <Callout kind="warn">{t('Cualquiera que toque la pantalla podrá usar estos controles.')}</Callout>}
+          {cv.touch && haTouchy && p.openMode && <Callout kind="warn">{t('En modo abierto los controles no funcionan: vincula la pantalla o ábrela con su enlace privado.')}</Callout>}
         </>
+      )}
+      {cv.touch && (
+        <ToggleRow
+          label={t('Deslizar para cambiar de pantalla')}
+          hint={t('En un carrusel, deslizar el dedo a la izquierda o a la derecha pasa a la pantalla siguiente o a la anterior.')}
+          checked={!!cv.swipe}
+          onChange={(v) => set((c) => void (c.swipe = v))}
+        />
       )}
       <Field label={t('Rendimiento')} hint={t('Ahorro quita el desenfoque y las animaciones en esta pantalla, para televisores y placas lentas.')}>
         <Segmented
@@ -475,6 +499,14 @@ function ItemPanel(p: InspectorProps & { item: CanvasItem }) {
       />
       {p.tab === 'content' && (
         <div class="stack">
+          {NAV_TAP_KINDS.includes(item.kind) && !cv.touch && (
+            <Callout kind="info">
+              <span>{t('Este botón no se ve en la pantalla mientras no se pueda tocar.')}</span>{' '}
+              <Button size="sm" variant="ghost" onClick={() => p.edit({ ...structuredClone(cv), touch: true })}>
+                {t('Permitir tocar en la pantalla')}
+              </Button>
+            </Callout>
+          )}
           <ContentFields item={item} env={{ ...p.env, haStates: p.haStates }} put={(k, v, merge) => upd((x) => void (x.props[k] = v), merge)} />
           {p.env.ha && <HaControlsPanel item={item} cv={cv} states={p.haStates} openMode={p.openMode} upd={upd} />}
           <ConditionField item={item} ha={p.env.ha} values={p.env.values ?? []} raw={p.haRaw} upd={upd} />

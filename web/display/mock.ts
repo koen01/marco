@@ -132,7 +132,7 @@ export function mockConfig(show?: string): DisplayConfig {
   // list on so their cards have something to show
   if (q.get('preset') === 'canvas') {
     const shot = q.get('shot');
-    const m = mockCanvas(shot && shot !== '1' ? shot : null);
+    const m = mockCanvas(shot && shot !== '1' ? shot : null, demoScreens());
     cfg.layout.preset = 'canvas';
     cfg.canvas = m.canvas;
     if (m.orientation) cfg.screen.orientation = m.orientation;
@@ -144,6 +144,8 @@ export function mockConfig(show?: string): DisplayConfig {
     if (sc >= 0.5 && sc <= 2) for (const it of cfg.canvas.items) it.style = { ...it.style, scale: sc };
     // &perf=low: the screen's "Rendimiento: Ahorro"
     if (q.get('perf') === 'low') cfg.canvas.perf = 'low';
+    // &touch=0 (or a private screen): no taps on the navigation cards, no swipe (as the server would send it)
+    if (q.get('touch') === '0' || PRIVATE) cfg.canvas = { ...cfg.canvas, touch: false, taps: false, swipe: false };
     if (q.get('todo') !== '0') cfg.todo.enabled = true;
     if (q.get('msg') !== '0') cfg.message.enabled = true;
     // a showcase screen: its own to-do list, note and theme (web/display/showcase/)
@@ -310,16 +312,47 @@ export function mockCarouselConfigs(): DisplayConfig[] {
   const base = mockConfig();
   // &photoMix=1: every step has its own photo topic (another slideshow at each switch, see mockPhotos)
   const mix = q.get('photoMix') === '1';
+  // &nav=1: the first step is a Personalizado screen with the navigation cards (mockCanvas 'nav', touch on)
+  const nav = q.get('nav') === '1';
   return screens.map(([screenId, slug, name, preset], i) => ({
     ...base,
     screenId,
     slug,
-    screen: { ...base.screen, name },
+    // (a Personalizado screen is a Modern design)
+    screen: { ...base.screen, name, ...(nav && i === 0 ? { style: 'modern' as const } : {}) },
     ...(mix ? { background: { ...base.background, stockTopic: `topic${i}`, intervalSec: [60, 30][i % 2] } } : {}),
-    layout: { ...base.layout, preset: preset as DisplayConfig['layout']['preset'] },
+    layout: { ...base.layout, preset: (nav && i === 0 ? 'canvas' : preset) as DisplayConfig['layout']['preset'] },
+    // (&preset=canvas&shot=nav: the same canvas with the URL's options, &cvscale and the like)
+    ...(nav && i === 0 ? { canvas: base.canvas && q.get('shot') === 'nav' ? base.canvas : mockCanvas('nav', demoScreens()).canvas } : {}),
     target: { id: carousel.id, kind: 'carousel' as const, slug: carousel.slug, name: carousel.name },
     carousel,
   }));
+}
+
+/** The demo household's screens: the carousel's and the kitchen (the names of the "Ir a pantalla" targets). */
+function demoScreens(): { id: string; name: string }[] {
+  return [
+    { id: 's_main', name: L('Living room', 'Salón', 'Sala') }, { id: 's_today', name: L('Today', 'Hoy', 'Hoje') },
+    { id: 's_photos', name: L('Photos', 'Fotos', 'Fotos') }, { id: 's_agenda', name: L('Agenda', 'Agenda', 'Agenda') },
+    { id: 's_kitchen', name: L('Kitchen', 'Cocina', 'Cozinha') },
+  ];
+}
+
+/** The demo's screens outside the carousel (&nav=1: "Ir a pantalla" to the kitchen), as a server would send them. */
+export function mockNavScreens(): DisplayConfig[] {
+  const base = mockConfig();
+  const q = new URLSearchParams(location.search);
+  const car = q.get('carousel') === '1' ? mockCarouselConfigs()[0] : null;
+  const name = L('Kitchen', 'Cocina', 'Cozinha');
+  return [{
+    ...base,
+    screenId: 's_kitchen',
+    slug: 'kitchen',
+    screen: { ...base.screen, name },
+    layout: { ...base.layout, preset: 'today' as DisplayConfig['layout']['preset'] },
+    target: car ? car.target : { id: 's_kitchen', kind: 'screen' as const, slug: 'kitchen', name },
+    carousel: car ? car.carousel : null,
+  }];
 }
 
 /**

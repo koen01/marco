@@ -976,6 +976,10 @@ export function validateConfig(input, opts = {}) {
   const knownSources = new Set([...RESERVED_SOURCE_IDS, ...calendar.sources.map((s) => s.id)]);
   for (const s of screens) if (s.calendar.sourceIds) s.calendar.sourceIds = s.calendar.sourceIds.filter((x) => knownSources.has(x));
   const screenIds = new Set(screens.map((s) => s.id));
+  // "Ir a pantalla" cards that point at a deleted screen: not chosen any more (the card says so in the editor)
+  for (const s of screens) {
+    for (const it of s.canvas?.items ?? []) if (it.kind === 'nav.button' && it.props.target && it.props.target !== 'home' && !screenIds.has(it.props.target)) it.props.target = '';
+  }
   for (const m of schedules.items) {
     const keep = m.screenIds.filter((x) => screenIds.has(x));
     // Every target screen is gone: an empty list would mean "all screens", so retire it instead

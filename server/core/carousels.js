@@ -139,9 +139,10 @@ export function carouselSlot(steps, nowMs) {
  *   mode 'night':  night mode while nightRotate is off: offScreenId (re-checked when night mode changes)
  *   mode 'paused': disabled or no steps: the first step's screen (or offScreenId)
  * `endsAt` (ms) is when the answer can change by itself (a slot ends or a schedule boundary comes), null = not by time.
+ * `offset` (ms) shifts the slot clock of this display only (web/display/carousel.ts jumpTo).
  * @returns {{ mode: 'rotate' | 'off' | 'night' | 'paused', screenId: string, index: number, endsAt: number | null, inSchedule: boolean }}
  */
-export function carouselPhase(block, nowMs, { tz = 'UTC', night = false } = {}) {
+export function carouselPhase(block, nowMs, { tz = 'UTC', night = false, offset = 0 } = {}) {
   const steps = Array.isArray(block?.steps) ? block.steps : [];
   const off = block?.offScreenId || steps[0]?.screenId || '';
   const rules = enabledWindows(block?.schedule);
@@ -151,8 +152,12 @@ export function carouselPhase(block, nowMs, { tz = 'UTC', night = false } = {}) 
   if (block?.enabled === false || !steps.length) return { mode: 'paused', screenId: steps[0]?.screenId || off, index: steps.length ? 0 : -1, endsAt: null, inSchedule };
   if (!inSchedule) return { mode: 'off', screenId: off, index: -1, endsAt: boundary, inSchedule };
   if (night && !block.nightRotate) return { mode: 'night', screenId: off, index: -1, endsAt: boundary, inSchedule };
-  const slot = carouselSlot(steps, nowMs);
-  const endsAt = boundary !== null && boundary < slot.endsAt ? boundary : slot.endsAt;
+  // `offset` (ms): this display's own rotation, shifted from the shared clock (a touch jumped to a step; only the
+  // slot moves, the schedule and the night hold keep the real time)
+  const shift = Number.isFinite(offset) ? offset : 0;
+  const slot = carouselSlot(steps, nowMs + shift);
+  const slotEnd = slot.endsAt - shift;
+  const endsAt = boundary !== null && boundary < slotEnd ? boundary : slotEnd;
   return { mode: 'rotate', screenId: slot.screenId, index: slot.index, endsAt, inSchedule };
 }
 
@@ -190,6 +195,43 @@ export function targetMembers(cfg, id) {
   if ((cfg?.screens || []).some((s) => s.id === id)) return [id];
   const c = carouselList(cfg).find((x) => x.id === id);
   return c ? carouselMembers(cfg, c) : [];
+}
+
+/** Screen ids the "Ir a pantalla" cards of a screen go to (canvasCore navTargets, kept here so this file stays small). */
+function navTargetsOf(screen) {
+  if (screen?.layout?.preset !== 'canvas') return [];
+  const out = [];
+  for (const it of screen.canvas?.items ?? []) {
+    const t = it?.kind === 'nav.button' && !it.hidden ? it.props?.target : '';
+    if (typeof t === 'string' && t && t !== 'home' && !out.includes(t)) out.push(t);
+  }
+  return out;
+}
+
+/**
+ * Screens a display may read when it starts from `ids` (the screen it is bound to, or its carousel's screens): those,
+ * plus every screen their "Ir a pantalla" cards lead to, and the screens those lead to in turn. The owner put the
+ * button there, so a device bound to one screen may show where it goes; nothing else. Unknown ids are left out.
+ */
+export function reachableScreens(cfg, ids) {
+  const screens = cfg?.screens || [];
+  const byId = new Map(screens.map((s) => [s.id, s]));
+  const out = [];
+  const queue = (Array.isArray(ids) ? ids : []).filter((id) => byId.has(id));
+  while (queue.length) {
+    const id = queue.shift();
+    if (out.includes(id)) continue;
+    out.push(id);
+    for (const t of navTargetsOf(byId.get(id))) if (byId.has(t) && !out.includes(t)) queue.push(t);
+  }
+  return out;
+}
+
+/** Screen ids a display bound to `boundId` (a screen or a carousel) may read: reachableScreens of it. */
+export function readableScreens(cfg, boundId) {
+  if ((cfg?.screens || []).some((s) => s.id === boundId)) return reachableScreens(cfg, [boundId]);
+  const c = carouselList(cfg).find((x) => x.id === boundId);
+  return c ? reachableScreens(cfg, carouselMembers(cfg, c)) : [];
 }
 
 /**

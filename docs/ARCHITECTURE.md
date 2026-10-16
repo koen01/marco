@@ -357,7 +357,15 @@ goes (link keys, `device.screenId`, the display registry); the `v_` prefix tells
   request, animated (see Switch animations below); the photo list only changes when the next screen's photo settings
   differ. Missing data keeps the current screen until the next step.
   A doorbell ring or a big announcement holds the step while `holdOnAlert` is on; then it jumps to the step the clock
-  says. An announcement holds it for at most a minute after it was sent (at least 15 s on screen), urgent ones too.
+  says.
+- **Touch** (`web/display/nav.ts`, the *Navegación* cards of Personalizado screens and the swipe): a jump to a step
+  is an offset on this display's own slot clock (`carouselPhase(..., { offset })`), so the step starts its full time
+  and the loop goes on from it; `visitScreen` holds a screen that is not a step (its bundle is fetched like a step's;
+  `requestScreen` serves it when a button of the carousel's screens leads there, `reachableScreens`), `pause` holds
+  the step on screen, and `home` drops all three and follows the shared clock again. A display bound to one screen
+  shows another one with the same bundle fetch and `showScreen`. The visit or the pause is kept only in the device's
+  localStorage with its end; every touch pushes the end forward (`NavIdle`), and when it passes the device goes back
+  to its own screen or carousel. Nothing is written to the server. An announcement holds it for at most a minute after it was sent (at least 15 s on screen), urgent ones too.
   Offline, the cached member bundles keep it looping; the plain caches always hold the screen on display, and an
   offline boot reads the first screen's own copy. A display bound to a plain screen never creates the
   controller and sends the same requests as before.

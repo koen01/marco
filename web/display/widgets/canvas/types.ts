@@ -7,7 +7,7 @@ import type { ValueSource } from '../../valuesFeed';
 import type { DataSource } from '../../dataFeed';
 
 /** Data topics an adapter can be told about. */
-export type CanvasTopic = 'events' | 'weather' | 'news' | 'countdowns' | 'photos' | 'family' | 'announcements' | 'config' | 'ha' | 'values' | 'data';
+export type CanvasTopic = 'events' | 'weather' | 'news' | 'countdowns' | 'photos' | 'family' | 'announcements' | 'config' | 'ha' | 'values' | 'data' | 'nav';
 
 /** The family data as the kids layouts get it (main.ts): today's state, and whether taps check routines off now. */
 export interface FamilyView {
@@ -15,6 +15,38 @@ export interface FamilyView {
   state: FamilyDisplayState | null;
   /** the screen allows taps, the server answers, the screen is not private and this is not the admin's preview */
   touch: boolean;
+}
+
+/** Where the carousel of this display is (the progress card). Times in the display's server clock (`now`). */
+export interface NavProgress {
+  steps: { name: string }[];
+  /** the step on display (-1: a screen outside the carousel) */
+  index: number;
+  startsAt: number | null;
+  endsAt: number | null;
+  paused: boolean;
+  /** a screen outside the carousel is on (shown by touch) */
+  visiting: boolean;
+  now: number;
+}
+
+/** The navigation cards' side of the display (main.ts, web/display/nav.ts). */
+export interface NavSource {
+  /** the buttons are drawn: the screen allows touch (canvas.taps), or this is the admin's preview */
+  shows(): boolean;
+  /** a tap does something: touch allowed and not the preview */
+  live(): boolean;
+  /** this display runs a carousel */
+  carousel(): boolean;
+  /** "Ir a pantalla": a screen id or 'home'; `returnMin` = "Volver solo tras" */
+  go(target: string, returnMin: number): void;
+  /** "Pausar carrusel": pause, or go on */
+  pause(returnMin: number): void;
+  paused(): boolean;
+  /** the screen on display */
+  current(): string;
+  /** the carousel's steps and time, or null (no carousel) */
+  progress(): NavProgress | null;
 }
 
 /** What an adapter gets from the controller. */
@@ -43,6 +75,8 @@ export interface AdapterEnv {
   values: ValueSource;
   /** numbers of the data cards (market, sports, stocks), from this server only (dataFeed.ts) */
   data: DataSource;
+  /** the navigation cards: taps, the carousel's progress (main.ts) */
+  nav: NavSource;
 }
 
 /** The room an item has, in px (its card body), and where it is. */
