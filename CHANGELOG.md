@@ -5,6 +5,21 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- A new Custom screen starts with the animated background. Copying the Left / Right design also gets it behind the
+  cards, with the photo still in its wide column. Templates that are a plain colour on purpose (Bedroom, Bedside and
+  the kids pages) keep their colour.
+- A screen that becomes Custom for the first time gets lighter card glass when its glass was never changed: more
+  transparent (a quarter), blur 5, dark tint, automatic appearance and the light edge. Modern and Classic screens
+  and any glass you already set stay as they are. *Reset* on a Custom screen goes back to this glass.
+- The release workflow runs the tests without the headless Chrome ones (`MARCO_SKIP_BROWSER=1`), which CI already
+  runs on every commit, so a release takes a few minutes instead of half an hour.
+
+### Fixed
+- The tests pass on Node 20 again: the display code no longer reads `navigator` when it loads, and the Home
+  Assistant live and camera tests are skipped when Node has no global WebSocket. On Node 20 the server follows Home
+  Assistant over REST polling, as before.
+
 ## [0.16.0] - 2026-10-16
 
 ### Added

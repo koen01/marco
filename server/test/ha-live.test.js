@@ -11,6 +11,11 @@ import { canvasDefaults, defaultCanvas, defaultItemStyle } from '../core/canvasC
 import { defaultConfig, defaultScreenProfile } from '../core/defaults.js';
 import { validateConfig } from '../core/validate.js';
 import * as pollHub from '../pollHub.js';
+import { hasWebSocket } from '../haWs.js';
+
+// the live mirror needs Node's global WebSocket (Node 22 and later); on Node 20 the server polls over REST instead
+// ("no global WebSocket" in ha-live.test.js), and these tests are skipped
+const NEEDS_WS = { skip: hasWebSocket() ? false : 'needs a global WebSocket (Node 22 or later)' };
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function until(fn, ms = 3000, what = 'condition') {
@@ -55,7 +60,7 @@ function mirror(ha, { watched = ['light.kitchen', 'sensor.temp'], token, WebSock
   return { live, changes, w, logs };
 }
 
-test('auth, then subscribe_entities with exactly the watched set: no get_states, no other entity mirrored', async () => {
+test('auth, then subscribe_entities with exactly the watched set: no get_states, no other entity mirrored', NEEDS_WS, async () => {
   const ha = await fakeHa({ states: STATES });
   const { live, changes } = mirror(ha);
   try {
@@ -94,7 +99,7 @@ test('auth, then subscribe_entities with exactly the watched set: no get_states,
   }
 });
 
-test('a new watched set: unsubscribe, subscribe to the new one, forget the old entities; nothing watched, nothing subscribed', async () => {
+test('a new watched set: unsubscribe, subscribe to the new one, forget the old entities; nothing watched, nothing subscribed', NEEDS_WS, async () => {
   const ha = await fakeHa({ states: STATES });
   const { live, w } = mirror(ha);
   try {
@@ -124,7 +129,7 @@ test('a new watched set: unsubscribe, subscribe to the new one, forget the old e
   }
 });
 
-test('reconnects after Home Assistant drops the connection, and subscribes again', async () => {
+test('reconnects after Home Assistant drops the connection, and subscribes again', NEEDS_WS, async () => {
   const ha = await fakeHa({ states: STATES });
   const { live } = mirror(ha);
   try {
@@ -142,7 +147,7 @@ test('reconnects after Home Assistant drops the connection, and subscribes again
   }
 });
 
-test('a refused token: error "auth", no polling with that token, logs carry no token', async () => {
+test('a refused token: error "auth", no polling with that token, logs carry no token', NEEDS_WS, async () => {
   const ha = await fakeHa({ states: STATES });
   const { live, logs } = mirror(ha, { token: 'wrong-token-123456' });
   try {
@@ -160,7 +165,7 @@ test('a refused token: error "auth", no polling with that token, logs carry no t
   }
 });
 
-test('WebSocket unreachable: backoff, then REST polling of the watched set after 3 failures; back to live when it returns', async () => {
+test('WebSocket unreachable: backoff, then REST polling of the watched set after 3 failures; back to live when it returns', NEEDS_WS, async () => {
   const ha = await fakeHa({ states: STATES });
   ha.state.wsDown = true;
   const { live } = mirror(ha);
@@ -188,7 +193,7 @@ test('WebSocket unreachable: backoff, then REST polling of the watched set after
   }
 });
 
-test('Home Assistant down altogether (WebSocket and REST): the screens never hear it is fine until a poll reads it', async () => {
+test('Home Assistant down altogether (WebSocket and REST): the screens never hear it is fine until a poll reads it', NEEDS_WS, async () => {
   const ha = await fakeHa({ states: STATES });
   ha.state.wsDown = true;
   ha.state.restDown = true;
@@ -224,7 +229,7 @@ test('Home Assistant down altogether (WebSocket and REST): the screens never hea
   }
 });
 
-test('Home Assistant older than 2022.4 (no subscribe_entities): REST polling, never the state_changed firehose', async () => {
+test('Home Assistant older than 2022.4 (no subscribe_entities): REST polling, never the state_changed firehose', NEEDS_WS, async () => {
   const ha = await fakeHa({ states: STATES, noSubscribeEntities: true });
   const { live } = mirror(ha);
   try {
@@ -253,7 +258,7 @@ test('no global WebSocket (Node 20): REST polling, with the reason', async () =>
   }
 });
 
-test('a WebSocket command over the mirror connection (registry, statistics)', async () => {
+test('a WebSocket command over the mirror connection (registry, statistics)', NEEDS_WS, async () => {
   const ha = await fakeHa({ states: STATES, areas: [{ area_id: 'k', name: 'Kitchen' }] });
   const { live } = mirror(ha);
   try {
@@ -286,7 +291,7 @@ function canvasConfig() {
   return v.value;
 }
 
-test('publishHa: one event per screen, coalesced, aliases only, private screens get nothing, never via pollHub', async () => {
+test('publishHa: one event per screen, coalesced, aliases only, private screens get nothing, never via pollHub', NEEDS_WS, async () => {
   const ha = await fakeHa({ states: STATES });
   let cfg = canvasConfig();
   const sent = [];

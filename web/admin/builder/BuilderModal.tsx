@@ -16,7 +16,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { CanvasConfig, CanvasItem, DisplayConfig, GlassConfig, LayoutPreset } from '../../shared/types';
 import type { ScreenOrientation } from './draftStore';
 import {
-  CANVAS_FILE_MAX, CANVAS_LIMITS, CLOUD_CANVAS_KINDS, DEFAULT_CANVAS_KINDS, canvasFromDesign, canvasFromTemplate, defaultCanvas, exportCanvasFile, newCanvasId,
+  CANVAS_FILE_MAX, CANVAS_LIMITS, CLOUD_CANVAS_KINDS, DEFAULT_CANVAS_KINDS, canvasFromDesign, canvasFromTemplate, defaultCanvas, exportCanvasFile, newCanvasId, startCanvasGlass,
   readCanvasFile, sanitizeCanvas, type CanvasPick,
 } from '../../../server/core/canvasCore.js';
 import { PICK_TEXT, pendingPicks, type PickMark } from './picks';
@@ -135,7 +135,8 @@ export function BuilderModal(props: SectionProps & { onClose: () => void; startW
           screens: f.screens.map((s) => {
             if (s.id !== screenId) return s;
             const { canvas: _c, ...rest } = s;
-            return { ...rest, layout: { ...s.layout, preset: null }, screen: { ...s.screen, style: null } };
+            // the glass is saved by the editor too (and changes by itself the first time, see startCanvasGlass)
+            return { ...rest, layout: { ...s.layout, preset: null }, screen: { ...s.screen, style: null, glass: null } };
           }),
         });
         return JSON.stringify(norm(full)) !== JSON.stringify(norm(props.saved));
@@ -365,6 +366,7 @@ export function BuilderModal(props: SectionProps & { onClose: () => void; startW
     props.setFull((d) => {
       const s = d.screens.find((x) => x.id === sid);
       if (!s) return;
+      startCanvasGlass(s);
       s.canvas = copy;
       s.layout.preset = 'canvas';
       s.screen.style = 'modern';

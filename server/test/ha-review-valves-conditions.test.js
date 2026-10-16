@@ -25,6 +25,11 @@ import { startHomeAssistantLive, stopHomeAssistantLive } from '../haService.js';
 import { _resetHaRoutes } from '../routes/ha.js';
 import { invalidateEntityCache } from '../homeassistant.js';
 import { fakeHa, FAKE_HA_TOKEN } from './fakeHa.js';
+import { hasWebSocket } from '../haWs.js';
+
+// the live mirror needs Node's global WebSocket (Node 22 and later); on Node 20 the server polls over REST instead
+// ("no global WebSocket" in ha-live.test.js), and these tests are skipped
+const NEEDS_WS = { skip: hasWebSocket() ? false : 'needs a global WebSocket (Node 22 or later)' };
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function until(fn, ms = 4000, what = 'condition') {
@@ -167,7 +172,7 @@ async function withApp(fn) {
   }
 }
 
-test('a gas valve named so: no buttons, every tap and the builder\'s Probar refused, nothing reaches Home Assistant', async () => {
+test('a gas valve named so: no buttons, every tap and the builder\'s Probar refused, nothing reaches Home Assistant', NEEDS_WS, async () => {
   await withApp(async ({ call, key, ha }) => {
     const services = () => ha.hits.filter((h) => h.method === 'POST' && h.url.startsWith('/api/services/'));
     const s = (await until(async () => {
@@ -203,7 +208,7 @@ test('a gas valve named so: no buttons, every tap and the builder\'s Probar refu
   });
 });
 
-test('a reading of a condition\'s entity that hides and shows the same items sends the screen nothing', async () => {
+test('a reading of a condition\'s entity that hides and shows the same items sends the screen nothing', NEEDS_WS, async () => {
   await withApp(async ({ call, key, stream, ha }) => {
     await until(async () => {
       const x = (await call('GET', '/api/display/ha', { headers: { 'x-marco-key': key } })).json;

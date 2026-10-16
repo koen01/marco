@@ -17,7 +17,7 @@ Requirements: Node.js 20 or newer (22 LTS recommended). No native modules and no
 ## Before you open a pull request
 
 ```bash
-npm test                 # server tests (node --test)
+npm test                 # server tests (node --test); MARCO_SKIP_BROWSER=1 npm test skips the headless Chrome ones
 npx tsc --noEmit -p .    # type check (display + admin)
 npm run contract         # if you changed web/admin/api.ts or web/shared/types.ts (CI checks it is up to date)
 npm run build            # production build

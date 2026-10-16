@@ -20,11 +20,12 @@ const params = new URLSearchParams(location.search);
  * Chrome falls back to after a GPU driver crash). Then every blurred card and the animated photo cost the processor
  * each frame, so such a screen takes the lite look (the same glass without live blur, no WebGL), as ?lite=1 does.
  * ?lite=0 keeps the full look anyway; ?soft=1 forces this (tests). A browser driven by automation is not probed
- * (headless test browsers draw in software, and their screenshots must show the full look).
+ * (headless test browsers draw in software, and their screenshots must show the full look). Node before 21 has no
+ * navigator (the tests load this module there).
  */
 function softwareRendering(): boolean {
   if (params.get('soft') === '1') return true;
-  if (params.get('lite') === '0' || params.get('soft') === '0' || navigator.webdriver) return false;
+  if (params.get('lite') === '0' || params.get('soft') === '0' || globalThis.navigator?.webdriver) return false;
   try {
     const c = document.createElement('canvas');
     c.width = c.height = 1;

@@ -1,6 +1,7 @@
 // Headless Chrome for tests and scripts, with no dependency: the DevTools protocol over Node's global WebSocket, and
 // the display served by Vite (dev mode, no API: pages open with ?demo=1). `findChrome()` returns null when no browser
-// is installed (or this Node has no WebSocket), and the tests that need one are skipped then.
+// is installed, this Node has no WebSocket or MARCO_SKIP_BROWSER=1 is set (the release workflow), and the tests that
+// need one are skipped then.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -17,7 +18,7 @@ const CANDIDATES = [
 
 /** Path of a Chrome or Chromium binary, or null. */
 export function findChrome() {
-  if (typeof WebSocket === 'undefined') return null;
+  if (process.env.MARCO_SKIP_BROWSER === '1' || typeof WebSocket === 'undefined') return null;
   return CANDIDATES.find((p) => {
     try {
       fs.accessSync(p, fs.constants.X_OK);

@@ -2,7 +2,7 @@ import type { ComponentType } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { CALENDAR_BLUR_DEFAULT, CALENDAR_OPACITY_DEFAULT, GLASS_DEFAULTS, glassVars, normalizeGlass, SCREEN_PHOTO_PRESETS, type PhotoStats } from '../../shared/glass';
 import type { BackgroundScope, CanvasConfig, DisplayStyle, FrameCorner, GlassConfig, LayoutPreset, PlannerBar, WidgetPlacement } from '../../shared/types';
-import { defaultCanvas } from '../../../server/core/canvasCore.js';
+import { CANVAS_GLASS_DEFAULTS, defaultCanvas, startCanvasGlass } from '../../../server/core/canvasCore.js';
 import { CanvasStyleThumb, CanvasThumb } from '../builder/thumb';
 import { Icon } from '../components/icons';
 import { EventStyleField, PLANNER_CALENDAR, undoPlannerPick, weeksCap, WeeksField } from '../components/PlannerFields';
@@ -518,7 +518,9 @@ export function GlassCard({ cfg, set, title }: Pick<SectionProps, 'cfg' | 'set'>
   const g = normalizeGlass(cfg.screen.glass);
   const put = <K extends keyof GlassConfig>(k: K, v: GlassConfig[K]) =>
     set((d) => void (d.screen.glass = { ...normalizeGlass(d.screen.glass), [k]: v }));
-  const isDefault = (Object.keys(GLASS_DEFAULTS) as (keyof GlassConfig)[]).every((k) => g[k] === GLASS_DEFAULTS[k]);
+  // Personalizado (the card with a title) has its own, lighter default glass
+  const defaults: GlassConfig = cfg.layout.preset === 'canvas' ? CANVAS_GLASS_DEFAULTS : GLASS_DEFAULTS;
+  const isDefault = (Object.keys(defaults) as (keyof GlassConfig)[]).every((k) => g[k] === defaults[k]);
   return (
     <Card
       id="layout-glass"
@@ -527,7 +529,7 @@ export function GlassCard({ cfg, set, title }: Pick<SectionProps, 'cfg' | 'set'>
       icon="sparkles"
       desc={title ? t('El cristal de las tarjetas que no tienen su propio estilo.') : t('Cómo se ven las tarjetas de cristal del estilo Moderno en esta pantalla.')}
       actions={
-        <Button size="sm" variant="ghost" disabled={isDefault} onClick={() => set((d) => void (d.screen.glass = { ...GLASS_DEFAULTS }))}>
+        <Button size="sm" variant="ghost" disabled={isDefault} onClick={() => set((d) => void (d.screen.glass = { ...defaults }))}>
           {t('Restablecer')}
         </Button>
       }
@@ -948,6 +950,8 @@ export function LayoutSection(props: SectionProps) {
           const was = props.saved.screens.find((s) => s.id === props.screenId);
           if (was && was.layout.preset !== 'planner') undoPlannerPick(d.calendar, was.calendar);
         }
+        // the first time, an untouched glass becomes the lighter one of Personalizado
+        startCanvasGlass(d);
         d.layout.preset = 'canvas';
         d.canvas ??= defaultCanvas();
       });

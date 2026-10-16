@@ -1,7 +1,9 @@
 // The builder's palette: every widget kind by category, the owner's saved widgets ("Mis widgets") and a search.
 // A tile is added by dragging it onto the canvas (mouse, pen), by a click or Enter (first free spot), or on a touch
 // screen by a tap that starts "modo colocar" (the next tap on the canvas places it). Kinds this server cannot use
-// are shown locked, with the reason.
+// are shown locked, with the reason. Kinds this edition does not have at all (Marco Cloud: Home Assistant, HTML
+// propio) get no tile: their names are listed muted with "Solo en la versión instalada en casa", and a group made only
+// of them (Casa) stays folded with that badge.
 import { useMemo, useRef, useState } from 'preact/hooks';
 import type { CanvasConfig, CanvasKind, WidgetDef } from '../../shared/types';
 import { CANVAS_KINDS } from '../../../server/core/canvasCore.js';
@@ -9,7 +11,7 @@ import { Icon } from '../components/icons';
 import { SearchInput } from '../components/ui';
 import { t } from '../i18n';
 import { gesture } from './dnd';
-import { GROUPS, KIND_META, PALETTE_KINDS, groupOf, lockOf, matchesSearch, type PaletteGroup } from './kinds';
+import { AWAY_NOTE, GROUPS, KIND_META, PALETTE_KINDS, groupOf, lockOf, matchesSearch, outOfEdition, type PaletteGroup } from './kinds';
 import { cellsOf } from './model';
 import type { AddSpec, StageApi } from './Stage';
 import { colorOfKind } from './thumb';
@@ -22,6 +24,8 @@ interface Tile {
   icon: string;
   group: PaletteGroup;
   lock: string | null;
+  /** not in this edition: no tile, only its name muted */
+  away: boolean;
 }
 
 /** The default size of a kind, drawn on a tiny 12×8 grid. */
@@ -64,14 +68,14 @@ export function Palette(props: {
       // a photo card over a photo background makes no sense
       if (k === 'photo' && photoBg) continue;
       const m = KIND_META[k]!;
-      out.push({ key: k, spec: { kind: k, label: m.name }, name: m.name, help: m.help, icon: m.icon, group: groupOf(k), lock: lockOf(k, props) });
+      out.push({ key: k, spec: { kind: k, label: m.name }, name: m.name, help: m.help, icon: m.icon, group: groupOf(k), lock: lockOf(k, props), away: outOfEdition(k, props) });
     }
     for (const w of props.widgets) {
       const name = w.name.trim() || t('Widget sin nombre');
       const lock = props.cloud && w.type === 'web' ? 'Solo en Marco instalado en casa' : lockOf('widget', props);
       out.push({
         key: `w:${w.id}`, spec: { kind: 'widget', props: { widgetId: w.id }, label: name }, name, help: w.type === 'prices' ? 'Precio de la luz' : w.type === 'web' ? 'Página web' : 'Imagen',
-        icon: w.type === 'prices' ? 'zap' : w.type === 'web' ? 'globe' : 'image', group: 'mine', lock,
+        icon: w.type === 'prices' ? 'zap' : w.type === 'web' ? 'globe' : 'image', group: 'mine', lock, away: props.cloud && w.type === 'web',
       });
     }
     return out;
@@ -116,12 +120,43 @@ export function Palette(props: {
     });
   };
 
-  const groups = GROUPS.map((g) => ({ ...g, tiles: shown.filter((x) => x.group === g.id) })).filter((g) => g.tiles.length || (g.id === 'mine' && !nq));
+  const groups = GROUPS.map((g) => {
+    const all = shown.filter((x) => x.group === g.id);
+    return { ...g, tiles: all.filter((x) => !x.away), away: all.filter((x) => x.away) };
+  }).filter((g) => g.tiles.length || g.away.length || (g.id === 'mine' && !nq));
+  /** the muted names of the kinds this edition does not have */
+  const awayLine = (list: Tile[]) => (
+    <p class="bld-away">
+      <Icon name="lock" size={13} />
+      <span class="bld-away__names">{list.map((x) => t(x.name)).join(', ')}</span>
+      <span class="bld-away__badge">{t(AWAY_NOTE)}</span>
+    </p>
+  );
   return (
     <div class="bld-palette">
       <SearchInput value={q} onValue={setQ} placeholder={t('Buscar widgets')} />
       <div class="bld-palette__list">
         {groups.map((g) => {
+          // a group with nothing this edition has (Casa on Marco Cloud): folded, with the badge; a search lists the
+          // names it matched, still muted
+          if (!g.tiles.length && g.away.length) {
+            return (
+              <section class="bld-group is-away">
+                <div class="bld-group__head bld-group__head--away">
+                  <Icon name={g.icon} size={15} />
+                  <span>{t(g.name)}</span>
+                  <Icon name="lock" size={13} class="bld-group__chev" />
+                </div>
+                <div class="bld-group__tiles">
+                  {nq ? awayLine(g.away) : (
+                    <p class="bld-away">
+                      <span class="bld-away__badge">{t(AWAY_NOTE)}</span>
+                    </p>
+                  )}
+                </div>
+              </section>
+            );
+          }
           const open = !!nq || !closed.has(g.id);
           return (
             <section class="bld-group">
@@ -181,6 +216,7 @@ export function Palette(props: {
                       {x.spec.kind !== 'widget' && <MiniSize kind={x.spec.kind} />}
                     </button>
                   ))}
+                  {!!g.away.length && awayLine(g.away)}
                 </div>
               )}
             </section>

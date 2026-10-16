@@ -30,6 +30,11 @@ import { _resetHaRoutes } from '../routes/ha.js';
 import { invalidateEntityCache } from '../homeassistant.js';
 import { request } from '../lib/http.js';
 import { fakeHa, FAKE_HA_TOKEN, FAKE_JPEG } from './fakeHa.js';
+import { hasWebSocket } from '../haWs.js';
+
+// the live mirror needs Node's global WebSocket (Node 22 and later); on Node 20 the server polls over REST instead
+// ("no global WebSocket" in ha-live.test.js), and these tests are skipped
+const NEEDS_WS = { skip: hasWebSocket() ? false : 'needs a global WebSocket (Node 22 or later)' };
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function until(fn, ms = 4000, what = 'condition') {
@@ -234,7 +239,7 @@ function clean(text, ha) {
   for (const bad of [ha.url, 'entity_picture', 'media_player_proxy', 'entitytoken123', FAKE_HA_TOKEN, 'access_token']) assert.equal(text.includes(bad), false, bad);
 }
 
-test('GET /api/display/ha: the states of this screen by alias, nothing else; a key is needed', async () => {
+test('GET /api/display/ha: the states of this screen by alias, nothing else; a key is needed', NEEDS_WS, async () => {
   await withApp(async ({ display, call, ha }) => {
     assert.equal((await call('GET', '/api/display/ha')).status, 401);
     const r = await until(async () => {
@@ -259,7 +264,7 @@ test('GET /api/display/ha: the states of this screen by alias, nothing else; a k
   });
 });
 
-test('SSE: a full snapshot when the stream opens, then only the aliases that changed; the other screen hears nothing', async () => {
+test('SSE: a full snapshot when the stream opens, then only the aliases that changed; the other screen hears nothing', NEEDS_WS, async () => {
   await withApp(async ({ stream, ha }) => {
     const s = await stream('main');
     const h = await stream('hall');
@@ -285,7 +290,7 @@ test('SSE: a full snapshot when the stream opens, then only the aliases that cha
   });
 });
 
-test('a private screen gets no Home Assistant states, no history and no art', async () => {
+test('a private screen gets no Home Assistant states, no history and no art', NEEDS_WS, async () => {
   await withApp(async ({ display, call, login }) => {
     await until(async () => Object.keys((await display('/api/display/ha')).json.states).length);
     const cookie = await login();
@@ -300,7 +305,7 @@ test('a private screen gets no Home Assistant states, no history and no art', as
   });
 });
 
-test('history: up to 24 h from the recorder history, 7 days from hourly statistics, at most 200 points, labels', async () => {
+test('history: up to 24 h from the recorder history, 7 days from hourly statistics, at most 200 points, labels', NEEDS_WS, async () => {
   await withApp(async ({ display, ha }) => {
     const r = await display('/api/display/ha/history/cv_chrt0001');
     assert.equal(r.status, 200, r.text);
@@ -330,7 +335,7 @@ test('history: up to 24 h from the recorder history, 7 days from hourly statisti
   });
 });
 
-test('art: only Home Assistant\'s own proxy path, built from the entity id; an absolute entity_picture is never fetched', async () => {
+test('art: only Home Assistant\'s own proxy path, built from the entity id; an absolute entity_picture is never fetched', NEEDS_WS, async () => {
   await withApp(async ({ display, ha, other }) => {
     // home network only by default, like the camera pictures: through a proxy, nothing is fetched
     const out = await display('/api/display/ha/art/cv_medi0001', 'main', { 'x-forwarded-for': '203.0.113.9' });
@@ -360,7 +365,7 @@ test('art: only Home Assistant\'s own proxy path, built from the entity id; an a
   });
 });
 
-test('art and history: many screens at once, or one display asking in a loop, never fan out to Home Assistant', async () => {
+test('art and history: many screens at once, or one display asking in a loop, never fan out to Home Assistant', NEEDS_WS, async () => {
   await withApp(async ({ display, ha }) => {
     const artHits = () => ha.hits.filter((h) => h.url.startsWith('/api/media_player_proxy/')).length;
     const histHits = () => ha.hits.filter((h) => h.url.startsWith('/api/history/')).length;
@@ -382,7 +387,7 @@ test('art and history: many screens at once, or one display asking in a loop, ne
   });
 });
 
-test('redirects are refused on every Home Assistant call: no request ever reaches the other host', async () => {
+test('redirects are refused on every Home Assistant call: no request ever reaches the other host', NEEDS_WS, async () => {
   await withApp(async ({ display, call, login, ha, other }) => {
     const cookie = await login();
     ha.state.redirectTo = other.url;
@@ -401,7 +406,7 @@ test('redirects are refused on every Home Assistant call: no request ever reache
   });
 });
 
-test('Probar conexión: a new URL without a new token never gets the stored token; with its own token it gets only that', async () => {
+test('Probar conexión: a new URL without a new token never gets the stored token; with its own token it gets only that', NEEDS_WS, async () => {
   await withApp(async ({ call, login, other, ha }) => {
     const cookie = await login();
     const a = await call('POST', '/api/admin/test/homeassistant', { body: { url: other.url }, headers: { cookie } });
@@ -418,7 +423,7 @@ test('Probar conexión: a new URL without a new token never gets the stored toke
   });
 });
 
-test('a new Home Assistant URL saved in the admin (or imported) never gets the stored token until it is saved for it', async () => {
+test('a new Home Assistant URL saved in the admin (or imported) never gets the stored token until it is saved for it', NEEDS_WS, async () => {
   await withApp(async ({ call, login, other, ha }) => {
     const cookie = await login();
     const save = async (url) => {
@@ -461,7 +466,7 @@ test('a new Home Assistant URL saved in the admin (or imported) never gets the s
   });
 });
 
-test('admin: status, slim states for unsaved items, preview history, entities grouped by area (and without areas)', async () => {
+test('admin: status, slim states for unsaved items, preview history, entities grouped by area (and without areas)', NEEDS_WS, async () => {
   await withApp(async ({ call, login, ha }) => {
     const cookie = await login();
     assert.equal((await call('GET', '/api/admin/homeassistant/status')).status, 401);
@@ -541,7 +546,7 @@ function touchScreen(c) {
 
 const services = (ha) => ha.hits.filter((h) => h.method === 'POST' && h.url.startsWith('/api/services/'));
 
-test('action: the refusal ladder, each refusal with its own error and no call to Home Assistant', async () => {
+test('action: the refusal ladder, each refusal with its own error and no call to Home Assistant', NEEDS_WS, async () => {
   await withApp(async ({ call, key, login, ha, base }) => {
     const k = key('main');
     const act = (body, headers = {}) => call('POST', '/api/display/ha/action', { body: { seq: 7, slot: 0, ...body }, headers: { 'x-marco-key': k, ...headers } });
@@ -600,7 +605,7 @@ test('action: the refusal ladder, each refusal with its own error and no call to
   }, { mutate: touchScreen });
 });
 
-test('action: open access (no credential) may not drive the house', async () => {
+test('action: open access (no credential) may not drive the house', NEEDS_WS, async () => {
   await withApp(async ({ call, ha }) => {
     const slug = store.getConfig().screens[0].slug;
     const r = await call('POST', `/api/display/ha/action?screen=${slug}`, { body: { item: 'cv_ligh0001', slot: 0, control: 'toggle', seq: 1 } });
@@ -610,7 +615,7 @@ test('action: open access (no credential) may not drive the house', async () => 
   }, { mutate: (c) => { c.security.displayAccess = 'open'; touchScreen(c); } });
 });
 
-test('action: allowed controls become clamped service calls; two taps; the rate limit; Home Assistant failing', async () => {
+test('action: allowed controls become clamped service calls; two taps; the rate limit; Home Assistant failing', NEEDS_WS, async () => {
   await withApp(async ({ call, key, ha }) => {
     const k = key('main');
     let seq = 0;
@@ -658,7 +663,7 @@ test('action: allowed controls become clamped service calls; two taps; the rate 
   }, { mutate: touchScreen });
 });
 
-test('action: the activity log names the screen and flags door-like entities, never the token', async () => {
+test('action: the activity log names the screen and flags door-like entities, never the token', NEEDS_WS, async () => {
   await withApp(async ({ call, key, login, ha }) => {
     const k = key('main');
     await until(async () => (await call('POST', '/api/display/ha/action', { body: { item: 'cv_door0001', slot: 0, control: 'toggle', seq: 1, confirm: true }, headers: { 'x-marco-key': k } })).status === 200, 4000, 'action');
@@ -675,7 +680,7 @@ test('action: the activity log names the screen and flags door-like entities, ne
   }, { mutate: touchScreen });
 });
 
-test('Probar (admin): the same allowlist and clamping, for items not saved yet; a display key cannot use it', async () => {
+test('Probar (admin): the same allowlist and clamping, for items not saved yet; a display key cannot use it', NEEDS_WS, async () => {
   await withApp(async ({ call, login, key, ha }) => {
     const cookie = await login();
     const probe = (body) => call('POST', '/api/admin/homeassistant/action', { body, headers: { cookie } });
@@ -737,7 +742,7 @@ function featureScreen(c) {
   ];
 }
 
-test('Entidad rows: the rows each entity gets, the new services clamped, a water valve only once ticked, a gas valve never', async () => {
+test('Entidad rows: the rows each entity gets, the new services clamped, a water valve only once ticked, a gas valve never', NEEDS_WS, async () => {
   await withApp(async ({ call, key, ha }) => {
     const k = key('main');
     let seq = 0;
@@ -811,7 +816,7 @@ test('Entidad rows: the rows each entity gets, the new services clamped, a water
   }, { mutate: featureScreen });
 });
 
-test('Estadística: one value from the recorder over the mirror connection, cached and shared; failures kept; private', async () => {
+test('Estadística: one value from the recorder over the mirror connection, cached and shared; failures kept; private', NEEDS_WS, async () => {
   await withApp(async ({ call, key, login, ha }) => {
     const k = key('main');
     const get = (id) => call('GET', `/api/display/ha/statistic/${id}`, { headers: { 'x-marco-key': k } });
@@ -854,7 +859,7 @@ test('Estadística: one value from the recorder over the mirror connection, cach
   }, { mutate: featureScreen });
 });
 
-test('Mostrar solo si: the server hides the item (no states, no actions), tells the screen which ids, and shows it when the door opens', async () => {
+test('Mostrar solo si: the server hides the item (no states, no actions), tells the screen which ids, and shows it when the door opens', NEEDS_WS, async () => {
   await withApp(async ({ call, key, stream, ha }) => {
     const k = key('main');
     const snap = async () => (await call('GET', '/api/display/ha', { headers: { 'x-marco-key': k } })).json;

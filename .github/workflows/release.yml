@@ -26,7 +26,12 @@ jobs:
           v="$(node -p "require('./package.json').version")"
           [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME does not match package.json version $v"; exit 1; }
       - run: npm ci
-      - run: npm test
+      # the fast suite only: the headless-Chrome display tests (server/test/browser.js) already ran in CI on this
+      # commit and take most of the time
+      - name: Test (without the browser tests)
+        run: npm test
+        env:
+          MARCO_SKIP_BROWSER: '1'
       - run: npx tsc --noEmit -p .
       - run: npm run check:release
       - run: npm run build

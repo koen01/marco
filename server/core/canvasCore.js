@@ -950,6 +950,51 @@ export function normalizeGlassJs(raw, card = false) {
   };
 }
 
+/** The screen glass every style starts with (web/shared/glass.ts GLASS_DEFAULTS, server/core/defaults.js). */
+export const SCREEN_GLASS_DEFAULTS = Object.freeze({ appearance: 'auto', opacity: 0.5, blur: 18, tint: 'dark', edge: true });
+/**
+ * The card glass of a new Personalizado screen ("Estilo por defecto de las tarjetas"): more see-through and less
+ * blurred than the Modern designs, so the photo or the animated background shows between the cards.
+ */
+export const CANVAS_GLASS_DEFAULTS = Object.freeze({ appearance: 'auto', opacity: 0.25, blur: 5, tint: 'dark', edge: true });
+
+/** The screen's glass was never changed (missing, or every setting as SCREEN_GLASS_DEFAULTS). */
+export function glassUntouched(raw) {
+  if (raw === undefined || raw === null) return true;
+  const g = normalizeGlassJs(raw);
+  return Object.keys(SCREEN_GLASS_DEFAULTS).every((k) => g[k] === SCREEN_GLASS_DEFAULTS[k]);
+}
+
+/**
+ * A screen ({ layout, canvas, screen }) about to become Personalizado for the first time (another layout now and
+ * no card on its grid yet) whose glass was never changed gets CANVAS_GLASS_DEFAULTS. Changes `screen` in place;
+ * true when it did. Call it before the layout is set to 'canvas'.
+ */
+export function startCanvasGlass(screen) {
+  if (!isObj(screen) || !isObj(screen.screen)) return false;
+  if (screen.layout?.preset === 'canvas' || screen.canvas?.items?.length) return false;
+  if (!glassUntouched(screen.screen.glass)) return false;
+  screen.screen.glass = { ...CANVAS_GLASS_DEFAULTS };
+  return true;
+}
+
+/**
+ * The same on a save (server side, for every client): each screen of `next` that is Personalizado now while it was
+ * another layout with an empty grid in `prev` gets CANVAS_GLASS_DEFAULTS when its glass is untouched. Screens new
+ * in `next` are left alone (a copy of another screen keeps that screen's glass). Changes `next`; the ids it changed.
+ */
+export function startCanvasGlassOnSave(prev, next) {
+  const out = [];
+  if (!Array.isArray(prev?.screens) || !Array.isArray(next?.screens)) return out;
+  for (const s of next.screens) {
+    if (s?.layout?.preset !== 'canvas' || !isObj(s.screen)) continue;
+    const was = prev.screens.find((x) => x?.id === s.id);
+    if (!was || !startCanvasGlass({ layout: was.layout, canvas: was.canvas, screen: s.screen })) continue;
+    out.push(s.id);
+  }
+  return out;
+}
+
 /** A raw position: { zone:'main', x, y, size, w?, h? } or { zone:'side', order, span }; null when unusable. */
 function readPos(c, p, raw) {
   if (!isObj(raw)) {
@@ -1758,7 +1803,9 @@ export const CANVAS_TEMPLATES = [
   {
     id: 'design.leftRight', name: 'Izquierda / Derecha', group: 'design',
     canvas: {
-      background: 'solid', sidebar: { side: 'left', size: 'wide', fill: 'photo' },
+      // the photo in the wide column, the animated background behind the rest (a new Personalizado screen starts on
+      // Animado unless the design is a plain colour on purpose, like Mesilla or the kids pages)
+      background: 'ambient', sidebar: { side: 'left', size: 'wide', fill: 'photo' },
       items: [
         { kind: 'clock.digital', pos: M(0, 0, 'w') },
         { kind: 'weather.now', pos: M(6, 0, 's') },
@@ -1955,11 +2002,12 @@ export function canvasFromDesign(screen, refs = {}, opts = {}) {
   const cal = screen?.calendar ?? {};
   if ((cv.sidebar.side === 'left' || cv.sidebar.side === 'right') && (l.sidePanel === 'left' || l.sidePanel === 'right')) cv.sidebar.side = l.sidePanel;
   if (id === 'design.bigCalendar' && typeof l.sideWidth === 'number') cv.sidebar.size = l.sideWidth < 0.25 ? 'narrow' : l.sideWidth < 0.33 ? 'normal' : 'wide';
-  // the photo: off on the screen, none here either; on the whole screen, behind the whole canvas
+  // the photo: off on the screen, none here either; on the whole screen, behind the whole canvas (a design with the
+  // photo in its own column, Izquierda / Derecha, keeps it there: the screen's photo scope does not apply to it)
   if (bg.enabled === false) {
     if (cv.background === 'photo') cv.background = 'ambient';
     if (cv.sidebar.fill === 'photo') cv.sidebar.fill = 'glass';
-  } else if (bg.enabled && bg.scope === 'screen' && cv.background === 'ambient') {
+  } else if (bg.enabled && bg.scope === 'screen' && cv.background === 'ambient' && cv.sidebar.fill !== 'photo') {
     cv.background = 'photo';
   }
   if (cv.sidebar.fill === 'photo' && cv.background === 'photo') cv.sidebar.fill = 'glass';

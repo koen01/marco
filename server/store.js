@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { defaultConfig, DEFAULT_ICON_RULES } from './core/defaults.js';
 import { validateConfig, mergeDefaults, migrateConfig, isV1 } from './core/validate.js';
 import { backupBeforeSave } from './backups.js';
+import { startCanvasGlassOnSave } from './core/canvasCore.js';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -195,6 +196,9 @@ export function saveConfig(input, { reason = 'server', req = null, backup = true
   }
   const { ok, errors, value } = validateConfig(input, checks);
   if (!ok) return { ok, errors, config };
+  // a screen saved from the admin as Personalizado for the first time, glass untouched: the Personalizado card glass
+  // (the admin does the same when the layout is picked; this covers older admins and other clients)
+  if (reason === 'admin') startCanvasGlassOnSave(config, value);
   value.revision = (config?.revision || 0) + 1;
   if (backup) {
     try { backupBeforeSave(config); } catch (err) { console.warn('[store] backup before save failed:', err.message); }

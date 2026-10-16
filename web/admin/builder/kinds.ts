@@ -106,6 +106,15 @@ export const groupOf = (k: CanvasKind): PaletteGroup => KIND_META[k]?.group ?? (
 /** Kinds the palette lists (every kind but the reserved one and `widget`, which is listed per saved widget). */
 export const PALETTE_KINDS: CanvasKind[] = (Object.keys(CANVAS_KINDS) as CanvasKind[]).filter((k) => !CANVAS_KINDS[k].reserved && k !== 'widget' && KIND_META[k]);
 
+/** What the palette says of the kinds this edition does not have (a t() key). */
+export const AWAY_NOTE = 'Solo en la versión instalada en casa';
+
+/**
+ * Whether a kind is not part of this edition at all (Marco Cloud: the Home Assistant cards and HTML propio): the
+ * palette shows no tile for it, only its name muted with AWAY_NOTE, and a group with nothing else stays folded.
+ */
+export const outOfEdition = (k: CanvasKind, env: { cloud: boolean }): boolean => env.cloud && CANVAS_KINDS[k]?.edition === 'local';
+
 /** Why a kind cannot be added here (null: it can). Spanish t() keys. */
 export function lockOf(k: CanvasKind, env: { cloud: boolean; allowed: readonly string[]; stocks?: boolean }): string | null {
   const d = CANVAS_KINDS[k];

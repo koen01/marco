@@ -402,7 +402,17 @@ test('design templates: one per existing design, valid with no overlap, and "Cop
   // a whole-screen photo goes behind the canvas; the photo beside (Izquierda / Derecha) stays in the column
   assert.equal(canvasFromDesign({ layout: { preset: 'agenda' }, background: { enabled: true, scope: 'screen' } }).canvas.background, 'photo');
   const lr = canvasFromDesign({ layout: { preset: 'leftRight', sidePanel: 'right' }, background: { enabled: true, scope: 'side' } }).canvas;
-  assert.deepEqual([lr.sidebar.side, lr.sidebar.fill, lr.background], ['right', 'photo', 'solid']);
+  assert.deepEqual([lr.sidebar.side, lr.sidebar.fill, lr.background], ['right', 'photo', 'ambient']);
+  // a new Personalizado screen starts on Animado: copying Izquierda / Derecha with the photo on the whole screen or
+  // off, the blank grid and every template that does not ask for a plain colour on purpose
+  const lr2 = canvasFromDesign({ layout: { preset: 'leftRight', sidePanel: 'left', sideWidth: 0.36 }, background: { enabled: true, scope: 'screen' } }).canvas;
+  assert.deepEqual([lr2.sidebar.fill, lr2.background], ['photo', 'ambient']);
+  assert.equal(canvasFromDesign({ layout: { preset: 'leftRight' }, background: { enabled: false } }).canvas.background, 'ambient');
+  assert.equal(canvasFromTemplate('blank').background, 'ambient');
+  assert.equal(canvasFromTemplate('nope').background, 'ambient');
+  const plain = new Set(['bedroom', 'design.bedside', 'design.kidsRoutines', 'design.kidsFamily', 'design.kidsMeals']);
+  for (const tp of CANVAS_TEMPLATES) if (!plain.has(tp.id)) assert.notEqual(canvasFromTemplate(tp.id).background, 'solid', tp.id);
+  assert.equal(canvasFromTemplate('bedroom').background, 'solid');
   // another layout (the widget, Personalizado itself): the big calendar
   assert.equal(canvasFromDesign({ layout: { preset: 'widget' } }).template, 'design.bigCalendar');
   assert.equal(canvasFromDesign({ layout: { preset: 'kidsMeals' } }).theme, 'light');

@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as nodeModule from 'node:module';
-import { CANVAS_LIMITS, canvasFromTemplate, defaultCanvas, sanitizeCanvas } from '../core/canvasCore.js';
+import { CANVAS_LIMITS, CLOUD_CANVAS_KINDS, canvasFromTemplate, defaultCanvas, sanitizeCanvas } from '../core/canvasCore.js';
 
 nodeModule.registerHooks?.({
   resolve(specifier, context, next) {
@@ -358,6 +358,7 @@ test('builder texts: every string in Spanish, English, Portuguese, Dutch and Dan
     if (re) for (const m of re[1].matchAll(/: '((?:[^'\\]|\\.)*)'/g)) keys.add(m[1]);
   }
   for (const g of K.GROUPS) keys.add(g.name);
+  keys.add(K.AWAY_NOTE);
   for (const m of Object.values(K.KIND_META)) keys.add(m.name).add(m.help);
   for (const v of [...Object.values(K.SIZE_LABEL), ...Object.values(K.SPAN_LABEL)]) keys.add(v);
   for (const list of Object.values(F.FIELDS)) for (const s of list) {
@@ -450,4 +451,16 @@ test('flexible sizes: W and H steppers, the corner handle (nearest legal box, ne
   // into the sidebar: its rows make the span
   assert.equal(M.spanForBox({ size: 't', w: 3, h: 6 }, 'landscape'), 4);
   assert.equal(M.spanForBox({ size: 'row', w: 2, h: 1 }, 'landscape'), 2);
+});
+
+test('palette on Marco Cloud: the Home Assistant cards and HTML propio are out of the edition, the Casa group has nothing else', ts, () => {
+  const away = K.PALETTE_KINDS.filter((k) => K.outOfEdition(k, { cloud: true }));
+  assert.deepEqual(away.sort(), [...K.PALETTE_KINDS.filter((k) => k.startsWith('ha.')), 'html'].sort());
+  // nothing is out on a self-hosted server, and every kind Cloud can draw stays a tile there
+  assert.deepEqual(K.PALETTE_KINDS.filter((k) => K.outOfEdition(k, { cloud: false })), []);
+  for (const k of K.PALETTE_KINDS) if (!away.includes(k)) assert.ok(CLOUD_CANVAS_KINDS.includes(k), k);
+  // so Casa folds on Cloud (every kind of the group is out), while Avanzado keeps Espacio
+  assert.ok(K.PALETTE_KINDS.filter((k) => K.groupOf(k) === 'home').every((k) => away.includes(k)));
+  assert.ok(K.PALETTE_KINDS.some((k) => K.groupOf(k) === 'adv' && !away.includes(k)));
+  assert.equal(dict.EN[K.AWAY_NOTE], 'Only on the self-hosted version');
 });

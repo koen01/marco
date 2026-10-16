@@ -88,6 +88,11 @@ export function cssProblem(css: string): string;
 export const CARD_BUILTINS: readonly ('time' | 'date' | 'weather' | 'nextEvent')[];
 export function normalizeGlassJs(raw: unknown, card?: false): GlassConfig;
 export function normalizeGlassJs(raw: unknown, card: true): CanvasGlass;
+export const SCREEN_GLASS_DEFAULTS: Readonly<GlassConfig>;
+export const CANVAS_GLASS_DEFAULTS: Readonly<GlassConfig>;
+export function glassUntouched(raw: unknown): boolean;
+export function startCanvasGlass(screen: { layout?: { preset?: string } | null; canvas?: { items?: unknown[] } | null; screen: { glass?: GlassConfig | null } }): boolean;
+export function startCanvasGlassOnSave(prev: { screens?: unknown[] } | null | undefined, next: { screens?: unknown[] }): string[];
 export function portraitSide(side: CanvasConfig['sidebar']['side']): CanvasConfig['sidebar']['side'];
 
 export interface Occupancy { cols: number; rows: number; orientation: Orientation; cells: (string | null)[][] }

@@ -30,6 +30,11 @@ import { _resetDoorbell, FRAME_CACHE_MS as DOORBELL_CACHE_MS } from '../doorbell
 import { MultipartReader, livePart, liveStats, watchLive, LIVE_BOUNDARY, LIVE_LIMITS, FRAME_CACHE_MS, _setLiveLimits } from '../haCamera.js';
 import { createToken } from '../tokens.js';
 import { fakeHa, FAKE_HA_TOKEN, FAKE_JPEG } from './fakeHa.js';
+import { hasWebSocket } from '../haWs.js';
+
+// the live mirror needs Node's global WebSocket (Node 22 and later); on Node 20 the server polls over REST instead
+// ("no global WebSocket" in ha-live.test.js), and these tests are skipped
+const NEEDS_WS = { skip: hasWebSocket() ? false : 'needs a global WebSocket (Node 22 or later)' };
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function until(fn, ms = 4000, what = 'condition') {
@@ -230,7 +235,7 @@ test('cameraLanOnly: on unless set off, stored only when off', () => {
   assert.equal(validateConfig(structuredClone(c)).ok, false);
 });
 
-test('snapshot: the picture of that card only, shared for a moment by every screen, the doorbell too', async () => {
+test('snapshot: the picture of that card only, shared for a moment by every screen, the doorbell too', NEEDS_WS, async () => {
   await withApp(async ({ display, call, ha, camHits, key }) => {
     assert.equal(DOORBELL_CACHE_MS, FRAME_CACHE_MS, 'the doorbell uses the shared cache');
     assert.equal((await call('GET', '/api/display/ha/camera/cv_cama0001')).status, 401, 'a credential is needed');
@@ -277,7 +282,7 @@ test('snapshot: the picture of that card only, shared for a moment by every scre
   });
 });
 
-test('home network only by default: a request through a proxy or from outside gets no picture; the owner can lift it', async () => {
+test('home network only by default: a request through a proxy or from outside gets no picture; the owner can lift it', NEEDS_WS, async () => {
   await withApp(async ({ display, call, camHits, login, live }) => {
     for (const xff of ['203.0.113.9', '192.168.1.40']) {
       const r = await display('/api/display/ha/camera/cv_cama0001', 'main', { 'x-forwarded-for': xff });
@@ -298,7 +303,7 @@ test('home network only by default: a request through a proxy or from outside ge
   });
 });
 
-test('private screens and the showWhen binary sensor', async () => {
+test('private screens and the showWhen binary sensor', NEEDS_WS, async () => {
   await withApp(async ({ display, call, ha, login }) => {
     let r = await display('/api/display/ha/camera/cv_cama0003');
     assert.equal(r.status, 404, 'shown only while the motion sensor is on');
@@ -322,7 +327,7 @@ test('private screens and the showWhen binary sensor', async () => {
   });
 });
 
-test('admin preview: one picture by entity for a session, never a live picture', async () => {
+test('admin preview: one picture by entity for a session, never a live picture', NEEDS_WS, async () => {
   await withApp(async ({ call, login, base }) => {
     assert.equal((await call('GET', '/api/admin/homeassistant/camera?entity=camera.front')).status, 401);
     const cookie = await login();
@@ -338,7 +343,7 @@ test('admin preview: one picture by entity for a session, never a live picture',
   });
 });
 
-test('live: one upstream per camera for every viewer, Marco\'s own framing, closed when the last viewer leaves', async () => {
+test('live: one upstream per camera for every viewer, Marco\'s own framing, closed when the last viewer leaves', NEEDS_WS, async () => {
   await withApp(async ({ live, ha, display }) => {
     assert.equal((await display('/api/display/ha/camera/cv_cama0001/live')).json.error, 'not_live', 'a snapshot card has no live picture');
     const a = await live('cv_cama0002');
@@ -366,7 +371,7 @@ test('live: one upstream per camera for every viewer, Marco\'s own framing, clos
   });
 });
 
-test('live: a camera that sends many pictures a second reaches the screens at 10 a second at most, the newest one', async () => {
+test('live: a camera that sends many pictures a second reaches the screens at 10 a second at most, the newest one', NEEDS_WS, async () => {
   await withApp(async ({ live, ha }) => {
     ha.state.cameraEveryMs = 4;
     const a = await live('cv_cama0002');
@@ -388,7 +393,7 @@ test('live: a camera that sends many pictures a second reaches the screens at 10
   });
 });
 
-test('live: parts that are not pictures are dropped, a part too large or a silent camera ends the stream', async () => {
+test('live: parts that are not pictures are dropped, a part too large or a silent camera ends the stream', NEEDS_WS, async () => {
   await withApp(async ({ live, ha }) => {
     _setLiveLimits({ stallMs: 300 });
     ha.state.camera = 'svg';
@@ -412,7 +417,7 @@ test('live: parts that are not pictures are dropped, a part too large or a silen
   });
 });
 
-test('live: one display credential holds at most 2 live pictures, so it cannot take every slot of the house', async () => {
+test('live: one display credential holds at most 2 live pictures, so it cannot take every slot of the house', NEEDS_WS, async () => {
   await withApp(async ({ live }) => {
     const a = await live('cv_cama0002');
     const b = await live('cv_cama0002');
@@ -434,7 +439,7 @@ test('live: one display credential holds at most 2 live pictures, so it cannot t
   });
 });
 
-test('live: at most 4 cameras and 8 viewers per server; a viewer is cut when its card goes', async () => {
+test('live: at most 4 cameras and 8 viewers per server; a viewer is cut when its card goes', NEEDS_WS, async () => {
   await withApp(async ({ live, call, login }) => {
     const sinks = [];
     const sink = () => {

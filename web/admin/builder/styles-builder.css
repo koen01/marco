@@ -79,6 +79,18 @@
 .bld-tile:hover { border-color: var(--border-strong); background: var(--surface-3); }
 .bld-tile:focus-visible { outline: none; box-shadow: var(--focus); }
 .bld-tile.is-locked { cursor: not-allowed; opacity: 0.6; }
+/* kinds this edition does not have (Marco Cloud): a folded group with a badge, or their names muted, never a tile */
+.bld-group__head--away { cursor: default; }
+.bld-group__head--away:hover { background: none; }
+.bld-group__head--away > span { opacity: 0.75; }
+.bld-group__head--away .bld-group__chev { transform: none; }
+.bld-away__badge {
+  flex: none; padding: 2px 7px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text-2); font-size: 11px; font-weight: 550; opacity: 0.85;
+}
+.bld-away { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 2px 4px; color: var(--text-2); font-size: 12px; opacity: 0.8; }
+.bld-away__names { flex: 1 1 auto; min-width: 0; }
+.bld-group.is-away .bld-away { padding-left: 21px; margin-top: -4px; }
 .bld-tile__icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, currentColor 14%, transparent); }
 .bld-tile__text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .bld-tile__name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

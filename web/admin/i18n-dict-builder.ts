@@ -858,6 +858,7 @@ const ROWS: [string, string, string, string, string][] = [
   ['Muy grande', 'Extra large', 'Muito grande', 'Extra groot', 'Ekstra stor'],
   ['Banda', 'Band', 'Faixa', 'Band', 'Bånd'],
   ['Lo que quede', 'What is left', 'O que sobrar', 'Wat overblijft', 'Resten'],
+  ['Solo en la versión instalada en casa', 'Only on the self-hosted version', 'Só na versão instalada em casa', 'Alleen in de zelf gehoste versie', 'Kun i den selvhostede version'],
   [
     'Solo en Marco instalado en casa',
     'Only when Marco is installed at home',
