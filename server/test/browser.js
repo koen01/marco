@@ -148,13 +148,21 @@ export async function launchChrome(bin = findChrome()) {
     page,
     close: async () => {
       // the process only: stopped by its own PID
-      proc.kill('SIGTERM');
-      await new Promise((r) => {
-        if (proc.exitCode !== null) return r();
-        proc.once('exit', r);
-        setTimeout(r, 3000);
+      const exited = () => new Promise((r) => {
+        if (proc.exitCode !== null || proc.signalCode !== null) return r(true);
+        proc.once('exit', () => r(true));
+        setTimeout(() => r(false), 3000);
       });
-      fs.rmSync(dir, { recursive: true, force: true });
+      proc.kill('SIGTERM');
+      // Chrome that does not stop in time is killed, so no process keeps the test run alive
+      if (!(await exited())) {
+        proc.kill('SIGKILL');
+        await exited();
+      }
+      // its helpers can still be writing the profile for a moment: retry, and never fail a test over a temp folder
+      try {
+        fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+      } catch { /* left for the OS to clean */ }
     },
   };
 }
