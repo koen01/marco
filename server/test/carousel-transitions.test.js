@@ -9,7 +9,7 @@ import { carouselBlock, CAROUSEL_RANDOM_POOL, CAROUSEL_SPEEDS, CAROUSEL_TRANSITI
 import { loadWebModules } from './webModules.js';
 
 const [plan, sw, admin] = await loadWebModules('/web/display/switchPlan.ts', '/web/display/screenSwitch.ts', '/web/admin/sections/Carousels.tsx');
-const { randomPick, planSwitch, switchNumber, isLowPower, isArmLinuxUA, isLowPowerGPU, isArmDesktop, SHORT_FADE_MS } = plan;
+const { randomPick, planSwitch, switchNumber, isLowPower, isArmLinuxUA, isLowPowerGPU, isArmDesktop, isSoftwareGPU, isHardwareGPU, SHORT_FADE_MS } = plan;
 
 function config(carousels) {
   const c = defaultConfig();
@@ -125,4 +125,19 @@ test('Personalizado low-power look: the Pi by its user agent, GPU and client hin
   assert.equal(isArmDesktop('arm', 'Linux', false), true);
   assert.equal(isArmDesktop('arm', 'macOS', false), false, 'Apple silicon is fast enough');
   assert.equal(isArmDesktop('arm', 'Android', true), false);
+});
+
+test('Software rendering: renderer names drawn by the CPU, and desktop chips that keep the full look', () => {
+  for (const n of ['ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)', 'llvmpipe (LLVM 15.0.6, 256 bits)',
+    'ANGLE (Microsoft, Microsoft Basic Render Driver Direct3D11 vs_5_0 ps_5_0, D3D11)']) {
+    assert.equal(isSoftwareGPU(n), true, n);
+    assert.equal(isHardwareGPU(n), false, n);
+  }
+  for (const n of ['ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'ANGLE (Intel, Intel(R) UHD Graphics 620 (0x00005917) Direct3D11 vs_5_0 ps_5_0, D3D11)',
+    'ANGLE (AMD, AMD Radeon RX 6600 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)', 'Mesa Intel(R) Iris(R) Xe Graphics (TGL GT2)']) {
+    assert.equal(isSoftwareGPU(n), false, n);
+    assert.equal(isHardwareGPU(n), true, n);
+  }
+  assert.equal(isHardwareGPU('ANGLE (Broadcom, V3D 7.1.7, OpenGL ES 3.1)'), false, 'a Pi is left to the probe');
+  assert.equal(isHardwareGPU(''), false);
 });

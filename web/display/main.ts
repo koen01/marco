@@ -186,10 +186,13 @@ let wxfx: WeatherFxLayer | null = null;
 let dissolve: DissolveLayer | null = null;
 
 let glLoading: Promise<void> | null = null;
+/** initGL is loading three.js or starting the engine (the CSS backdrop waits for it, so it does not flash first). */
+let glStarting = false;
 /** three.js is loaded lazily so ?lite=1 / no-WebGL screens never download or parse it. */
 function initGL(): Promise<void> {
   if (engine || lite) return Promise.resolve();
   if (glLoading) return glLoading;
+  glStarting = true;
   glLoading = (async () => {
   try {
     const [{ Engine }, { PhotoLayer }, { PrecipLayer }, { AmbientLayer }, { WeatherFxLayer }, { DissolveLayer }] = await Promise.all([
@@ -202,7 +205,9 @@ function initGL(): Promise<void> {
     precip = new PrecipLayer(() => photoArea);
     wxfx = new WeatherFxLayer(() => photoArea);
     wxfx.night = nightNow;
-    ambient = new AmbientLayer(() => mainEl);
+    // a Personalizado screen's animated background is the whole page (its sidebar too); the other layouts keep it
+    // behind the calendar
+    ambient = new AmbientLayer(() => (app.classList.contains('preset-canvas') ? app : mainEl));
     engine.add(ambient);
     engine.add(photoLayer);
     engine.add(precip);
@@ -220,6 +225,8 @@ function initGL(): Promise<void> {
   } catch (e) {
     console.warn('[gl] disabled', e);
     disableGL();
+  } finally {
+    glStarting = false;
   }
   })();
   return glLoading;
@@ -256,6 +263,22 @@ function disableGL(): void {
   document.documentElement.classList.remove('gl', 'gl-ambient');
   photos.setGL(null);
   photos.applyConfig();
+  syncAmbientCss();
+}
+
+/** The ambient effect the screen shows, drawn by WebGL or not ('none': no animated backdrop here). */
+let ambientWanted: 'aurora' | 'particles' | 'none' = 'none';
+/**
+ * The backdrop drawn in CSS (styles.css, .amb-css): the ambient effect is on but WebGL does not draw it (lite, a
+ * browser that draws in software, no WebGL, WebGL failed or its context was lost). Not while WebGL is still starting.
+ */
+function syncAmbientCss(): void {
+  const root = document.documentElement;
+  const glOn = !!engine && !!ambient && root.classList.contains('gl-ambient');
+  const css = ambientWanted !== 'none' && !glOn && !glStarting;
+  root.classList.toggle('amb-css', css);
+  root.classList.toggle('amb-aurora', css && ambientWanted === 'aurora');
+  root.classList.toggle('amb-particles', css && ambientWanted === 'particles');
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -482,6 +505,8 @@ function applyConfig(raw: DisplayConfig): void {
   if (effectivePreset(cfg) === 'canvas' && cfg.canvas) {
     cfg.background = effectiveBackground(cfg.background, cfg.canvas);
     if (cfg.canvas.background !== 'ambient') cfg.background.ambient = 'none';
+    // "Animado" with the screen's ambient effect off would be a plain black page: it shows the aurora
+    else if (cfg.background.ambient === 'none') cfg.background.ambient = 'aurora';
   }
   // Bedside: a dark room, no photo and no animated background. The kids layouts: the same pastel page everywhere,
   // unless the photo goes behind the whole screen (background.scope 'screen'), with the page over it as glass.
@@ -531,12 +556,17 @@ function applyConfig(raw: DisplayConfig): void {
   // WebGL needs
   const preset = effectivePreset(cfg);
   // a photo behind the whole screen leaves no room for the animated backdrop
-  const wantAmbient = !lite && !photoOnWholeScreen(cfg.background, preset) && cfg.background.ambient !== 'none' && ['bigCalendar', 'agenda', 'topBottom', 'today', 'twoWeeks', 'people', 'planner', 'widget', 'canvas'].includes(preset);
+  const ambientHere = !photoOnWholeScreen(cfg.background, preset) && cfg.background.ambient !== 'none' && ['bigCalendar', 'agenda', 'topBottom', 'today', 'twoWeeks', 'people', 'planner', 'widget', 'canvas'].includes(preset);
+  ambientWanted = ambientHere ? cfg.background.ambient : 'none';
+  const wantAmbient = !lite && ambientHere;
   const wantGLPhoto = !lite && cfg.background.enabled && cfg.background.transition === 'webgl';
   if ((wantAmbient || wantGLPhoto) && !engine && !glFailed) {
     void initGL().then(() => {
       if (engine) applyGL(wantAmbient, accent, light);
-      else glFailed = true;
+      else {
+        glFailed = true;
+        syncAmbientCss();
+      }
       photos.applyConfig();
       renderWeather(current());
     });
@@ -583,6 +613,7 @@ function applyGL(wantAmbient: boolean, accent: string, light: boolean): void {
     // the drops refract the GL photo, so only with the WebGL transition (a DOM photo would cover the canvas)
     if (wxfx) wxfx.enabled = cfg.background.enabled && fx === 'rich' && cfg.background.transition === 'webgl';
   }
+  syncAmbientCss();
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -141,6 +141,16 @@ export function isSoftwareGPU(renderer: string | null | undefined): boolean {
 }
 
 /**
+ * A WebGL renderer name that is a desktop graphics chip (ANGLE on Direct3D or Metal, Mesa drivers, the big vendors).
+ * Chrome refuses a context with failIfMajorPerformanceCaveat on some of them although WebGL runs in hardware there.
+ * The small boards (V3D, Mali) are not listed: the probe and the low-power checks decide for them.
+ */
+export function isHardwareGPU(renderer: string | null | undefined): boolean {
+  if (!renderer || isSoftwareGPU(renderer)) return false;
+  return /NVIDIA|GeForce|Quadro|Radeon|AMD|\bATI\b|Intel|Iris|UHD Graphics|HD Graphics|Apple M\d|Apple GPU|Direct3D1[01]|Metal|Mesa DRI|RADV|radeonsi|\bi915\b|nouveau/i.test(renderer);
+}
+
+/**
  * Desktop Linux on ARM (a Pi and the like) from the client hints (Chromium): `architecture` and `platform` of
  * userAgentData. Macs and Windows on ARM are fast enough, and Android is not desktop Linux.
  */

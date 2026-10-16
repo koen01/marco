@@ -5,6 +5,9 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+- The animated background is never plain black: where WebGL cannot draw it (Chrome without graphics acceleration, lite mode, no WebGL, a lost graphics context) a soft gradient of the chosen effect shows instead, and with WebGL it now fills the whole page of a Custom screen, sidebar included, also in a browser zoomed out below 100 %.
+
 ## [0.16.0] - 2026-10-16
 
 ### Added

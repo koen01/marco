@@ -2,7 +2,7 @@
 import type { DisplayConfig, Lang } from '../shared/types';
 import { makeT, normLang } from '../shared/i18n';
 import { DEFAULT_CONFIG } from './defaults';
-import { isSoftwareGPU } from './switchPlan';
+import { isHardwareGPU, isSoftwareGPU } from './switchPlan';
 
 export interface Ctx {
   cfg: DisplayConfig;
@@ -36,7 +36,10 @@ function softwareRendering(): boolean {
     const ext = gl.getExtension('WEBGL_debug_renderer_info');
     const name = String((ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) ?? '');
     gl.getExtension('WEBGL_lose_context')?.loseContext();
-    return !fast || isSoftwareGPU(name);
+    if (isSoftwareGPU(name)) return true;
+    // Chrome also refuses failIfMajorPerformanceCaveat on some desktop graphics chips that draw WebGL in hardware
+    // (its compositor in software, a blocklisted feature): a known chip by name keeps the full look
+    return !fast && !isHardwareGPU(name);
   } catch {
     return false;
   }

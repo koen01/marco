@@ -8,7 +8,7 @@ import {
   BufferAttribute, BufferGeometry, Color, CustomBlending, LinearFilter, Mesh, OneFactor, OneMinusSrcAlphaFactor, OrthographicCamera,
   PlaneGeometry, Points, Scene, ShaderMaterial, Vector2, WebGLRenderTarget, type WebGLRenderer,
 } from 'three';
-import type { GLLayer, Rect } from './engine';
+import { setRect, type GLLayer, type Rect } from './engine';
 import { FULLSCREEN_VERT, NOISE } from './noise';
 
 const AURORA = /* glsl */ `
@@ -227,13 +227,12 @@ export class AmbientLayer implements GLLayer {
       this.aurora.uniforms.uTime.value = t;
       this.aurora.uniforms.uRes.value.set(rect.w, rect.h);
       r.setScissorTest(false);
+      // the target's own viewport covers all of it (setViewport here would be scaled by the pixel ratio)
       r.setRenderTarget(this.rt);
-      r.setViewport(0, 0, w, h);
       r.render(this.scene, this.cam);
       r.setRenderTarget(null);
       r.setScissorTest(true);
-      r.setViewport(rect.x, rect.y, rect.w, rect.h);
-      r.setScissor(rect.x, rect.y, rect.w, rect.h);
+      setRect(r, rect);
     }
     this.blit.uniforms.uTex.value = this.rt.texture;
     r.render(this.blitScene, this.cam);

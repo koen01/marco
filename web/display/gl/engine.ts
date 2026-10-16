@@ -15,6 +15,17 @@ export interface GLLayer {
   readonly busy?: boolean;
 }
 
+/**
+ * Viewport and scissor on `rect` (drawing-buffer pixels, as Engine measures them). three.js multiplies both by its
+ * pixel ratio, so they are given in its units: at a ratio below 1 (a page zoomed out, a screen scaled under 100 %)
+ * the raw rect drew a smaller box, anchored at the bottom left.
+ */
+export function setRect(r: WebGLRenderer, rect: Rect): void {
+  const pr = r.getPixelRatio() || 1;
+  r.setViewport(rect.x / pr, rect.y / pr, rect.w / pr, rect.h / pr);
+  r.setScissor(rect.x / pr, rect.y / pr, rect.w / pr, rect.h / pr);
+}
+
 export class Engine {
   readonly renderer: WebGLRenderer;
   private layers: GLLayer[] = [];
@@ -181,8 +192,7 @@ export class Engine {
       const rect = this.rectOf(l);
       if (!rect) continue;
       r.setScissorTest(true);
-      r.setViewport(rect.x, rect.y, rect.w, rect.h);
-      r.setScissor(rect.x, rect.y, rect.w, rect.h);
+      setRect(r, rect);
       l.render(r, rect, time, dt);
     }
     this.frameN++;
