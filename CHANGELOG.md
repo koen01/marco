@@ -5,6 +5,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- Custom screens: the clocks and the date card have their own text colours in the *Style* tab, next to the accent
+  colour. *Time colour* paints the digits or the hands and numbers of the dial, *Date colour* the date line (on the
+  Date card the day, the month and the weekday, which keeps the accent colour when the card has one). *Automatic*
+  keeps the usual look, so saved cards do not change.
+
 ### Changed
 - A new Custom screen starts with the animated background. Copying the Left / Right design also gets it behind the
   cards, with the photo still in its wide column. Templates that are a plain colour on purpose (Bedroom, Bedside and

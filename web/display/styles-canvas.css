@@ -727,3 +727,10 @@ html.low-power.style-modern *, html.low-power.style-modern *::before, html.low-p
 #app.preset-canvas .cv-clock.cv-date-above .date, #app.preset-canvas .cv-date-above > .cv-date { order: -1; }
 /* square corners (canvas radius 'sq') */
 #app.preset-canvas .cv-card.r-sq { border-radius: 0; }
+/* "Color de la hora" and "Color de la fecha" of the clocks and the date card (props timeColor, dateColor; clock.ts
+   applyInk). The owner's choice wins over the theme's text colours; the seconds hand keeps the accent. */
+#app.preset-canvas .cv-tc :is(.clock.digital, .clock.digital .sec, .cv-flip-row, .cv-zone-time) { color: var(--cv-tc) !important; }
+#app.preset-canvas .cv-tc :is(.cv-dial, .cv-zone-dial) svg :is(.hh, .mh, .tk.big) { stroke: var(--cv-tc) !important; }
+#app.preset-canvas .cv-tc :is(.cv-dial, .cv-zone-dial) svg :is(.num, .dot) { fill: var(--cv-tc) !important; }
+#app.preset-canvas .cv-dc :is(.date, .cv-date, .cv-date-num, .cv-date-mo, .cv-date-line) { color: var(--cv-dc) !important; }
+#app.preset-canvas .cv-dc.cv-dc-wd .cv-date-wd { color: var(--cv-dc) !important; }

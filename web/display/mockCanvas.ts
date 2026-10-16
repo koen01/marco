@@ -1,6 +1,6 @@
 // Demo layouts of the Personalizado screen (?demo=1&preset=canvas). &shot=<fixture> picks one (the screenshots and
 // the welcome flow use them): starter (default), kinds, sidebar, portrait, flex, dense, home, ha, controls, features, tiles, smallest, binary, lights, data, confirm, cameras, clocks, calendars, media, html, family,
-// household, look, values, empty. Each goes through the same validation and projection as a saved screen (server/core/canvasCore.js),
+// household, look, values, ink, empty. Each goes through the same validation and projection as a saved screen (server/core/canvasCore.js),
 // so the demo shows what a server sends.
 import type { CanvasConfig, CanvasItem, DisplayCanvas, DisplayConfig, DisplayValue } from '../shared/types';
 import { CANVAS_GRID, CANVAS_KINDS, boxAllowed, canvasDefaults, defaultCanvas, defaultItemStyle, lookSize, projectCanvas, sanitizeCanvas, sizeCells } from '../../server/core/canvasCore.js';
@@ -291,6 +291,22 @@ export const CANVAS_FIXTURES: Record<string, { canvas: Partial<CanvasConfig>; it
       { kind: 'clock.flip', pos: M(8, 0, 'm') },
       { kind: 'clock.world', pos: M(0, 3, 'm'), props: { zones: [{ tz: 'America/New_York', label: 'New York' }, { tz: 'Pacific/Auckland', label: 'Auckland' }] } },
       { kind: 'date', pos: M(4, 3, 's') },
+    ],
+  },
+  // the clocks' and the date card's own text colours (Estilo: Color de la hora, Color de la fecha), next to the same
+  // cards on Automático
+  ink: {
+    canvas: { background: 'solid' },
+    items: [
+      { kind: 'clock.digital', pos: M(0, 0, 'm'), props: { timeColor: '#ffb340', dateColor: '#64d2ff' } },
+      { kind: 'clock.analog', pos: M(4, 0, 'm'), props: { face: 'numbers', seconds: false, showDate: true, timeColor: '#ff6b6b', dateColor: '#30d158' } },
+      { kind: 'clock.flip', pos: M(8, 0, 'm'), props: { showDate: true, timeColor: '#bf5af2', dateColor: '#ffd60a' } },
+      { kind: 'clock.world', pos: M(0, 3, 'm'), props: { analog: true, timeColor: '#64d2ff' } },
+      { kind: 'date', pos: M(4, 3, 's'), props: { dateColor: '#ff9f0a' } },
+      { kind: 'date', pos: M(7, 3, 's'), props: { dateColor: '#ff9f0a' }, style: { accent: '#30d158' } },
+      { kind: 'clock.digital', pos: M(0, 6, 's') },
+      { kind: 'clock.analog', pos: M(4, 6, 's'), props: { face: 'classic', seconds: false } },
+      { kind: 'date', pos: M(7, 6, 's') },
     ],
   },
   // two calendars side by side, each with its own calendars (Work, and Lucía & Mateo)

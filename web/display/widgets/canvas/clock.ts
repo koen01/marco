@@ -28,6 +28,21 @@ export function bigType(root: HTMLElement, box: AdapterBox, nominalRem: number, 
 
 const scaleOf = (env: AdapterEnv) => Number(env.item().style?.scale) || 1;
 
+const HEX = /^#[0-9a-f]{6}$/i;
+/**
+ * "Color de la hora" and "Color de la fecha" (props timeColor, dateColor; canvasCore INK_PROPS): .cv-tc and .cv-dc
+ * on the card's body with --cv-tc and --cv-dc (styles-canvas.css). None set: nothing changes, the usual look.
+ */
+function applyInk(root: HTMLElement, env: AdapterEnv): void {
+  const p = props(env);
+  for (const [k, cls, v] of [['timeColor', 'cv-tc', '--cv-tc'], ['dateColor', 'cv-dc', '--cv-dc']] as const) {
+    const c = typeof p[k] === 'string' && HEX.test(p[k]) ? (p[k] as string) : null;
+    root.classList.toggle(cls, !!c);
+    if (c) root.style.setProperty(v, c);
+    else root.style.removeProperty(v);
+  }
+}
+
 /** The largest type size of bigType for a card: larger in a box past its kind's named sizes (data-room, canvas.ts). */
 export const typeCap = (root: HTMLElement): number => (root.dataset.room !== undefined ? 4 : 2.4);
 
@@ -114,6 +129,7 @@ export function digitalClock(): CanvasAdapter {
     root.classList.toggle('cv-nodate', p.showDate === false);
     root.classList.toggle('cv-date-above', p.datePos === 'above');
     root.dataset.weight = p.weight === 'light' || p.weight === 'bold' ? p.weight : 'regular';
+    applyInk(root, env);
     clock.update(env.now());
   };
   return {
@@ -173,6 +189,7 @@ export function analogClock(): CanvasAdapter {
     }
     dateEl.hidden = !p.showDate;
     root.classList.toggle('cv-date-above', p.datePos === 'above');
+    applyInk(root, env);
     render(env.now());
   };
   const render = (t: Tick) => {
@@ -235,10 +252,12 @@ export function flipClock(): CanvasAdapter {
       root.innerHTML = '<div class="cv-flip-row"><span class="fd"></span><span class="fd"></span><span class="fc">:</span><span class="fd"></span><span class="fd"></span></div><div class="cv-date"></div>';
       digits = Array.from(root.querySelectorAll<HTMLElement>('.fd'));
       dateEl = root.querySelector('.cv-date')!;
+      applyInk(root, env);
       render(env.now(), false);
     },
     update() {
       last = '';
+      applyInk(root, env);
       render(env.now(), false);
     },
     layout(box) {
@@ -266,6 +285,7 @@ export function worldClock(): CanvasAdapter {
     const p = props(env);
     const zones: { tz: string; label: string }[] = Array.isArray(p.zones) ? p.zones : [];
     root.classList.toggle('is-analog', !!p.analog);
+    applyInk(root, env);
     root.textContent = '';
     rows = zones.slice(0, 8).map((z) => {
       const row = document.createElement('div');
@@ -367,6 +387,9 @@ export function dateCard(): CanvasAdapter {
   const render = (t: Tick, force = false) => {
     const p = props(env);
     const w = state.weather?.today;
+    applyInk(root, env);
+    // the weekday takes the date colour too, unless the card has its own accent colour (the weekday's usual colour)
+    root.classList.toggle('cv-dc-wd', !env.item().style?.accent);
     const sig = `${t.dayKey}|${p.style}|${p.weekday}|${p.isoWeek}|${p.sun}|${w?.sunrise ?? ''}|${w?.sunset ?? ''}|${ctx.lang}`;
     if (sig === key && !force) return;
     key = sig;

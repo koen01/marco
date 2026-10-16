@@ -982,6 +982,18 @@ const ROWS: [string, string, string, string, string][] = [
   ['Arriba y abajo', 'Top and bottom', 'Em cima e em baixo', 'Boven en onder', 'Top og bund'],
   ['Bordes', 'Edges', 'Margens', 'Randen', 'Kanterne'],
   ['Sin color, el de la pantalla.', 'With no colour, the screen’s own.', 'Sem cor, a do ecrã.', 'Zonder kleur die van het scherm.', 'Uden farve skærmens egen.'],
+  // the clocks' and the date card's own text colours (Estilo tab)
+  ['Color de la hora', 'Time colour', 'Cor da hora', 'Kleur van de tijd', 'Farve på klokkeslættet'],
+  ['Color de la fecha', 'Date colour', 'Cor da data', 'Kleur van de datum', 'Farve på datoen'],
+  ['Automático: el color de siempre.', 'Automatic: the usual colour.', 'Automático: a cor de sempre.', 'Automatisch: de gewone kleur.', 'Automatisk: den sædvanlige farve.'],
+  ['El día de la semana sigue con el color de acento.', 'The weekday keeps the accent colour.', 'O dia da semana fica com a cor de destaque.', 'De weekdag houdt de accentkleur.', 'Ugedagen beholder accentfarven.'],
+  [
+    'También el día de la semana, mientras la tarjeta no tenga color de acento.',
+    'The weekday too, as long as the card has no accent colour.',
+    'Também o dia da semana, enquanto o cartão não tiver cor de destaque.',
+    'Ook de weekdag, zolang de kaart geen accentkleur heeft.',
+    'Også ugedagen, så længe kortet ikke har en accentfarve.',
+  ],
   // Casa: Home Assistant cards that read states (builder fields, the live link in the Home Assistant section)
   ['Sin habitación', 'No room', 'Sem divisão', 'Geen ruimte', 'Intet rum'],
   ['No encontrada', 'Not found', 'Não encontrada', 'Niet gevonden', 'Ikke fundet'],

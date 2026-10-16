@@ -306,6 +306,20 @@ export const DATA_KIND_IDS = ['market', 'sports', 'stocks'];
 export const CHART_STYLES = ['below', 'background'];
 
 /**
+ * "Color de la hora" and "Color de la fecha" of the clocks and the date card (Estilo tab): #rrggbb, kept only when
+ * chosen, so a card on Automático (the look it always had) saves as before.
+ */
+export const INK_PROPS = { 'clock.digital': ['timeColor', 'dateColor'], 'clock.analog': ['timeColor', 'dateColor'], 'clock.flip': ['timeColor', 'dateColor'], 'clock.world': ['timeColor'], date: ['dateColor'] };
+function inkProps(c, p, x, kind) {
+  const out = {};
+  for (const k of INK_PROPS[kind]) {
+    const v = P.color(c, `${p}.${k}`, x[k]);
+    if (v) out[k] = v;
+  }
+  return out;
+}
+
+/**
  * Every kind of widget. `cat` = palette category, `sizes` = its named sizes (`def` the default; the presets of the
  * editor), `cells` = [min w, min h, max w, max h]: any box of whole cells in between is allowed too (landscape cells;
  * see cellRange for portrait), `side` = may sit in
@@ -325,6 +339,7 @@ export const CANVAS_KINDS = {
       datePos: P.oneOf(c, `${p}.datePos`, x.datePos, 'below', DATE_POS),
       dateFormat: P.oneOf(c, `${p}.dateFormat`, x.dateFormat, 'long', ['long', 'short']),
       weight: P.oneOf(c, `${p}.weight`, x.weight, 'regular', ['light', 'regular', 'bold']),
+      ...inkProps(c, p, x, 'clock.digital'),
     }),
   },
   'clock.analog': {
@@ -335,12 +350,17 @@ export const CANVAS_KINDS = {
       seconds: P.bool(c, `${p}.seconds`, x.seconds, true),
       showDate: P.bool(c, `${p}.showDate`, x.showDate, false),
       datePos: P.oneOf(c, `${p}.datePos`, x.datePos, 'below', DATE_POS),
+      ...inkProps(c, p, x, 'clock.analog'),
     }),
   },
   'clock.flip': {
     cat: 'time', sizes: ['s', 'm', 'w', 'l'], def: 'm', cells: [3, 2, 12, 6], side: true, edition: 'all', bigType: true,
     defaults: () => ({ showDate: false, datePos: 'below' }),
-    props: (c, p, x) => ({ showDate: P.bool(c, `${p}.showDate`, x.showDate, false), datePos: P.oneOf(c, `${p}.datePos`, x.datePos, 'below', DATE_POS) }),
+    props: (c, p, x) => ({
+      showDate: P.bool(c, `${p}.showDate`, x.showDate, false),
+      datePos: P.oneOf(c, `${p}.datePos`, x.datePos, 'below', DATE_POS),
+      ...inkProps(c, p, x, 'clock.flip'),
+    }),
   },
   'clock.world': {
     cat: 'time', sizes: ['s', 'm', 'w', 't'], def: 'm', cells: [3, 2, 12, 8], side: true, edition: 'all',
@@ -348,7 +368,7 @@ export const CANVAS_KINDS = {
     props: (c, p, x) => {
       let zones = P.list(c, `${p}.zones`, x.zones, 8, (z, q) => ({ tz: zoneOf(c, `${q}.tz`, z.tz, 'UTC'), label: P.str(c, `${q}.label`, z.label, '', 24).trim() }));
       if (!zones.length) zones = [{ tz: 'UTC', label: 'UTC' }];
-      return { zones, analog: P.bool(c, `${p}.analog`, x.analog, false) };
+      return { zones, analog: P.bool(c, `${p}.analog`, x.analog, false), ...inkProps(c, p, x, 'clock.world') };
     },
   },
   date: {
@@ -359,6 +379,7 @@ export const CANVAS_KINDS = {
       weekday: P.oneOf(c, `${p}.weekday`, x.weekday, 'above', DATE_POS),
       isoWeek: P.bool(c, `${p}.isoWeek`, x.isoWeek, false),
       sun: P.bool(c, `${p}.sun`, x.sun, false),
+      ...inkProps(c, p, x, 'date'),
     }),
   },
   // ---- Calendario

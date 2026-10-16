@@ -2,7 +2,7 @@
 // background, the sidebar, the default look of the cards, portrait and templates. With a widget selected it shows
 // three tabs: Contenido (its own options and its title), Tamaño (the sizes it allows, the text size) and Estilo.
 import type { CanvasConfig, CanvasGlass, CanvasItem, CanvasItemStyle, CanvasSize, GlassConfig, HaState, SideSpan } from '../../shared/types';
-import { CANVAS_KINDS, defaultItemStyle, type CanvasPick } from '../../../server/core/canvasCore.js';
+import { CANVAS_KINDS, INK_PROPS, defaultItemStyle, type CanvasPick } from '../../../server/core/canvasCore.js';
 import { normalizeGlass } from '../../shared/glass';
 import { Icon } from '../components/icons';
 import { Button, Callout, ColorPicker, Field, Segmented, Select, Slider, TextInput, ToggleRow } from '../components/ui';
@@ -547,6 +547,15 @@ function StylePanel(p: InspectorProps & { item: CanvasItem; upd: (fn: (it: Canva
   const own = st.glass ?? (st.color ? normalizeGlass(p.glass) : null);
   const putGlass = <K extends keyof CanvasGlass>(k: K, v: CanvasGlass[K]) => upd((x) => void (x.style.glass = { ...(x.style.glass ?? normalizeGlass(p.glass)), [k]: v }), `${item.id}.glass.${k}`);
   const tone = st.color ? 'custom' : own?.tint ?? 'dark';
+  // the clocks' and the date's own text colours (props; none = Automático, the look they always had)
+  const ink = INK_PROPS[item.kind] ?? [];
+  const props = item.props as Record<string, unknown>;
+  const putInk = (k: string, v: string | null) =>
+    upd((x) => {
+      const pr = x.props as Record<string, unknown>;
+      if (v) pr[k] = v;
+      else delete pr[k];
+    }, `${item.id}.ink.${k}`);
   const swatches = (none: boolean) => (
     <div class="bld-tints" role="group" aria-label={t('Color')}>
       {TINTS.map((c) => (
@@ -636,7 +645,32 @@ function StylePanel(p: InspectorProps & { item: CanvasItem; upd: (fn: (it: Canva
       <Field label={t('Color de acento')} hint={st.accent ? undefined : t('Sin color, el de la pantalla.')}>
         <ColorPicker value={st.accent} allowNone onChange={(v) => set('accent', v)} />
       </Field>
-      <Button size="sm" variant="ghost" onClick={() => upd((x) => void (x.style = { ...(defaultItemStyle() as CanvasItemStyle), title: x.style.title, icon: x.style.icon, showTitle: x.style.showTitle, scale: x.style.scale }))}>
+      {ink.map((k) => {
+        const v = typeof props[k] === 'string' ? (props[k] as string) : null;
+        // the date card's weekday takes it too, unless the card has its own accent colour
+        const hint = !v
+          ? t('Automático: el color de siempre.')
+          : item.kind === 'date'
+            ? st.accent
+              ? t('El día de la semana sigue con el color de acento.')
+              : t('También el día de la semana, mientras la tarjeta no tenga color de acento.')
+            : undefined;
+        return (
+          <Field label={k === 'timeColor' ? t('Color de la hora') : t('Color de la fecha')} hint={hint}>
+            <ColorPicker value={v} allowNone onChange={(c) => putInk(k, c)} />
+          </Field>
+        );
+      })}
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() =>
+          upd((x) => {
+            x.style = { ...(defaultItemStyle() as CanvasItemStyle), title: x.style.title, icon: x.style.icon, showTitle: x.style.showTitle, scale: x.style.scale };
+            for (const k of ink) delete (x.props as Record<string, unknown>)[k];
+          })
+        }
+      >
         {t('Restablecer estilo')}
       </Button>
     </div>

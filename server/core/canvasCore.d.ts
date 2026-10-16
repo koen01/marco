@@ -81,6 +81,8 @@ export function lookSize(kind: CanvasKind | string | CanvasKindDef, w: number, h
 export function boxOf(kind: CanvasKind | string | CanvasKindDef, w: number, h: number, orientation?: Orientation | string): { size: CanvasSize; w?: number; h?: number };
 export function boxAllowed(kind: CanvasKind | string | CanvasKindDef, w: number, h: number, orientation?: Orientation | string): boolean;
 export function canvasDefaults(kind: CanvasKind | string): Record<string, unknown>;
+/** The text colour props of the clocks and the date card ("Color de la hora", "Color de la fecha"). */
+export const INK_PROPS: Partial<Record<CanvasKind, readonly ('timeColor' | 'dateColor')[]>>;
 export function defaultItemStyle(): CanvasItemStyle;
 export function defaultCanvas(): CanvasConfig;
 export function newCanvasId(taken?: Set<string>): string;
