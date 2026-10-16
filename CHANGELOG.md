@@ -5,10 +5,107 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-16
+
+### Added
+- **Custom screens** (*Layout → Custom*, `layout.preset: canvas`): a drag and drop editor to build your own screen.
+  Pick cards from a palette (clocks, the date, every calendar view, weather, news, countdowns, messages, to-do lists,
+  photos, your widgets, family and kids cards, Home Assistant, crypto, sports and stocks), drop them on a grid,
+  resize them, give each one its own glass, colour, corners and text size, and add a sidebar on any side. Templates
+  recreate every Modern and Kids layout (or *Copy my current design*), plus new ones like Bento, Cinematic and
+  Calendar only. The editor has undo, a live preview of the real screen, a phone layout and drafts that survive a
+  closed tab. Landscape and portrait each get their own arrangement.
+- **Home Assistant cards** (self-hosted): entities, lights with brightness and colours, switches, climate with a dial,
+  blinds with their position, scenes, media players, sensors with today's curve, binary sensors, gauges, statistics,
+  charts, rooms and cameras (snapshots, or live where you allow it). Marco keeps a live connection to Home Assistant
+  from your own server and follows only the entities your screens show; the token never leaves the server and
+  screens never see entity ids. Touch controls are off until you turn them on per screen, locks, alarms, garage doors
+  and gas valves stay read-only, and anything that opens a door needs a tick in the editor and two taps.
+- **Custom HTML card** (self-hosted): your own HTML and CSS with `{{placeholders}}` for Home Assistant states, the
+  time, the weather and the next event, checked against a list of allowed tags and drawn in a sandbox with no
+  scripts and no network.
+- **Pushed values**: `POST /api/hooks/values` sends a number or a short text to a *Value* card (from a Home Assistant
+  automation, a script or anything that can call a URL). API tokens can now be limited to what they need (announce,
+  commands, privacy, doorbell, values).
+- Personalizado: *Chart style* on every card that draws a chart (Crypto, Stocks, Sensor and Chart): *Below* keeps the
+  chart under the numbers, *Background* fills the card with it edge to edge and down to the bottom edge, behind the
+  text (in a list, each coin or quote gets its own behind its row). Every chart now shares one look, the same line and
+  a fill that fades from the line's colour, so two charts on one screen match. Saved cards keep their look.
+- Personalizado: a *Calendar only* template, one month calendar over the whole screen with no clock or weather.
+- *Layout → Appearance*: *Notices under the date* turns off the pills under the date (the next event, birthdays and
+  today's check-ins and check-outs) on a screen, and the layout closes the gap (#7).
+- Personalizado: cards can now take any width and height in whole cells of the grid, between the smallest and the
+  largest that suit each kind (a narrow and tall to-do list, a news line across the whole screen, a switch two cells
+  wide and one high). Drag the corner to resize in cell steps (it shows the size and stops at what fits), use Shift
+  and the arrows, or the width and height steppers in *Size*, where the usual sizes stay as presets. *Fit the size*
+  picks the smallest larger size that should hold the content and has room. Screens you already made look the same.
+- Personalizado Home Assistant cards: the icon always sits beside the name (the Mini blind too), the name takes two
+  lines only when no state line goes under it, a card in a larger box gets slightly larger text, a light's colours
+  look dimmed while it is off, and the thermostat keeps every mode and its dial size at a large text size.
+- Personalizado: an *Entity* card can show a row of controls under it, chosen per card or picked for you by the kind
+  of entity: brightness and warm to cool light, up, stop and down and the position of a blind, the temperature and
+  the modes of a climate, opening and closing a valve, the options of a select, a number, a robot vacuum's start,
+  pause and dock, and the version of an update.
+- Personalizado: Home Assistant valves, robot vacuums, selects, numbers and updates can be picked in the cards. Gas
+  valves are only shown, and the house's water valve needs your tick in the editor first, then two taps.
+- Personalizado: a *Gauge* card (a value on a bar with green, yellow and red bands), a *Statistic* card (today's,
+  this week's or this month's total, average, lowest or highest of a sensor, from Home Assistant's statistics) and a
+  *Section* title to group the cards below it.
+- Personalizado: *Show* on every card lets it appear only while a Home Assistant entity or a pushed value is equal to,
+  different from, above or below what you write. The server decides, so a hidden card gets no data, and the editor
+  marks the cards hidden right now.
+- Personalizado: a new *Data* group in the editor. *Crypto* shows up to six coins with their price, how much they went
+  up or down and a curve over 24 hours, 7 days or 30 days, as a list or one large coin, in the currency you pick per
+  coin (euros by default). Prices come from CoinGecko.
+- Personalizado: *Sports* shows live scores with the minute, the next games and the latest results of the teams or
+  competitions you follow, with crests: LaLiga, the Premier League, the Champions League and the other main football
+  leagues and cups, plus the NBA, WNBA, NFL, NHL and MLB. Results come from ESPN, every minute while a game is on.
+- Personalizado: *Stocks* shows shares and funds on a scrolling line or as a list, with the change of the day and an
+  optional curve. It needs a free Finnhub key, which you add in the editor and which never reaches the screens.
+  Where the server has no key to offer (Marco Cloud until the service has one), the card is locked in the editor
+  and says why.
+- The server fetches all of these itself, keeps one copy for every screen, and shows the last numbers it had with how
+  old they are when a source does not answer. Screens never contact these services.
+- Personalizado: *Schedule* on every card shows it only on the days and at the times you choose, with the same time
+  slots as privacy mode. Outside them the card is not sent to the screen at all.
+- Personalizado: the editor marks every card that is not on the screen right now and says why: hidden by you, outside
+  its schedule, its condition, no room in portrait, or not available in this version.
+- Personalizado: *Export this screen* saves a screen's layout to a file, and *Import a screen* loads one, on this
+  Marco or another. The file has no calendars, people, Home Assistant entities or widgets of yours; after importing,
+  the cards that need them ask you to pick them again.
+- Personalizado: the editor bar has the screen's orientation (Automatic, Always landscape, Always portrait). It is the
+  same setting as in the screen settings. Switching to always portrait keeps the portrait layout so you can edit it.
+
 ### Security
 - Gallery photos shown on a screen in private mode are no longer kept in the browser cache. Thanks to @scootmandoo.
+- Home Assistant: Marco no longer follows redirects when it talks to Home Assistant, so the token is never sent to
+  another address. If your Home Assistant URL redirects, enter the final URL. *Test connection* with a new URL now
+  needs the token for that URL too.
+- Data cards: the server never lines up more than a few dozen calls to one source, so a burst of searches or of new
+  cards cannot hold up every screen's numbers. Coins tried in the editor's preview never push a screen's coins out of
+  the shared price call, and team crests are fetched one at a time like everything else.
 
 ### Fixed
+- The next days of the weather fit narrow screens and large text sizes (a phone, for example): the day names no longer spill over the symbols.
+- Personalizado: a Gráfica with two or more lines shows the lowest and highest value of each line, each with its
+  colour, instead of only those of the first one.
+- Personalizado: a Deportes card that follows a whole competition no longer says its name twice in the heading
+  (Champions League Champions).
+- Personalizado editor: a Sección card no longer offers a second Título field and Mostrar el título, since the
+  card is a title already.
+- Personalizado: a live camera reaches the screens at 10 pictures a second at most, always the newest one. Some
+  cameras send 60 or more a second through Home Assistant, megabytes a second that a Raspberry Pi had to download
+  and read only to skip most of them.
+- Home Assistant: while Home Assistant cannot be reached at all, the small dot on the screens' cards stays on. It
+  used to go away for a few seconds on every new attempt to reconnect, as if everything were fine again.
+- Home Assistant: a valve with "gas" in its id or name is treated as a gas valve even when Home Assistant gives it no
+  device class, so it is only shown and can never be opened or closed from a screen or with *Test*.
+- Personalizado: a card shown only while a Home Assistant entity or a pushed value matches no longer makes the
+  screens reload all their Home Assistant cards on every new reading of that entity. They hear about it only when a
+  card actually appears or goes away.
+- A `TRUST_PROXY` value the server cannot read no longer stops it with an "invalid IP address" stack trace. It now
+  says which value it read, which forms work, and when a docker-compose line like `$ { TRUST_PROXY:-}` is written
+  wrong (it should be `${TRUST_PROXY:-value}`).
 - Carousels on a Raspberry Pi now use the animation chosen for the carousel instead of a short fade. Where the short fade is still used (lite mode, reduced motion), the new screen's photo comes in with the usual crossfade again.
 
 ## [0.15.0] - 2026-10-13

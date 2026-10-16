@@ -1,4 +1,7 @@
 import type {
+  HaStatistic,
+  HookValueInfo,
+  TokenScope,
   TestWidgetResponse,
   WidgetType,
   TestPricesResponse,
@@ -36,6 +39,7 @@ import type {
   PairClaimRequest,
   PairClaimResponse,
   GeocodeResponse,
+  HaAdminActionRequest,
   PairedDevice,
   EventsPreviewRequest,
   FamilyAdminState,
@@ -56,7 +60,7 @@ import type {
   GoogleCalendarListItem,
   MicrosoftAccount,
   MicrosoftCalendarListItem,
-  HaEntity,
+  HaAdminHistory, HaEntity, HaLiveStatus, HaSlim,
   TestHomeAssistantResponse,
   WeatherKeyStatus,
   TestImmichResponse,
@@ -69,6 +73,7 @@ import type {
   UpdateSettings,
   FeedbackRequest,
   FeedbackResponse,
+  CoinSearchResult, DataPreviewRequest, DataPreviewResponse, SportsLeaguesResult, SportsTeamsResult, StocksKeyStatus, SymbolSearchResult,
 } from '../shared/types';
 import { getLang } from './i18n';
 import { apiErrorCode, apiErrorMessage, type ApiErrorCode } from './apiErrors';
@@ -216,9 +221,21 @@ export const api = {
   setPricesToken: (token: string) => request<WeatherKeyStatus & { checked?: boolean }>('PUT', '/api/admin/prices/token', { token }),
   testHomeAssistant: (url: string, token?: string) =>
     request<TestHomeAssistantResponse>('POST', '/api/admin/test/homeassistant', token ? { url, token } : { url }),
-  haEntities: (domain: 'sensor' | 'weather' | 'camera') =>
-    request<HaEntity[]>('GET', `/api/admin/homeassistant/entities?domain=${domain}`),
-  setHaToken: (token: string) => request<unknown>('PUT', '/api/admin/homeassistant/token', { token }),
+  /** Entities of one domain or several (the builder: grouped by area, with the builder attributes). */
+  haEntities: (domain: string | readonly string[]) =>
+    request<HaEntity[]>('GET', `/api/admin/homeassistant/entities?domain=${encodeURIComponent((Array.isArray(domain) ? domain : [domain]).join(','))}`),
+  haStatus: () => request<HaLiveStatus>('GET', '/api/admin/homeassistant/status'),
+  /** Slim states of up to 40 entities (the builder's preview of items not saved yet). */
+  haSlim: (entities: string[]) => request<{ conn: 'ok' | 'down'; states: Record<string, HaSlim & { at: number; st?: string }> }>('POST', '/api/admin/homeassistant/slim', { entities }),
+  /** The value of a Estadística card for the builder's preview (the screens' cache). */
+  haStatistic: (entity: string, stat: string, period: string) =>
+    request<HaStatistic>('GET', `/api/admin/homeassistant/statistic?entity=${encodeURIComponent(entity)}&stat=${encodeURIComponent(stat)}&period=${encodeURIComponent(period)}`),
+  haHistory: (entities: string[], period: string) =>
+    request<HaAdminHistory>('GET', `/api/admin/homeassistant/history?entity=${encodeURIComponent(entities.join(','))}&period=${encodeURIComponent(period)}`),
+  // the token is tied to the URL typed next to it (the server sends it nowhere else)
+  setHaToken: (token: string, url?: string) => request<unknown>('PUT', '/api/admin/homeassistant/token', url ? { token, url } : { token }),
+  /** The builder's Probar button: one control of a card on Home Assistant (the same allowlist as the screens). */
+  haAction: (body: HaAdminActionRequest) => request<{ ok: true }>('POST', '/api/admin/homeassistant/action', body),
   /** Test ring (or dismiss) with the draft settings: the screens show the camera as the webhook would. */
   doorbell: (body: DoorbellRequest) => request<DoorbellResponse>('POST', '/api/admin/doorbell', body),
   // Immich (self-hosted, features.immich): the key is write-only
@@ -294,7 +311,19 @@ export const api = {
   clearAnnouncements: () => request<{ ok: true; cleared: number }>('DELETE', '/api/admin/announcements'),
 
   tokens: () => request<ApiTokenInfo[]>('GET', '/api/admin/tokens'),
-  createToken: (name: string) => request<ApiTokenCreated>('POST', '/api/admin/tokens', { name }),
+  createToken: (name: string, scopes?: TokenScope[]) => request<ApiTokenCreated>('POST', '/api/admin/tokens', scopes ? { name, scopes } : { name }),
+  setTokenScopes: (id: string, scopes: TokenScope[]) => request<ApiTokenInfo>('PATCH', `/api/admin/tokens/${encodeURIComponent(id)}`, { scopes }),
+  /** values pushed by POST /api/hooks/values (the builder's key picker, the API page) */
+  hookValues: () => request<{ values: HookValueInfo[] }>('GET', '/api/admin/values'),
+  // data cards (market, sports, stocks): pickers, the builder's preview and the Finnhub key (server/routes/data.js)
+  dataCoins: (q: string) => request<CoinSearchResult>('GET', `/api/admin/data/coins?q=${encodeURIComponent(q)}`),
+  dataLeagues: () => request<SportsLeaguesResult>('GET', '/api/admin/data/sports/leagues'),
+  dataTeams: (league: string, q = '') => request<SportsTeamsResult>('GET', `/api/admin/data/sports/teams?league=${encodeURIComponent(league)}&q=${encodeURIComponent(q)}`),
+  dataSymbols: (q: string) => request<SymbolSearchResult>('GET', `/api/admin/data/stocks/symbols?q=${encodeURIComponent(q)}`),
+  dataPreview: (body: DataPreviewRequest) => request<DataPreviewResponse>('POST', '/api/admin/data/preview', body),
+  stocksKey: () => request<StocksKeyStatus>('GET', '/api/admin/data/stocks/key'),
+  putStocksKey: (key: string) => request<StocksKeyStatus>('PUT', '/api/admin/data/stocks/key', { key }),
+  deleteHookValue: (key: string) => request<{ ok: true }>('DELETE', `/api/admin/values/${encodeURIComponent(key)}`),
   revokeToken: (id: string) => request<{ ok: true }>('DELETE', `/api/admin/tokens/${encodeURIComponent(id)}`),
 
   backups: () => request<BackupInfo[]>('GET', '/api/admin/backups'),

@@ -423,7 +423,7 @@ export function sectionForServerPath(path: string): { screenIndex: number | null
   const m = /^screens\[(\d+)\]\.?([a-zA-Z]+)?/.exec(path);
   if (m) {
     const sec = m[2] ?? '';
-    const map: Record<string, string> = { screen: 'screen', layout: 'layout', background: 'background', message: 'message', calendar: 'calendars', datetime: 'datetime', weather: 'weather', news: 'news', todo: 'todo', countdowns: 'countdowns', alerts: 'alerts', privacy: 'screen', family: 'family', widgets: 'layout' };
+    const map: Record<string, string> = { screen: 'screen', layout: 'layout', background: 'background', message: 'message', calendar: 'calendars', datetime: 'datetime', weather: 'weather', news: 'news', todo: 'todo', countdowns: 'countdowns', alerts: 'alerts', privacy: 'screen', family: 'family', widgets: 'layout', canvas: 'layout' };
     return { screenIndex: Number(m[1]), section: map[sec] ?? 'screens' };
   }
   const top = path.split(/[.[]/)[0];

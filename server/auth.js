@@ -245,21 +245,27 @@ export function rotateSessionEpoch() {
  * upload also needs the X-Requested-With header (the admin sends it on every call): a form on another page cannot
  * set it, and a script on another origin cannot either without a CORS preflight this server never answers.
  */
+/**
+ * True when a request comes from another site: Sec-Fetch-Site (when the browser sends it, HTTPS and localhost only)
+ * is not same-origin, or a present Origin is opaque, not an allowed host name, or not this server.
+ */
+export function foreignOrigin(req) {
+  const site = req.get('sec-fetch-site');
+  if (site && site !== 'same-origin') return true;
+  const origin = req.get('origin');
+  if (origin === undefined) return false;
+  let host;
+  try { host = origin && origin !== 'null' ? new URL(origin).host : ''; } catch { host = ''; }
+  if (!host || !hostAllowed(hostnameOf(host))) return true;
+  const allowed = new Set([req.get('host'), req.get('x-forwarded-host')].filter(Boolean));
+  if (process.env.PUBLIC_URL) { try { allowed.add(new URL(process.env.PUBLIC_URL).host); } catch { /* ignore */ } }
+  return !allowed.has(host);
+}
+
 export function csrfGuard({ multipartPaths = [] } = {}) {
   return (req, res, next) => {
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-    // Sec-Fetch-Site, when the browser sends it (HTTPS and localhost only), must be same-origin.
-    const site = req.get('sec-fetch-site');
-    if (site && site !== 'same-origin') return res.status(403).json({ error: 'bad origin' });
-    const origin = req.get('origin');
-    if (origin !== undefined) {
-      let host;
-      try { host = origin && origin !== 'null' ? new URL(origin).host : ''; } catch { host = ''; }
-      if (!host || !hostAllowed(hostnameOf(host))) return res.status(403).json({ error: 'bad origin' });
-      const allowed = new Set([req.get('host'), req.get('x-forwarded-host')].filter(Boolean));
-      if (process.env.PUBLIC_URL) { try { allowed.add(new URL(process.env.PUBLIC_URL).host); } catch { /* ignore */ } }
-      if (!allowed.has(host)) return res.status(403).json({ error: 'bad origin' });
-    }
+    if (foreignOrigin(req)) return res.status(403).json({ error: 'bad origin' });
     const marked = Boolean(req.get('x-requested-with'));
     if (req.method === 'DELETE') return next();
     const ct = (req.get('content-type') || '').toLowerCase();

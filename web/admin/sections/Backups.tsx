@@ -45,6 +45,10 @@ export function importNoteText(n: ImportNote): string {
       return t('Widgets que no se importan porque su dirección no empieza por https://: {list}.', { list });
     case 'widgetRefresh':
       return t('Se actualizarán cada 30 segundos, el mínimo aquí: {list}.', { list });
+    case 'haWidgets':
+      return t('Las tarjetas de Home Assistant y las cámaras de las pantallas Personalizado no se importan: Marco Cloud no puede conectarse a tu red de casa. Pantallas: {list}.', { list });
+    case 'customWidgets':
+      return t('Las tarjetas con HTML propio no se importan, aquí no están disponibles. Pantallas: {list}.', { list });
     default:
       return list;
   }

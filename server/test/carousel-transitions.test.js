@@ -9,7 +9,7 @@ import { carouselBlock, CAROUSEL_RANDOM_POOL, CAROUSEL_SPEEDS, CAROUSEL_TRANSITI
 import { loadWebModules } from './webModules.js';
 
 const [plan, sw, admin] = await loadWebModules('/web/display/switchPlan.ts', '/web/display/screenSwitch.ts', '/web/admin/sections/Carousels.tsx');
-const { randomPick, planSwitch, switchNumber, isLowPower, SHORT_FADE_MS } = plan;
+const { randomPick, planSwitch, switchNumber, isLowPower, isArmLinuxUA, isLowPowerGPU, isArmDesktop, SHORT_FADE_MS } = plan;
 
 function config(carousels) {
   const c = defaultConfig();
@@ -111,4 +111,18 @@ test('admin "Probar": the preview address carries the animation chosen now', () 
   const { tryUrl } = admin;
   assert.equal(tryUrl('/?screen=loop&preview=1', { transition: 'wipe', transitionSpeed: 'slow' }), '/?screen=loop&preview=1&try=1&tr=wipe&trSpeed=slow');
   assert.equal(tryUrl('https://d.example/d/abc', { transition: 'random' }), 'https://d.example/d/abc?try=1&tr=random&trSpeed=normal');
+});
+
+test('Personalizado low-power look: the Pi by its user agent, GPU and client hints (switches are not affected)', () => {
+  assert.equal(isArmLinuxUA('Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'), true);
+  assert.equal(isArmLinuxUA('Mozilla/5.0 (X11; Linux armv7l) AppleWebKit/537.36 Chrome/120.0 Safari/537.36'), true);
+  assert.equal(isArmLinuxUA('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36'), false);
+  assert.equal(isArmLinuxUA('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36 aarch64'), false);
+  assert.equal(isLowPowerGPU('ANGLE (Broadcom, V3D 7.1.7, OpenGL ES 3.1)'), true);
+  assert.equal(isLowPowerGPU('Mali-G52'), true);
+  assert.equal(isLowPowerGPU('ANGLE (Intel, Mesa Intel(R) UHD Graphics 620, OpenGL 4.6)'), false);
+  assert.equal(isLowPowerGPU(''), false);
+  assert.equal(isArmDesktop('arm', 'Linux', false), true);
+  assert.equal(isArmDesktop('arm', 'macOS', false), false, 'Apple silicon is fast enough');
+  assert.equal(isArmDesktop('arm', 'Android', true), false);
 });

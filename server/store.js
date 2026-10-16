@@ -31,6 +31,7 @@ export function initStore(dataDir = process.env.DATA_DIR || path.join(ROOT, 'dat
   paths.displays = path.join(paths.data, 'displays.json'); // known displays registry
   paths.privacy = path.join(paths.data, 'privacy.json'); // privacy mode state per screen (server/privacy.js)
   paths.family = path.join(paths.data, 'family.json'); // routines done, rewards redeemed, stars (server/family.js)
+  paths.values = path.join(paths.data, 'values.json'); // values pushed by POST /api/hooks/values (server/values.js)
   migratedOnLoad = null;
   for (const d of [paths.data, paths.photos, paths.cache, paths.backups]) fs.mkdirSync(d, { recursive: true });
   config = loadConfig();
@@ -164,6 +165,7 @@ function loadSecrets() {
   s.weather ??= {}; // { apiKey } of a weather source that needs one (server/weather.js)
   s.immich ??= {}; // { apiKey } of the Immich server (server/immich.js)
   s.prices ??= {}; // { entsoeToken } for the electricity price widget (server/prices.js)
+  s.data ??= {}; // { stocksKey } (Finnhub) for the stocks card (server/dataFeeds.js)
   if (!Array.isArray(s.apiTokens)) s.apiTokens = []; // webhook tokens (hashed), see docs/ARCHITECTURE.md
   if (!s.sessionSecret) s.sessionSecret = crypto.randomBytes(32).toString('hex');
   writeFileAtomic(paths.secrets, JSON.stringify(s, null, 2), 0o600);
@@ -200,6 +202,7 @@ export function saveConfig(input, { reason = 'server', req = null, backup = true
   writeFileAtomic(paths.config, JSON.stringify(value, null, 2));
   const prev = config;
   config = value;
+  keepHaTokenOnItsUrl(prev, value);
   events.emit('config', config, prev, { reason, req });
   return { ok: true, errors: [], config };
 }
@@ -209,6 +212,18 @@ export function updateConfig(fn, opts = {}) {
   const next = structuredClone(config);
   fn(next);
   return saveConfig(next, opts);
+}
+
+const haUrl = (c) => String(c?.homeassistant?.url || '').trim().replace(/\/+$/, '');
+
+/**
+ * The Home Assistant URL changed: a stored token saved before tokens were tied to a URL is tied to the old one now,
+ * so it is never sent to the new URL (homeassistant.js tokenForOtherUrl) until the owner saves it again for it.
+ */
+function keepHaTokenOnItsUrl(prev, next) {
+  const sec = secrets?.homeassistant;
+  if (!prev || !sec?.token || typeof sec.url === 'string' || haUrl(prev) === haUrl(next)) return;
+  updateSecrets((s) => { s.homeassistant.url = haUrl(prev); });
 }
 
 export function updateSecrets(fn) {

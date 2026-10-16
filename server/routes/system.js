@@ -147,10 +147,16 @@ export function systemRouter({ version = getServerVersion() } = {}) {
     if (b.includeSecrets === true && parsed.secrets) {
       const s = sanitizeImportedSecrets(parsed.secrets);
       updateSecrets((x) => {
-        if (s.haToken !== undefined) { x.homeassistant.token = s.haToken; applied.push('homeassistant'); }
+        if (s.haToken !== undefined) {
+          // the token of the file goes with the URL of the file (just saved above), never with another one
+          x.homeassistant.token = s.haToken;
+          x.homeassistant.url = String(getConfig().homeassistant?.url || '').trim().replace(/\/+$/, '');
+          applied.push('homeassistant');
+        }
         if (s.weatherKey !== undefined) { x.weather = { ...(x.weather || {}), apiKey: s.weatherKey }; applied.push('weather'); }
         if (s.immichKey !== undefined) { x.immich = { ...(x.immich || {}), apiKey: s.immichKey }; applied.push('immich'); }
         if (s.entsoeToken !== undefined) { x.prices = { ...(x.prices || {}), entsoeToken: s.entsoeToken }; applied.push('prices'); }
+        if (s.stocksKey !== undefined) { x.data = { ...(x.data || {}), stocksKey: s.stocksKey }; applied.push('data'); }
         if (s.googleAccounts) { x.google.accounts = s.googleAccounts; applied.push('google'); }
         if (s.microsoftAccounts) { x.microsoft = { accounts: s.microsoftAccounts }; applied.push('microsoft'); }
         if (s.apiTokens) { x.apiTokens = s.apiTokens; applied.push('apiTokens'); }

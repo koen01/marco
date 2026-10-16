@@ -19,6 +19,7 @@ export const ACTIVITY_GROUPS: { value: string; label: string; icon: IconName }[]
   { value: 'display', label: 'Pantallas', icon: 'monitor' },
   { value: 'privacy', label: 'Modo privado', icon: 'lock' },
   { value: 'family', label: 'Familia', icon: 'star' },
+  { value: 'ha', label: 'Home Assistant', icon: 'home' },
   { value: 'google', label: 'Google', icon: 'google' },
 ];
 
@@ -105,10 +106,12 @@ export function describeActivity(e: ActivityEntry): { icon: IconName; text: stri
       return { icon: 'key', text: t('Token de API creado: {name}', { name: q(d.name) }) };
     case 'token.revoked':
       return { icon: 'trash', text: t('Token de API revocado: {name}', { name: q(d.name) }) };
+    case 'token.scopes':
+      return { icon: 'key', text: t('Permisos del token {name} cambiados', { name: q(d.name) }) };
     case 'token.used':
       return { icon: 'zap', text: t('Webhook usado: {endpoint}', { endpoint: str(d.endpoint ?? d.path ?? '') }) };
     case 'token.rejected':
-      return { icon: 'alert', text: t('Webhook rechazado (token no válido)') };
+      return { icon: 'alert', text: d.reason === 'scope' ? t('Webhook rechazado (el token no tiene permiso para {endpoint})', { endpoint: str(d.endpoint ?? '') }) : t('Webhook rechazado (token no válido)') };
     case 'display.connected':
       return { icon: 'wifi', text: t('Pantalla conectada: {screen}', { screen: str(d.screenName ?? d.screen ?? d.slug ?? d.clientId ?? '') }) };
     case 'privacy.changed': {
@@ -178,6 +181,13 @@ export function describeActivity(e: ActivityEntry): { icon: IconName; text: stri
       };
     case 'family.key_rejected':
       return { icon: 'alert', text: d.reason === 'rate_limited' ? t('Demasiados intentos con un enlace familiar no válido') : t('Enlace familiar no válido') };
+    case 'ha.action': {
+      const via = d.via === 'admin' ? t('desde el editor') : t('tocando la pantalla {screen}', { screen: str(d.screen) });
+      return {
+        icon: 'home',
+        text: t('Home Assistant: {service} en {entity}', { service: str(d.service), entity: str(d.entity) }) + ` · ${via}` + (d.flagged ? ` · ${t('parece una puerta')}` : ''),
+      };
+    }
     case 'activity.cleared':
       return { icon: 'trash', text: t('Registro de actividad vaciado') };
     default:

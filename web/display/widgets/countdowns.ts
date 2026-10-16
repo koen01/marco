@@ -1,7 +1,7 @@
 // Countdown chips (F4): "🎄 Navidad · Faltan 12 días", "¡Mañana!", "¡Hoy!".
 // Rendered into the side panel card and into a horizontal strip used by layouts without a side-mid area
 // (portrait, topBottom). `days` is always recomputed locally from `date`, so midnight needs no refetch.
-import type { CountdownItem, CountdownsResponse } from '../../shared/types';
+import type { CountdownItem, CountdownsResponse, DisplayConfig } from '../../shared/types';
 import { diffDays } from '../../shared/i18n';
 import { chipColors } from '../color';
 import { ctx } from '../ctx';
@@ -42,7 +42,12 @@ function whenHtml(days: number): string {
 }
 
 export class Countdowns {
-  constructor(private card: HTMLElement, private strip: HTMLElement) {
+  /** The settings these chips read (the screen's, or a canvas item's merged over them). */
+  private readonly cfg: () => DisplayConfig;
+
+  /** `opts.cfg`: where the settings come from (default: the screen's, ctx.cfg). */
+  constructor(private card: HTMLElement, private strip: HTMLElement, opts: { cfg?: () => DisplayConfig } = {}) {
+    this.cfg = opts.cfg ?? (() => ctx.cfg);
     card.classList.add('cd-card');
     strip.classList.add('cd-strip');
   }
@@ -52,7 +57,8 @@ export class Countdowns {
    *   a same-day birthday chip would only repeat them.
    */
   render(data: CountdownsResponse | null, today: string, shownToday: Set<string> = new Set()): void {
-    const cfg = ctx.cfg.countdowns ?? { enabled: true, max: 4 };
+    const screenCfg = this.cfg();
+    const cfg = screenCfg.countdowns ?? { enabled: true, max: 4 };
     const filtered = data
       ? { ...data, items: data.items.filter((it) => !(it.origin === 'birthday' && it.date === today && shownToday.has(title(it)))) }
       : null;
@@ -62,7 +68,7 @@ export class Countdowns {
     this.strip.style.display = show ? '' : 'none';
     const specs = (variant: 'c' | 's'): Spec[] =>
       list.map(({ item, days }) => {
-        const col = chipColors(item.color || ctx.cfg.screen.accent);
+        const col = chipColors(item.color || screenCfg.screen.accent);
         const cls = ['cd', days === 0 ? 'is-today' : '', days === 1 ? 'is-tomorrow' : '', `o-${item.origin}`].filter(Boolean).join(' ');
         return {
           key: `${variant}${item.id}|${item.date}`,

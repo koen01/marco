@@ -2411,6 +2411,38 @@ h1 .scope {
 .slug-code {
   margin-right: 4px;
 }
+/* "Conectar desde Home Assistant": one row per key */
+.api-values__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 0.6fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+.api-values__row .field {
+  margin: 0;
+}
+.api-values__row > .icon-btn {
+  margin-bottom: 6px;
+}
+@media (max-width: 720px) {
+  /* key and entity on one line, how it is sent, the unit and the remove button on the next */
+  .api-values__row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+  .api-values__row > :nth-child(2) {
+    grid-column: span 2;
+  }
+  .api-values__row + .api-values__row {
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+}
+.api-values__key {
+  white-space: nowrap;
+}
+.api-scopes {
+  gap: 2px;
+}
 
 /* ---------------------------------------------------------------- backups / import */
 .dropzone--sm {
@@ -4719,6 +4751,27 @@ h1 .scope {
   margin-top: 14px;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
+/* four styles (with Personalizado): one row of four when there is room, else two by two, else one column */
+#layout-style:has(.style-grid--4) {
+  container-type: inline-size;
+}
+.preset-grid.style-grid.style-grid--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@container (max-width: 640px) {
+  .preset-grid.style-grid.style-grid--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width: 360px) {
+  .preset-grid.style-grid.style-grid--4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* four names do not fit in the switch on a phone; the cards right below make the same choice */
+  .style-field--4 {
+    display: none;
+  }
+}
 
 /* ---------------------------------------------------------------- glass options (Diseño page, Modern style) */
 .glass-set {
@@ -5773,3 +5826,44 @@ button.immich-album:hover {
 .card.is-previewed { box-shadow: var(--shadow), 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); }
 /* a narrow sheet: "Pantalla completa" goes on two lines instead of being cut */
 .wpv-opts .seg button { padding-inline: 8px; white-space: normal; text-align: center; line-height: 1.15; }
+
+/* ---------------------------------------------------------------- Personalizado card (Diseño page) */
+.canvas-card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.canvas-card__thumb {
+  flex: none;
+  width: min(260px, 100%);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+  line-height: 0;
+}
+.canvas-card__thumb:hover,
+.canvas-card__thumb:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+.canvas-card__thumb .cv-thumb {
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+}
+.canvas-card__text {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+.canvas-card__text p {
+  margin: 0;
+  color: var(--text-2);
+}

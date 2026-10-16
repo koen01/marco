@@ -52,7 +52,8 @@ El único tráfico saliente va a los calendarios, al tiempo y a las fuentes de n
 > DAKboard es una marca registrada de su propietario.
 
 **Contenido:** [Funciones](#funciones) · [Cómo funciona](#cómo-funciona) · [Instalación](#instalación) ·
-[Pruébalo](#pruébalo-en-un-minuto) · [Kiosco con Raspberry Pi](#kiosco-con-raspberry-pi) ·
+[Pruébalo](#pruébalo-en-un-minuto) · [Pantallas personalizadas](#pantallas-personalizadas) · [Home Assistant](#home-assistant) ·
+[Kiosco con Raspberry Pi](#kiosco-con-raspberry-pi) ·
 [Google Calendar](#conectar-google-calendar) · [Otras integraciones](#otras-integraciones) · [Fotos](#fotos) ·
 [Pantallas, avisos y API](#varias-pantallas-avisos-y-la-api) · [Configuración](#referencia-de-configuración) ·
 [Seguridad](#seguridad) · [Desarrollo](#desarrollo)
@@ -80,6 +81,11 @@ El único tráfico saliente va a los calendarios, al tiempo y a las fuentes de n
 **Moderno o Clásico, por pantalla.** Moderno es el de serie; Clásico mantiene el aspecto original:
 
 ![La misma pantalla con el estilo Moderno (izquierda) y el Clásico (derecha)](docs/screenshots/display-modern-vs-classic.webp)
+
+**O móntala tú.** Las pantallas *Personalizadas* ponen las tarjetas que quieras, del tamaño que quieras y donde
+quieras: el calendario, las rutinas de la familia, las luces, la calefacción y las persianas de Home Assistant, cripto,
+deportes y bolsa. Varias pantallas pueden turnarse en una tele con un carrusel. Mira
+[Pantallas personalizadas](#pantallas-personalizadas).
 
 **Opciones de cristal** (estilo Moderno): cristal automático, transparente o tintado, con tono oscuro, claro o del
 color de la foto, transparencia, desenfoque y borde de luz:
@@ -193,7 +199,7 @@ color de la foto, transparencia, desenfoque y borde de luz:
 | ![Paleta de comandos buscando el modo noche](docs/screenshots/admin-home-palette.webp) | ![Editor de eventos locales](docs/screenshots/admin-local-edit.webp) | ![Diálogo de conflicto al subir una foto con el mismo nombre](docs/screenshots/admin-photos-conflict.webp) |
 | ![Pantallas: un perfil por habitación](docs/screenshots/admin-screens.webp) | ![Página de avisos: enviar un aviso al momento](docs/screenshots/admin-alerts.webp) | ![Registro de actividad con filtros](docs/screenshots/admin-activity.webp) |
 | ![Copias de seguridad: exportar, importar y restaurar](docs/screenshots/admin-backups.webp) | ![Cuentas atrás: fechas manuales y automáticas](docs/screenshots/admin-countdowns.webp) | ![Reglas de iconos con probador en vivo](docs/screenshots/admin-icons.webp) |
-| ![Página de diseño: estilo Moderno o Clásico, cristal y vista previa de la pantalla](docs/screenshots/admin-layout.webp) | ![Lista de eventos locales](docs/screenshots/admin-local.webp) | ![Página de inicio de sesión](docs/screenshots/admin-login.webp) |
+| ![Página de diseño: estilo Moderno, Clásico, Niños o Personalizado, el aspecto y la vista previa de la pantalla](docs/screenshots/admin-layout.webp) | ![Lista de eventos locales](docs/screenshots/admin-local.webp) | ![Página de inicio de sesión](docs/screenshots/admin-login.webp) |
 
 | | |
 |---|---|
@@ -511,7 +517,7 @@ carpeta `data/` real nunca se toca.
 móvil, los diseños Hoy y tablero, el marco de fotos, los estilos Clásico y cristal, los efectos del tiempo, una
 pantalla vertical, el panel (diseños, calendarios, galería) y el reloj tenue de noche para el dormitorio.
 
-[![Vídeo de demostración: la pantalla del salón en estilo Moderno con el calendario del mes, el tiempo y los próximos eventos](docs/media/poster.webp)](https://github.com/mr-reb00t/marco/releases/download/media/marco-demo.mp4)
+[![Vídeo de demostración: una pantalla personalizada con tarjetas de Home Assistant (termostato, luces, persiana, cámara y gráfica de energía), el editor de arrastrar y soltar y las pantallas de familia, datos y calendario](docs/media/poster.webp)](https://github.com/mr-reb00t/marco/releases/download/media/marco-demo.mp4)
 
 ## Un planificador para una familia con muchas citas
 
@@ -589,6 +595,109 @@ Las fotos de perfil se guardan en `data/avatars` y solo llegan a la página fami
 pantallas que muestran a esa persona. Una pantalla en modo privado sigue con el emoji. Al exportar se incluyen las
 fotos. Una foto que cambias o quitas, o la de alguien que borras, se elimina una semana después, así que restaurar una
 copia reciente la recupera.
+
+## Pantallas personalizadas
+
+*Diseño → Personalizado* te deja montar la pantalla a tu gusto. Elige una plantilla (o *Copiar mi diseño actual* para
+partir del que ya tienes, o *Solo calendario* para un calendario grande) y arrastra tarjetas desde la paleta a una
+cuadrícula de 12×8 (8×12 en vertical): relojes, el mes, la semana, la agenda, el tiempo, fotos, cuentas atrás, las
+tarjetas de la familia, tus aparatos de Home Assistant, cripto, deportes y bolsa, un valor que envías desde donde
+quieras o un poco de HTML propio.
+
+El tamaño es libre: una tarjeta puede tener cualquier ancho y alto en casillas enteras, desde una pieza pequeña hasta
+la pantalla entera, dentro de lo que cada tipo de tarjeta muestra bien. Tira de la esquina para cambiarlo; una
+etiqueta enseña las casillas mientras arrastras, y las tarjetas nunca se pisan. Ajusta el contenido, el tamaño y el
+aspecto (cristal, un color sólido o sin tarjeta) en el panel de la derecha. *Vista previa* enseña la pantalla real
+antes de guardar, y *Cancelar* la deja como estaba.
+
+![Pantalla personalizada con Home Assistant por habitaciones: luces, termostato, persiana, cámara, puerta, música, una gráfica de energía y sensores](docs/screenshots/display-custom-home.webp)
+
+| | |
+|---|---|
+| ![Pantalla de familia: la rutina de cada niño con estrellas, premios, cuentas atrás, los menús de la semana, tareas y cumpleaños](docs/screenshots/display-custom-family.webp) | ![Pantalla de datos: la hora, un titular, el tiempo, Bitcoin y Ethereum en tarjetas grandes con su gráfica de 30 días de fondo, resultados en directo de la Premier League y la NBA, una lista de bolsa y cuatro monedas](docs/screenshots/display-custom-data.webp) |
+| ![Pantalla Bento: tarjetas de muchos tamaños, un reloj de agujas, una foto, la calefacción, una lista de tareas y música](docs/screenshots/display-custom-bento.webp) | ![Pantalla Cinemático: un reloj grande sobre la foto con el tiempo, lo próximo y la música que suena](docs/screenshots/display-custom-cinematic.webp) |
+| ![Pantalla clara por la mañana: el reloj, el tiempo, la semana, las tareas, la calefacción, una persiana y dos luces](docs/screenshots/display-custom-light.webp) | ![Pantalla de pared para el día a día: una barra con el reloj y el tiempo de la semana, el mes, hoy y mañana, lo próximo y una nota](docs/screenshots/display-custom-everyday.webp) |
+
+El editor:
+
+| | |
+|---|---|
+| ![Plantillas: copiar el diseño actual, plantillas para empezar (entre ellas Solo calendario) y una por cada diseño de siempre](docs/screenshots/admin-builder-templates.webp) | ![La paleta: tarjetas agrupadas por tipo, aquí las de la familia y el grupo Datos con cripto, deportes y bolsa](docs/screenshots/admin-builder-palette.webp) |
+| ![Arrastrando la tarjeta de cuentas atrás desde la paleta: se iluminan las casillas libres donde caerá](docs/screenshots/admin-builder-drag.webp) | ![Cambiando el tamaño de una tarjeta con la esquina: su tamaño actual y el nuevo en casillas](docs/screenshots/admin-builder-resize.webp) |
+| ![Pestaña Estilo: como el resto, cristal, sólida o sin tarjeta, un color de tarjeta, esquinas y color de acento](docs/screenshots/admin-builder-inspector-style.webp) | ![Pestaña Tamaño: tamaños con nombre, ancho y alto en casillas y el tamaño del texto](docs/screenshots/admin-builder-inspector-size.webp) |
+
+Conviene saber:
+
+- Cada tarjeta puede salir solo cuando algo se cumple (un estado de Home Assistant o un valor que envías) o solo a
+  ciertas horas, y se puede ocultar sin borrarla. El editor indica por qué está oculta ahora.
+- Cada tarjeta de calendario elige cuáles de los calendarios de la pantalla muestra, así que una pantalla puede
+  tener el calendario del cole a la izquierda y el de la familia a la derecha.
+- Horizontal y vertical: la vista vertical se saca de la horizontal hasta que la cambias tú.
+- *Exportar esta pantalla* guarda el diseño en un archivo sin nada personal (ni calendarios, ni personas, ni
+  entidades, ni fotos); al importarlo los vuelves a elegir.
+- Los **carruseles** ponen varias pantallas en bucle en la misma tele, cada una el tiempo que elijas y con una
+  animación entre ellas (*Sistema → Carruseles*). La pantalla de casa, la mañana de la familia y la de datos pueden
+  turnarse en una misma pared; todas las teles del mismo carrusel cambian a la vez.
+- Personalizado es un diseño Moderno. Moderno, Clásico, Niños y sus diseños siguen exactamente igual.
+
+<img src="docs/screenshots/display-custom-portrait.webp" width="280" align="right" alt="Pantalla personalizada en vertical: una tablet de cocina con el reloj, el tiempo, los menús de hoy, la lista de la compra, hoy, un temporizador del horno y dos luces">
+
+### Tarjetas de datos
+
+El grupo *Datos* de la paleta tiene tres tarjetas. Tu servidor Marco pide los números, los guarda un rato y los
+comparte con todas las pantallas; una pantalla nunca habla con estos servicios.
+
+| Tarjeta | Fuente | Clave |
+|---|---|---|
+| **Cripto:** de 1 a 6 monedas con precio, variación y curva de 24 h, 7 o 30 días, en lista o una grande | API pública de [CoinGecko](https://www.coingecko.com/) | ninguna |
+| **Deportes:** resultados en directo, próximos partidos y últimos resultados de hasta cuatro equipos o competiciones, con escudos | API pública del sitio de ESPN (no oficial ni documentada, puede cambiar sin aviso) | ninguna |
+| **Bolsa:** hasta 12 valores en una cinta que se desplaza o en lista | [Finnhub](https://finnhub.io/) | la tuya, gratis: pégala en los ajustes de la tarjeta Bolsa en el editor |
+
+Los precios se piden como mucho cada par de minutos (los resultados, cada minuto mientras hay partido), y si una
+llamada falla se quedan los últimos números y se indica su antigüedad.
+
+![El grupo Datos de la paleta y los ajustes de la tarjeta Cripto: lista o una grande, el periodo, la curva y el estilo de la gráfica, aquí de fondo](docs/screenshots/admin-builder-data.webp)
+
+**Valores desde cualquier sitio.** La tarjeta *Valor* muestra un número o un texto corto que envías a Marco: lo que
+producen las placas solares, cómo va la lavadora, qué cubo toca. Envíalo con un token de API con el permiso `values`:
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"values":[{"key":"solar.today","value":12.6,"unit":"kWh"},{"key":"washer","value":"Hecho"}]}' \
+  http://homeserver.lan:3000/api/hooks/values
+```
+
+Una pantalla solo recibe las claves que muestran sus tarjetas. Detalles, límites y una automatización de Home
+Assistant en [docs/API.md](docs/API.md#pushed-values-valor).
+
+<br clear="right">
+
+## Home Assistant
+
+Marco se conecta a tu Home Assistant dentro de tu red. En *Admin → Home Assistant* pon su dirección local (por
+ejemplo `http://homeassistant.local:8123`) y un token de acceso de larga duración (*tu perfil → Seguridad → Tokens de
+acceso de larga duración*), y pulsa *Probar conexión*.
+
+| | |
+|---|---|
+| ![Página de Home Assistant: dirección local, el token guardado y las entidades del tiempo y de interior](docs/screenshots/admin-homeassistant.webp) | ![Una tarjeta de luz de Home Assistant elegida en el editor, con su entidad, qué mostrar y las opciones de toque](docs/screenshots/admin-builder-homeassistant.webp) |
+
+- **Solo lo que sale en tus pantallas.** El servidor sigue únicamente las entidades que muestran tus pantallas
+  personalizadas, por una sola conexión WebSocket, y nunca descarga el estado de toda la casa. Las pantallas reciben
+  una copia mínima de esos estados con nombres inventados, nunca los ids de las entidades.
+- **El token no sale del servidor.** Se guarda en `data/secrets.json`, solo se envía a la dirección para la que se
+  guardó y nunca llega a una pantalla ni vuelve al navegador.
+- **Solo lectura de entrada.** Las tarjetas de luces, clima, persianas, enchufes, escenas, música, sensores, gráficas,
+  indicadores y estadísticas muestran su estado. Para manejarlas tocando la pantalla, activa *Permitir tocar en la
+  pantalla* en *Página*, dentro del editor; cada tarjeta se puede dejar fuera y las delicadas pueden pedir dos toques.
+  Cerraduras, alarmas, válvulas de gas, puertas de garaje y cancelas solo se muestran.
+- **Cámaras:** una imagen nueva cada pocos segundos, o en directo, a través del propio Home Assistant, y por defecto
+  solo para pantallas de la red de casa.
+- Home Assistant también puede enviar a Marco **avisos**, el **timbre** con la cámara y **valores**; mira
+  [Tokens de API y webhooks](#tokens-de-api-y-webhooks).
+
+Marco Cloud no puede llegar a un Home Assistant dentro de tu casa, así que estas tarjetas son para servidores propios.
+La tarjeta *Valor* y los webhooks funcionan en los dos.
 
 ## Enlaces privados y vinculación de pantallas
 
@@ -1124,6 +1233,7 @@ Haz copia de seguridad de toda la carpeta (o usa *Exportar*) para conservarlo to
 | `?preset=…` `?view=month\|agenda\|week` `?theme=dark\|light` `?style=classic\|modern` `?side=left\|right` `?clock=analog` | Fuerza opciones de diseño (útil para hacer pruebas) |
 | `?preset=today\|people\|photoFrame\|twoWeeks\|board\|bedside` `?people=<ids de calendario, separados por comas>` `?corner=tl\|tr\|bl\|br` | Prueba los diseños nuevos, las columnas de *Por persona* y la esquina de *Marco de fotos* |
 | `?glass=clear\|tinted\|auto` `?glassOpacity=0..1` `?glassBlur=0..40` `?glassTint=dark\|light\|photo` `?glassEdge=0\|1` | Fuerza las opciones de cristal del estilo Moderno |
+| `?highlights=0\|1` | Oculta (o muestra) los avisos bajo la fecha: el próximo evento, los cumpleaños y las entradas y salidas de hoy (*Diseño → Apariencia*) |
 | `?wxfx=off\|simple\|rich` | Fuerza el efecto del tiempo; con `?demo=1`, `?wx=rain\|drizzle\|thunder\|snow\|clear` (o un código WMO, p. ej. `45` para niebla) fuerza el tiempo |
 | `?ambient=aurora\|particles\|none` | Fuerza el fondo ambiental detrás del calendario |
 | `?demo=1&pair=1` `?demo=1&pair=invalid` `&pairLen=6\|8` | Muestra la pantalla de vinculación o la de “enlace ya no válido” con un código de ejemplo (sin servidor) |

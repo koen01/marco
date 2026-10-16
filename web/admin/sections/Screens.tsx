@@ -17,7 +17,7 @@ import { pruneCarousels } from '../../shared/carousels';
 import { withPollNote } from '../liveNote';
 import type { SectionProps } from './common';
 
-const PRESET_LABEL: Record<string, string> = { bigCalendar: 'Calendario grande', leftRight: 'Izquierda / derecha', topBottom: 'Arriba / abajo', bigTime: 'Reloj grande', agenda: 'Agenda', today: 'Hoy', people: 'Por persona', photoFrame: 'Marco de fotos', twoWeeks: 'Dos semanas', board: 'Tablero', bedside: 'Mesilla', planner: 'Planificador', widget: 'Widget', kidsRoutines: 'Rutinas', kidsFamily: 'Familia', kidsMeals: 'Semana de comidas' };
+const PRESET_LABEL: Record<string, string> = { bigCalendar: 'Calendario grande', leftRight: 'Izquierda / derecha', topBottom: 'Arriba / abajo', bigTime: 'Reloj grande', agenda: 'Agenda', today: 'Hoy', people: 'Por persona', photoFrame: 'Marco de fotos', twoWeeks: 'Dos semanas', board: 'Tablero', bedside: 'Mesilla', planner: 'Planificador', widget: 'Widget', kidsRoutines: 'Rutinas', kidsFamily: 'Familia', kidsMeals: 'Semana de comidas', canvas: 'Personalizado' };
 
 function uniqueSlug(base: string, taken: Set<string>) {
   let s = slugify(base) || 'pantalla';

@@ -8,8 +8,10 @@ import type {
 } from '../shared/types';
 import { DEFAULT_ICON_RULES, resolveEventStyle } from '../shared/emoji';
 import { addDays, dateKeyInTz, keyToUTC, normLang, pad2, startOfWeek, zonedParts } from '../shared/i18n';
-import { DEMO_NEWS, DEMO_NL_DA } from './mock-text';
+import { DEMO_FAMILY_EN, DEMO_NEWS, DEMO_NL_DA } from './mock-text';
 import { DEFAULT_CONFIG, deepMerge } from './defaults';
+import { DEMO_WIDGET, mockCanvas } from './mockCanvas';
+import { SHOW_ACTIVE, SHOW_CAROUSEL, SHOW_CAROUSEL_STEPS, SHOWCASES, showCountdowns, showcaseOf, showPhoto } from './showcase';
 
 // The demo runs in Lisbon unless ?tz= names another IANA zone (the website passes the visitor's own zone).
 const TZ = (() => {
@@ -25,6 +27,8 @@ const TZ = (() => {
 
 // Demo text follows ?lang=en|es|pt|nl|da (English by default).
 const DEMO_LANG = normLang(new URLSearchParams(location.search).get('lang'));
+/** A showcase screen in English (&shot=show.* or the showcase carousel, web/display/showcase/): the family demo in English too. */
+const SHOW_EN = DEMO_LANG === 'en' && SHOW_ACTIVE;
 /** Column of DEMO_NL_DA for Dutch and Danish, else null. */
 const NL_DA: 0 | 1 | null = DEMO_LANG === 'nl' ? 0 : DEMO_LANG === 'da' ? 1 : null;
 /** ?empty=1: no events, no countdowns, no to-dos (empty states). */
@@ -43,7 +47,7 @@ const PRIVATE = new URLSearchParams(location.search).get('private') === '1';
 const L = (en: string, es: string, pt: string) =>
   DEMO_LANG === 'es' ? es : DEMO_LANG === 'pt' ? pt : NL_DA !== null ? DEMO_NL_DA[en]?.[NL_DA] ?? en : en;
 /** The family demo is written in Spanish (every language but Dutch and Danish shows it as is). */
-const F = (es: string) => (NL_DA !== null ? DEMO_NL_DA[es]?.[NL_DA] ?? es : es);
+const F = (es: string) => (NL_DA !== null ? DEMO_NL_DA[es]?.[NL_DA] ?? es : SHOW_EN ? DEMO_FAMILY_EN[es] ?? es : es);
 
 export const MOCK_SOURCES: PublicCalendarSource[] = [
   { id: 'c_fam', name: L('Family', 'Familia', 'Família'), color: '#4c8dff', emoji: '', kind: 'generic' },
@@ -54,8 +58,13 @@ export const MOCK_SOURCES: PublicCalendarSource[] = [
   { id: 'c_work', name: L('Work', 'Trabajo', 'Trabalho'), color: '#9b5de5', emoji: '', kind: 'generic' },
 ];
 
-export function mockConfig(): DisplayConfig {
+/** The demo screen; `show`: that showcase screen (a step of the showcase carousel) instead of &preset= and &shot=. */
+export function mockConfig(show?: string): DisplayConfig {
   const q = new URLSearchParams(location.search);
+  if (show) {
+    q.set('preset', 'canvas');
+    q.set('shot', show);
+  }
   const cfg = deepMerge(DEFAULT_CONFIG, {
     revision: 1,
     screenId: 's_main',
@@ -118,6 +127,37 @@ export function mockConfig(): DisplayConfig {
       };
     });
     if (cfg.widgets.some((w) => w.place === 'full')) cfg.layout.preset = 'widget';
+  }
+  // ?preset=canvas: a Personalizado screen (&shot=<fixture>, web/display/mockCanvas.ts), with the message and the to-do
+  // list on so their cards have something to show
+  if (q.get('preset') === 'canvas') {
+    const shot = q.get('shot');
+    const m = mockCanvas(shot && shot !== '1' ? shot : null);
+    cfg.layout.preset = 'canvas';
+    cfg.canvas = m.canvas;
+    if (m.orientation) cfg.screen.orientation = m.orientation;
+    // &cvbg=photo|ambient|solid: another background for the same layout (screenshots)
+    const bg = q.get('cvbg');
+    if (bg === 'photo' || bg === 'ambient' || bg === 'solid') cfg.canvas.background = bg;
+    // &cvscale=0.7..1.5: every card's "Tamaño del texto" (screenshots, the test of the text size)
+    const sc = Number(q.get('cvscale'));
+    if (sc >= 0.5 && sc <= 2) for (const it of cfg.canvas.items) it.style = { ...it.style, scale: sc };
+    // &perf=low: the screen's "Rendimiento: Ahorro"
+    if (q.get('perf') === 'low') cfg.canvas.perf = 'low';
+    if (q.get('todo') !== '0') cfg.todo.enabled = true;
+    if (q.get('msg') !== '0') cfg.message.enabled = true;
+    // a showcase screen: its own to-do list, note and theme (web/display/showcase/)
+    const show = shot ? SHOWCASES[shot] : undefined;
+    if (show?.todo) cfg.todo.items = show.todo.map((t) => ({ ...t }));
+    if (show?.message) cfg.message = { ...show.message };
+    if (show?.theme) cfg.screen.theme = show.theme;
+    // the saved widget of its widget items: the demo electricity prices
+    if (m.canvas.items.some((it) => it.kind === 'widget')) {
+      cfg.widgets = [{
+        id: DEMO_WIDGET, type: 'prices', name: '', place: 'canvas', corner: 'br', size: 'm', refreshSec: 0, fit: 'contain', bust: false, src: '', via: 'direct', v: 'demo',
+        prices: { zone: 'DK2', view: 'auto', unit: 'main', currency: 'auto', surcharge: 0, vat: 0, windowHours: 3, resolution: 'hour', axis: 'simple', chartShape: 'columns' },
+      }];
+    }
   }
   // ?planner=1: the Planner layout with what picking it in the admin sets (automatic weeks, cards)
   if (q.get('planner') === '1') {
@@ -188,7 +228,7 @@ export function mockFamily(now = new Date(), cfg: DisplayConfig = DEFAULT_CONFIG
   const hhmm = p.hour * 60 + p.minute;
   const slotNow: Exclude<ChoreSlot, 'any'> = hhmm < 12 * 60 ? 'morning' : hhmm < 18 * 60 ? 'afternoon' : 'evening';
   const order: ChoreSlot[] = ['morning', 'afternoon', 'evening', 'any'];
-  const many = q.get('members') === '6';
+  const many = q.get('members') === '6' || !!showcaseOf(cfg)?.members6;
   const fam = cfg.family;
   const priv = PRIVATE || !!cfg.privacy?.active;
   const hidden = priv && fam?.privacy === 'hide';
@@ -196,7 +236,7 @@ export function mockFamily(now = new Date(), cfg: DisplayConfig = DEFAULT_CONFIG
   const members = MOCK_MEMBERS.filter(([id]) => many || id !== 'm_abuela');
   const kidOf = new Map(members.map((m) => [m[0], m[4]]));
   const firstOfSlot = new Set<string>();
-  const chores: FamilyChoreView[] = EMPTY ? [] : MOCK_CHORES
+  const chores: FamilyChoreView[] = EMPTY ? [] : (showcaseOf(cfg)?.chores ?? MOCK_CHORES)
     .filter(([mid]) => kidOf.has(mid) && (many || mid !== 'm_mama'))
     .map(([memberId, slot, emoji, title, points], i) => {
       // what is over is done (Mateo forgot one), what is on now is half done, the rest is still to do
@@ -250,6 +290,7 @@ export function mockFamily(now = new Date(), cfg: DisplayConfig = DEFAULT_CONFIG
 export function mockCarouselConfigs(): DisplayConfig[] {
   const q = new URLSearchParams(location.search);
   const sec = Math.min(3600, Math.max(3, Number(q.get('stepSec')) || 8));
+  if (SHOW_CAROUSEL) return showcaseCarousel(q, sec);
   const screens: [string, string, string, string][] = [
     // &planner=1: the first step is the Planner (automatic weeks and cards on every step)
     ['s_main', 'living-room', L('Living room', 'Salón', 'Sala'), q.get('planner') === '1' ? 'planner' : 'bigCalendar'],
@@ -279,6 +320,32 @@ export function mockCarouselConfigs(): DisplayConfig[] {
     target: { id: carousel.id, kind: 'carousel' as const, slug: carousel.slug, name: carousel.name },
     carousel,
   }));
+}
+
+/**
+ * ?demo=1&carousel=1&show=1: the showcase screens in a loop (home, family, data, everyday, cinematic; web/display/showcase/),
+ * a slow dissolve between them (&tr= forces another, &fade=0 none). Each step carries its key as its screenId, so the
+ * demo's Home Assistant states, to-dos and theme follow the screen shown.
+ */
+function showcaseCarousel(q: URLSearchParams, sec: number): DisplayConfig[] {
+  const carousel = {
+    id: 'v_show', slug: 'showcase', name: 'Showcase',
+    enabled: true, transition: (q.get('fade') === '0' ? 'none' : 'dissolve') as CarouselTransition, transitionSpeed: 'slow' as const,
+    holdOnAlert: true, nightRotate: false,
+    offScreenId: SHOW_CAROUSEL_STEPS[0], schedule: [],
+    steps: SHOW_CAROUSEL_STEPS.map((key) => ({ screenId: key, slug: key.slice(5), name: key.slice(5), seconds: Number(q.get('stepSec')) ? sec : 12 })),
+  };
+  return SHOW_CAROUSEL_STEPS.map((key) => {
+    const cfg = mockConfig(key);
+    return {
+      ...cfg,
+      screenId: key,
+      slug: key.slice(5),
+      screen: { ...cfg.screen, name: key.slice(5) },
+      target: { id: carousel.id, kind: 'carousel' as const, slug: carousel.slug, name: carousel.name },
+      carousel,
+    };
+  });
 }
 
 /** ISO string with offset for a wall-clock time in TZ. */
@@ -536,7 +603,7 @@ function baseWeather(now: Date): WeatherResponse {
     const k = p.hour + i >= 24 ? addDays(T, 1) : T;
     hourly.push({
       time: isoAt(k, h, 0), temp: Math.round(21 - Math.abs(15 - (p.hour + i)) * 0.6), code: codes[i - 1],
-      precipChance: codes[i - 1] === 61 ? 60 : 5 + i * 2, isDay: h >= 8 && h < 19,
+      precipChance: codes[i - 1] === 61 ? 60 : 5 + i * 2, isDay: h >= 8 && h <= 19,
     });
   }
   const daily = [
@@ -554,7 +621,8 @@ function baseWeather(now: Date): WeatherResponse {
     locationName: new URLSearchParams(location.search).get('place') || L('Lisbon, Portugal', 'Lisboa, Portugal', 'Lisboa, Portugal'),
     current: {
       temp: 19.4, feelsLike: 18.6, humidity: 68, windKmh: 14, windDir: 315, windDirLabel: L('NW', 'NO', 'NO'), code: 2,
-      isDay: p.hour >= 8 && p.hour < 19, description: L('Partly cloudy', 'Parcialmente nublado', 'Parcialmente nublado'), pressure: 1017, uv: 4,
+      // day between the sunrise (07:39) and the sunset (19:07) of `today` below
+      isDay: p.hour * 60 + p.minute >= 7 * 60 + 39 && p.hour * 60 + p.minute < 19 * 60 + 7, description: L('Partly cloudy', 'Parcialmente nublado', 'Parcialmente nublado'), pressure: 1017, uv: 4,
     },
     today: { sunrise: isoAt(T, 7, 39), sunset: isoAt(T, 19, 7), min: 14, max: 22, precipChance: 10 },
     daily, hourly, indoor: { temp: 22.3, humidity: 54 },
@@ -581,7 +649,8 @@ export function mockNews(): NewsResponse {
     ['Biblioteca municipal passa a abrir ao domingo', 'O novo horário inclui oficinas gratuitas para crianças e um clube de leitura em inglês.'],
     ['Previsão: chegam as primeiras chuvas do outono', 'Esperam-se aguaceiros a partir de sábado, com uma descida acentuada das temperaturas.'],
   ] : [
-    ['City expands metro network with four new stations', 'Work on the circular line is on schedule and the new sections are expected to open next year.'],
+    // a showcase screen shows the first headline in a 4x2 card: its summary short enough for one line there
+    ['City expands metro network with four new stations', SHOW_ACTIVE ? 'The circular line opens next spring.' : 'Work on the circular line is on schedule and the new sections are expected to open next year.'],
     ['Dolphins spotted again in the estuary', 'Biologists report more sightings this autumn as boat-tour operators celebrate a record season.'],
     ['Renewables hit a new record share of electricity', 'More than 80% of the power consumed in September came from wind, solar and hydro.'],
     ['Harvest festival closes with 200,000 visitors', 'Music, food and wine filled the streets of the old town for five days.'],
@@ -602,7 +671,7 @@ export function mockNews(): NewsResponse {
   return {
     updatedAt: new Date().toISOString(),
     items: items.map(([title, summary], i) => ({
-      id: `n${i}`, title, summary, source: L('Demo News', 'Noticias de ejemplo', 'Notícias de exemplo'), date: new Date(Date.now() - i * 3600e3).toISOString(),
+      id: `n${i}`, title, summary, source: SHOW_ACTIVE ? L('City Herald', 'Diario de la Ciudad', 'Diário da Cidade') : L('Demo News', 'Noticias de ejemplo', 'Notícias de exemplo'), date: new Date(Date.now() - i * 3600e3).toISOString(),
     })),
   };
 }
@@ -615,9 +684,29 @@ const PICSUM: [number, string][] = [
 
 /** `topic`: the demo carousel's &photoMix=1 topics ('topic2'...) start the list at another photo. */
 export function mockPhotos(topic = ''): PhotosResponse {
+  // &photo=half: one photo, white on the left half and black on the right (the per-card ink of Personalizado)
+  if (new URLSearchParams(location.search).get('photo') === 'half') return { photos: [{ url: halfPhoto(), author: '', source: 'stock' as const }] };
   const list = PICSUM.map(([id, author]) => ({ url: `https://picsum.photos/id/${id}/1920/1080`, author, source: 'stock' as const }));
   const k = /^topic(\d+)$/.exec(topic) ? (Number(topic.slice(5)) * 3) % list.length : 0;
-  return { photos: [...list.slice(k), ...list.slice(0, k)] };
+  const photos = [...list.slice(k), ...list.slice(0, k)];
+  // a showcase screen's own photo alone (show.home's evening lane behind it, show.bento's canyon in its photo card), so
+  // the still screen always shows it whatever the card's place in the list
+  const own = showPhoto();
+  return { photos: own ? [{ ...own, source: 'stock' as const }] : photos };
+}
+
+let half = '';
+function halfPhoto(): string {
+  if (half) return half;
+  const c = document.createElement('canvas');
+  c.width = 1920;
+  c.height = 1080;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, 1920, 1080);
+  g.fillStyle = '#fff';
+  g.fillRect(0, 0, 960, 1080);
+  return (half = c.toDataURL('image/png'));
 }
 
 /** Countdown chips for the demo (mirrors GET /api/countdowns). */
@@ -635,7 +724,7 @@ export function mockCountdowns(now = new Date()): CountdownsResponse {
   items.sort((a, b) => a.date.localeCompare(b.date));
   if (EMPTY) items.length = 0;
   if (PRIVATE) return { generatedAt: now.toISOString(), today: T, hash: `mock-cd-${T}-p`, items: items.filter((x) => x.origin !== 'event') };
-  return { generatedAt: now.toISOString(), today: T, hash: `mock-cd-${T}`, items };
+  return showCountdowns({ generatedAt: now.toISOString(), today: T, hash: `mock-cd-${T}`, items });
 }
 
 /** ?announce=1|info|success|warning|urgent|all → sample announcements (as delivered by SSE `announce`). */

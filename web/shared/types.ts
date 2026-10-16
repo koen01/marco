@@ -9,7 +9,9 @@ export type LayoutPreset =
   // one widget fills the screen (layout.widgetId)
   | 'widget'
   // kids layouts (Modern style only; with Classic the display shows bigCalendar)
-  | 'kidsRoutines' | 'kidsFamily' | 'kidsMeals';
+  | 'kidsRoutines' | 'kidsFamily' | 'kidsMeals'
+  // Personalizado: widgets placed on a grid (screen.canvas, server/core/canvasCore.js); Modern style only
+  | 'canvas';
 /** Corner of the clock card in the 'photoFrame' layout: top-left, top-right, bottom-left, bottom-right. */
 export type FrameCorner = 'tl' | 'tr' | 'bl' | 'br';
 export type SourceKind = 'generic' | 'airbnb' | 'birthdays' | 'holidays';
@@ -54,6 +56,9 @@ export interface ScreenConfig {
   orientation: 'auto' | 'landscape' | 'portrait' | string;
   customCss: string;
   nightMode: NightMode;
+  /** The pills under the date of the usual designs: next event, happening now, birthdays, check-in/out (default true).
+   *  Not the Personalizado "highlights" card. Older servers: absent (= shown). */
+  highlights?: boolean;
 }
 
 export interface LayoutConfig {
@@ -183,7 +188,7 @@ export interface DisplayWidget {
   id: string;
   type: WidgetType;
   name: string;
-  place: 'corner' | 'side' | 'full';
+  place: 'corner' | 'side' | 'full' | 'canvas';
   corner: FrameCorner;
   size: WidgetSize;
   refreshSec: number;
@@ -595,6 +600,11 @@ export interface HomeAssistantConfig {
   url: string;
   /** Doorbell camera settings (POST /api/hooks/doorbell). */
   doorbell: DoorbellSettings;
+  /**
+   * Cámara cards of Personalizado screens answer only displays on the home network (default, absent = true). false:
+   * a display opened through PUBLIC_URL or a tunnel shows them too.
+   */
+  cameraLanOnly?: boolean;
 }
 
 export interface DoorbellSettings {
@@ -768,6 +778,338 @@ export interface AppConfig {
   family: FamilyConfig & ScreenFamilyConfig;
   /** the widgets placed on this screen (the global list is StoredConfig.widgets) */
   widgets?: WidgetPlacement[];
+  /** this screen's Personalizado layout (older servers: absent) */
+  canvas?: CanvasConfig;
+}
+
+// ---- Personalizado (layout 'canvas', server/core/canvasCore.js; docs/CANVAS.md) ----
+
+export type CanvasSize = 'xs' | 's' | 'm' | 'w' | 't' | 'l' | 'xl' | 'band' | 'full' | 'row' | 'sq';
+export type SideSpan = 2 | 3 | 4 | 'fill';
+export type CanvasSurface = 'glass' | 'solid' | 'none';
+export type CanvasCategory = 'time' | 'calendar' | 'weather' | 'content' | 'family' | 'home' | 'data' | 'adv';
+
+export type CanvasKind =
+  | 'clock.digital' | 'clock.analog' | 'clock.flip' | 'clock.world' | 'date'
+  | 'calendar.month' | 'calendar.week' | 'calendar.agenda' | 'calendar.today' | 'calendar.next' | 'calendar.people' | 'countdowns'
+  | 'weather.now' | 'weather.hourly' | 'weather.forecast'
+  | 'message' | 'todo' | 'news' | 'photo' | 'widget' | 'value' | 'spacer' | 'heading'
+  // Familia y hogar: the family data the display already has (GET /api/display/family)
+  | 'family.members' | 'family.routines' | 'family.points' | 'family.rewards' | 'family.chores'
+  | 'meals.today' | 'meals.week' | 'birthdays' | 'highlights' | 'announcement'
+  | 'ha.tile' | 'ha.light' | 'ha.switch' | 'ha.climate' | 'ha.cover' | 'ha.sensor'
+  | 'ha.room' | 'ha.chart' | 'ha.camera' | 'ha.media' | 'ha.scene' | 'ha.gauge' | 'ha.statistic'
+  // Datos: numbers the server fetches from public sources (server/core/dataCore.js)
+  | 'market' | 'sports' | 'stocks'
+  | 'html'
+  // reserved for a later version (a declarative card), refused today
+  | 'card';
+
+/** Where an item sits: a cell origin and a size name on the main grid, or a place in the sidebar stack. */
+export type CanvasPos =
+  /** w, h: a box of its own in whole cells (within the kind's range); without them the named size's cells */
+  | { zone: 'main'; x: number; y: number; size: CanvasSize; w?: number; h?: number }
+  | { zone: 'side'; order: number; span: SideSpan };
+
+/** A card's own glass: the screen's material plus 'auto', a light or dark tint after the photo right behind the card. */
+export interface CanvasGlass extends Omit<GlassConfig, 'tint'> {
+  tint: GlassConfig['tint'] | 'auto';
+}
+
+export interface CanvasItemStyle {
+  surface: CanvasSurface | 'inherit';
+  /** null = the screen's glass (screen.glass) */
+  glass: CanvasGlass | null;
+  /** custom tint '#rrggbb' (wins over glass.tint; the card colour of a solid card) */
+  color: string | null;
+  accent: string | null;
+  radius: 'inherit' | 'sq' | 'm' | 'l' | 'xl';
+  title: string;
+  icon: string;
+  showTitle: boolean;
+  /** text size, 0.7..1.5 */
+  scale: number;
+}
+
+export interface CanvasItem {
+  id: string; // "cv_" + 8 [a-z0-9]
+  kind: CanvasKind;
+  /** landscape position (or the only one when the screen has a fixed orientation) */
+  pos: CanvasPos;
+  /** portrait position when canvas.portraitAuto is false; null = left out of the portrait arrangement */
+  portrait?: CanvasPos | null;
+  style: CanvasItemStyle;
+  /** control kinds only (default true) */
+  interactive?: boolean;
+  /** two taps on the TV (always on for an entity that looks like a door, a gate or a lock) */
+  confirm?: boolean;
+  /** the owner ticked that anyone in the room may use an entity that looks like a door (without it, no controls) */
+  ack?: boolean;
+  /** "Ocultar sin borrar": keeps its place, not drawn on the screen */
+  hidden?: boolean;
+  /** "Mostrar solo si": drawn only while a Home Assistant state or a Valor value matches (worked out on the server) */
+  when?: CanvasCondition;
+  /** "Horario": drawn only while one of these windows runs (the rule shape of privacy schedules; none = always) */
+  schedule?: PrivacyRule[];
+  /** validated per kind (canvasCore.js CANVAS_KINDS[kind].props) */
+  props: Record<string, unknown>;
+}
+
+/** How a condition compares: equals, not equals, above, below. */
+export type CanvasConditionOp = 'eq' | 'ne' | 'gt' | 'lt';
+/** An item's condition (an entity or a key '' = not chosen yet: the item shows). */
+export type CanvasCondition =
+  | { src: 'ha'; entity: string; op: CanvasConditionOp; value: string }
+  | { src: 'value'; key: string; op: CanvasConditionOp; value: string };
+/** The rows an Entidad card can have under it (haCore tileFeatures). */
+export type TileFeature = 'brightness' | 'colorTemp' | 'color' | 'cover' | 'position' | 'hvacModes' | 'target' | 'valve' | 'select' | 'number' | 'vacuum' | 'update' | 'gauge';
+
+export interface CanvasConfig {
+  v: 1;
+  background: 'photo' | 'ambient' | 'solid';
+  /** darkens the photo, 0..0.6 */
+  dim: number;
+  /** where: all over, at the top and bottom, or towards the edges */
+  scrim: 'uniform' | 'topBottom' | 'edges';
+  /** solid background colour (null = the theme background) */
+  color: string | null;
+  sidebar: { side: 'none' | 'left' | 'right' | 'top' | 'bottom'; size: 'narrow' | 'normal' | 'wide'; fill: 'glass' | 'solid' | 'photo' };
+  defaults: { surface: CanvasSurface; radius: 'sq' | 'm' | 'l' | 'xl' };
+  /** "Permitir tocar en la pantalla" (Home Assistant controls on the TV) */
+  touch: boolean;
+  /** 'low' forces the low-power look on this screen */
+  perf: 'auto' | 'low';
+  /** the portrait arrangement is derived from the landscape one */
+  portraitAuto: boolean;
+  items: CanvasItem[];
+}
+
+/** One item as the display gets it (entity ids replaced by aliases, privacy and edition applied). */
+export interface DisplayCanvasItem {
+  id: string;
+  kind: CanvasKind;
+  pos: CanvasPos;
+  /** portrait position (derived on the server when portraitAuto); null = not shown in portrait */
+  portrait: CanvasPos | null;
+  style: CanvasItemStyle;
+  /** already ANDed with the screen's touch switch */
+  interactive: boolean;
+  confirm?: boolean;
+  /** it has a condition: the feed of that source (haFeed, valuesFeed) says whether it is hidden now */
+  when?: { src: 'ha' | 'value' };
+  props: Record<string, unknown>;
+  /** hash of what the item draws: reconcile key */
+  v: string;
+  /** drawn as a placeholder card: not allowed on this server, the screen is private, or not set up yet */
+  disabled?: 'feature' | 'privacy' | 'setup';
+}
+
+/** DisplayConfig.canvas (null unless the screen's layout is 'canvas'). */
+export interface DisplayCanvas extends Omit<CanvasConfig, 'items' | 'touch'> {
+  orientation: 'landscape' | 'portrait' | 'auto';
+  /** canvas.touch, with controls allowed on this server and the screen not private */
+  touch: boolean;
+  items: DisplayCanvasItem[];
+  /** when a visibility schedule of an item starts or ends next (ISO): the display asks for its config again then */
+  next?: string;
+  /** the screen has Home Assistant cards but Home Assistant is switched off: they show a note instead */
+  haOff?: boolean;
+}
+
+// ---- Home Assistant on Personalizado screens (server/core/haCore.js, server/haLive.js) ----
+
+/** A control a Home Assistant card may offer on a touch screen (haCore.CONTROL_TABLE). */
+export type HaControl = 'toggle' | 'on' | 'off' | 'brightness' | 'colorTemp' | 'rgb' | 'fanPct' | 'setpoint' | 'setpointRange'
+  | 'hvacMode' | 'fanMode' | 'open' | 'close' | 'stop' | 'position' | 'playPause' | 'next' | 'prev' | 'volume' | 'run'
+  | 'selectOption' | 'numberSet' | 'start' | 'pause' | 'dock';
+
+/** The slim state of one entity, all a display gets (never the entity id, URLs or pictures). `n`: its friendly name. */
+export type HaSlim = { n?: string } & (
+  | { d: 'light'; on: boolean; bri: number | null; ct: number | null; ctMin?: number; ctMax?: number; rgb: [number, number, number] | null; onoff?: boolean; col?: boolean }
+  | { d: 'switch'; on: boolean; pct?: number; dc?: string | null }
+  | { d: 'climate'; mode: string; modes: string[]; action: string | null; cur: number | null; target: number | null;
+      lo: number | null; hi: number | null; min: number; max: number; step: number; fan?: string; fans?: string[]; hum?: number; unit: 'C' | 'F' }
+  | { d: 'cover'; state: string; pos: number | null; readOnly: boolean; dc?: string | null; /** supported_features (open 1, close 2, set position 4, stop 8) when not all four */ sf?: number }
+  | { d: 'media'; state: string; title: string | null; artist: string | null; vol: number | null; art: boolean; source?: string;
+      /** the track's position and length in seconds, and when Home Assistant read the position (ms since the epoch) */
+      pos?: number; dur?: number; posAt?: number }
+  | { d: 'sensor'; v: string; num: number | null; unit: string; dc: string | null; min?: number; max?: number; step?: number; box?: boolean }
+  | { d: 'valve'; state: string; pos: number | null; dc: string | null; readOnly: boolean }
+  | { d: 'select'; v: string; opts: string[] }
+  | { d: 'vacuum'; state: string; bat?: number }
+  | { d: 'update'; on: boolean; cur: string | null; next: string | null; busy?: boolean }
+  | { d: 'binary'; on: boolean; dc: string | null }
+  | { d: 'scene' }
+  | { d: 'lock' | 'alarm'; state: string }
+  | { d: 'other'; v: string; dom?: string }
+  | { d: 'unavailable' }
+);
+/**
+ * One alias's state: the slim state, when it last changed (ms) and the controls it offers (empty unless touch). `cf`:
+ * the controls need a second tap (the item asks for it, or the entity looks like a door).
+ */
+export type HaState = HaSlim & { at: number; c: HaControl[]; cf?: boolean; f?: TileFeature[] };
+/** POST /api/display/ha/action (`confirm`: the second tap of an item that needs two). */
+export interface HaActionRequest {
+  item: string;
+  slot: number;
+  control: HaControl;
+  value?: number | string | [number, number];
+  seq: number;
+  confirm?: boolean;
+}
+/** The answer of POST /api/display/ha/action. */
+export type HaActionResponse = { ok: true; seq: number } | { ok: false; error: HaActionError; seq: number | null };
+export type HaActionError =
+  | 'json_required' | 'cross_origin' | 'bad_request' | 'not_found' | 'untrusted' | 'private' | 'touch_off' | 'not_allowed'
+  | 'out_of_range' | 'rate' | 'confirm_needed' | 'ha_down' | 'ha_error';
+/** POST /api/admin/homeassistant/action: the builder's Probar button. */
+export interface HaAdminActionRequest {
+  entity: string;
+  kind: string;
+  control: HaControl;
+  value?: number | string | [number, number];
+  props?: Record<string, unknown>;
+}
+/** GET /api/display/ha and the SSE `ha` event (`full:false`: only the aliases that changed). */
+export interface HaSnapshot {
+  rev: number;
+  conn: 'ok' | 'down';
+  /** Home Assistant is not set up on this server (switched off, or no URL or token) */
+  off?: boolean;
+  full: boolean;
+  /** the screen these aliases belong to (a display on a carousel gets the events of every screen of it) */
+  screenId?: string;
+  states: Record<string, HaState>;
+  /** screens with "Mostrar solo si": the items a condition hides now (they get no states) */
+  hide?: string[];
+}
+/** GET /api/display/ha/statistic/:item (and the builder's /api/admin/homeassistant/statistic) */
+// ---- data cards (Personalizado, palette "Datos"; server/core/dataCore.js dataForItem)
+
+/** What every data item gets: seconds since the oldest answer used, whether to say how old it is, and why. */
+interface DataItemBase {
+  /** seconds since the answer was read upstream (null: nothing yet) */
+  age: number | null;
+  /** old or the last call failed: the card says "updated X ago" */
+  stale: boolean;
+  error?: string;
+}
+export interface MarketCoinData {
+  id: string;
+  sym: string;
+  name: string;
+  /** currency (CoinGecko vs_currency, lower case) */
+  cur: string;
+  price: number | null;
+  /** change in % over the item's range */
+  ch: number | null;
+  /** [time ms, price] of the item's range ([] without a chart) */
+  pts: [number, number][];
+}
+export interface MarketData extends DataItemBase {
+  kind: 'market';
+  range: '1d' | '7d' | '30d';
+  coins: MarketCoinData[];
+}
+export interface SportsSide {
+  /** short name, abbreviation, score ('' before the start), won, colour (#rrggbb or null), crest token ('' none) */
+  n: string;
+  ab: string;
+  sc: string;
+  w: boolean;
+  c: string | null;
+  cr: string;
+}
+export interface SportsGame {
+  id: string;
+  /** start, ms */
+  t: number;
+  st: 'pre' | 'in' | 'post';
+  /** the minute or the clock while on, ESPN's short status once over ('FT', 'Final', 'AET') */
+  clk: string;
+  half?: boolean;
+  note?: 'postponed' | 'canceled' | 'suspended' | 'delayed';
+  home: SportsSide;
+  away: SportsSide;
+}
+export interface SportsData extends DataItemBase {
+  kind: 'sports';
+  groups: { label: string; lg: string; sport: string; games: SportsGame[] }[];
+}
+export interface StockQuoteData {
+  sym: string;
+  name: string;
+  price: number | null;
+  ch: number | null;
+  pts: [number, number][];
+}
+export interface StocksData extends DataItemBase {
+  kind: 'stocks';
+  quotes: StockQuoteData[];
+  /** no Finnhub key saved, or it was refused */
+  needsKey?: boolean;
+}
+export type DataItemData = MarketData | SportsData | StocksData;
+/** GET /api/display/data: the data items of the requesting screen, by item id. */
+export interface DisplayDataResponse {
+  items: Record<string, DataItemData>;
+}
+/** POST /api/admin/data/preview */
+export interface DataPreviewRequest {
+  items: { id: string; kind: string; props: Record<string, unknown> }[];
+}
+export interface DataPreviewResponse {
+  items: Record<string, DataItemData>;
+}
+export interface CoinSearchResult {
+  coins: { id: string; sym: string; name: string; rank: number | null }[];
+}
+export interface SportsTeamsResult {
+  teams: { id: string; name: string; abbr: string }[];
+}
+export interface SportsLeaguesResult {
+  leagues: { id: string; sport: string; name: string; short: string }[];
+}
+export interface SymbolSearchResult {
+  symbols: { sym: string; name: string; type: string }[];
+}
+export interface StocksKeyStatus {
+  set: boolean;
+  last4: string;
+  checked?: boolean;
+}
+
+export interface HaStatistic {
+  stat: 'change' | 'mean' | 'min' | 'max';
+  period: 'today' | 'week' | 'month';
+  value: number | null;
+  unit: string;
+}
+/** GET /api/display/ha/history/:item */
+export interface HaHistory {
+  period: '1h' | '6h' | '24h' | '7d';
+  series: { label: string; unit: string; points: [number, number][] }[];
+}
+/** GET /api/admin/homeassistant/history?entity=a,b&period= (the builder's preview): each series names its entity */
+export interface HaAdminHistory {
+  period: HaHistory['period'];
+  series: { entity: string; label: string; unit: string; points: [number, number][] }[];
+}
+/** GET /api/admin/homeassistant/status */
+export interface HaLiveStatus {
+  state: 'connected' | 'polling' | 'error' | 'off';
+  /** why it is polling or in error: no_websocket, old_version, auth, unreachable */
+  reason?: string;
+  lastEventAt: number | null;
+  /** entities mirrored now */
+  count: number;
+  /** entities the saved screens watch */
+  watched: number;
+  /** a token is saved on the server (the token itself is never sent) */
+  tokenSaved?: boolean;
+  /** the saved token belongs to another Home Assistant address than the saved one: it is not used until saved again */
+  tokenForOtherUrl?: boolean;
 }
 
 /** GET /api/display/config[?screen=<slug|id>] */
@@ -799,6 +1141,8 @@ export interface DisplayConfig {
   family?: DisplayFamilyBlock;
   /** widgets on this screen, the full-screen one first (older servers: absent; none while private) */
   widgets?: DisplayWidget[];
+  /** the Personalizado layout's widgets (null on other layouts; older servers: absent) */
+  canvas?: DisplayCanvas | null;
 }
 
 // ---- Familia (server/core/familyCore.js, server/family.js) ----
@@ -1189,6 +1533,15 @@ export interface Features {
    *  Google sign-in, sessions, data export and deleting the account (/api/account/*, /api/auth/sessions*). Absent = off:
    *  the account page links out to the server's own account pages instead. */
   accountSettings: boolean;
+  /** Personalizado: the screen builder (layout 'canvas'). */
+  screenBuilder: boolean;
+  /** POST /api/hooks/values, GET /api/display/values and the Valor card; absent = off (not self-hosted). */
+  valueHooks: boolean;
+  /** API tokens with scopes (ApiTokenInfo.scopes, PATCH /api/admin/tokens/:id); absent = off (not self-hosted). */
+  tokenScopes: boolean;
+  /** The Bolsa card can get quotes (a self-hosted server: the owner's own Finnhub key; Marco Cloud: only when the
+   *  service has a key). Absent = on self-hosted, off elsewhere. */
+  stockQuotes: boolean;
 }
 
 export type FeatureName = keyof Features;
@@ -1218,6 +1571,13 @@ export interface Limits {
   widgets?: number;
   /** shortest widget refresh this server allows, in seconds (absent = every choice) */
   widgetMinRefreshSec?: number;
+  /** Personalizado: items per screen, cameras and custom HTML cards per screen (absent = the validator's caps) */
+  canvasItems?: number;
+  canvasCameras?: number;
+  canvasHtml?: number;
+  /** keys of POST /api/hooks/values kept at once, and stored values per day (absent = no daily cap) */
+  valueKeys?: number;
+  valuePushesPerDay?: number;
 }
 
 export interface HealthResponse {
@@ -1554,6 +1914,14 @@ export interface HaEntity {
   name: string;
   state: string;
   unit?: string;
+  domain?: string;
+  device_class?: string | null;
+  /** area name from the area registry (null: none, or the token is not an admin's) */
+  area?: string | null;
+  icon?: string | null;
+  supported_features?: number;
+  /** the attributes the builder uses (hvac_modes, min_temp, supported_color_modes…) */
+  attrs?: Record<string, unknown>;
 }
 
 export interface AdminPhoto {
@@ -1662,6 +2030,8 @@ export interface ScreenProfile {
   family: ScreenFamilyConfig;
   /** widgets on this screen (older servers: absent) */
   widgets?: WidgetPlacement[];
+  /** the Personalizado layout (older servers: absent) */
+  canvas?: CanvasConfig;
 }
 
 export type RepeatFreq = 'none' | 'weekly' | 'monthly' | 'yearly';
@@ -2124,6 +2494,39 @@ export interface ApiTokenInfo {
   lastUsedAt: string | null;
   lastUsedIp: string | null;
   useCount: number;
+  /** what it may do: '*' (everything but 'screen') and/or single scopes; absent on servers without tokenScopes */
+  scopes?: TokenScope[];
+}
+
+export type TokenScope = '*' | 'announce' | 'commands' | 'privacy' | 'doorbell' | 'values' | 'screen';
+
+/** A value pushed by POST /api/hooks/values (GET /api/hooks/values, GET /api/admin/values). */
+export interface HookValueInfo {
+  key: string;
+  value: number | string | boolean;
+  unit?: string;
+  label?: string;
+  updatedAt: string;
+  /** slugs of the screens that show it */
+  screens: string[];
+}
+
+/** A pushed value as a display gets it (GET /api/display/values, the SSE `values` event). `at` in ms. */
+export interface DisplayValue {
+  v: number | string | boolean;
+  u?: string;
+  l?: string;
+  at: number;
+}
+
+/** GET /api/display/values and the SSE `values` event: only the keys the screen shows (null: no value now). */
+export interface ValuesSnapshot {
+  rev: number;
+  full: boolean;
+  screenId?: string;
+  values: Record<string, DisplayValue | null>;
+  /** screens with "Mostrar solo si": the items a condition hides now */
+  hide?: string[];
 }
 
 export interface ApiTokenCreated {
@@ -2203,11 +2606,13 @@ export interface ImportPreview {
  *   webWidgets         web page widgets (this server shows images only; their placements go too) (items)
  *   widgetHttps        image widgets on a plain http address (items)
  *   widgetRefresh      image widgets refreshed more often than this server allows, now at its shortest (items)
+ *   haWidgets          Home Assistant cards and cameras on Personalizado screens, left out (items: the screens)
+ *   customWidgets      custom HTML cards on Personalizado screens, left out (items: the screens)
  */
 export interface ImportNote {
   code:
     | 'secrets' | 'homeassistant' | 'signIn' | 'openDisplayAccess' | 'insecureTls' | 'google' | 'microsoft' | 'blockedUrl' | 'refreshMin' | 'news' | 'photos'
-    | 'webWidgets' | 'widgetHttps' | 'widgetRefresh';
+    | 'webWidgets' | 'widgetHttps' | 'widgetRefresh' | 'haWidgets' | 'customWidgets';
   items?: string[];
 }
 
@@ -2249,6 +2654,7 @@ export type ActivityType =
   | 'announce.cleared'
   | 'token.created'
   | 'token.revoked'
+  | 'token.scopes'
   | 'token.used'
   | 'token.rejected'
   | 'display.connected'
@@ -2266,6 +2672,7 @@ export type ActivityType =
   | 'family.undone'
   | 'family.link'
   | 'family.key_rejected'
+  | 'ha.action'
   | 'activity.cleared'
   | 'update.requested'
   | 'update.finished'

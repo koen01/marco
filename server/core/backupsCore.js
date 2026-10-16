@@ -29,6 +29,8 @@ export function exportSecrets(sec) {
     ...(sec.immich?.apiKey ? { immich: { apiKey: sec.immich.apiKey } } : {}),
     // The ENTSO-E token of the price widget, only when one is stored.
     ...(sec.prices?.entsoeToken ? { prices: { entsoeToken: sec.prices.entsoeToken } } : {}),
+    // The Finnhub key of the stocks card, only when one is stored.
+    ...(sec.data?.stocksKey ? { data: { stocksKey: sec.data.stocksKey } } : {}),
     google: { accounts: sec.google?.accounts || {} },
     ...(sec.microsoft?.accounts && Object.keys(sec.microsoft.accounts).length ? { microsoft: { accounts: sec.microsoft.accounts } } : {}),
     apiTokens: sec.apiTokens || [],
@@ -108,6 +110,9 @@ export function sanitizeImportedSecrets(s) {
   }
   if (isObj(s.prices) && typeof s.prices.entsoeToken === 'string' && /^(?:[A-Za-z0-9-]{20,64})?$/.test(s.prices.entsoeToken)) {
     out.entsoeToken = s.prices.entsoeToken;
+  }
+  if (isObj(s.data) && typeof s.data.stocksKey === 'string' && /^(?:[A-Za-z0-9_-]{10,64})?$/.test(s.data.stocksKey)) {
+    out.stocksKey = s.data.stocksKey;
   }
   if (isObj(s.google) && isObj(s.google.accounts)) {
     const acc = {};

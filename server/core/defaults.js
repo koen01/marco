@@ -1,5 +1,6 @@
 import ICON_RULES from './iconRules.js';
 import { defaultFamily, defaultScreenFamily } from './familyCore.js';
+import { defaultCanvas } from './canvasCore.js';
 
 // Default configuration (created on first run, and used to back-fill missing keys on load).
 // Icon rules are shared with the admin and display (server/core/iconRules.js).
@@ -36,7 +37,7 @@ export const SCREEN_SPLIT_KEYS = {
 /** Calendar settings the 'planner' layout comes with (the admin and the setup wizard apply them when it is picked). */
 export const PLANNER_CALENDAR = { weeks: 'auto', eventStyle: 'cards' };
 /** Keys that only exist per screen (whole object lives in the screen profile). */
-export const SCREEN_ONLY_KEYS = ['screen', 'layout', 'background', 'message', 'alerts', 'privacy', 'widgets'];
+export const SCREEN_ONLY_KEYS = ['screen', 'layout', 'background', 'message', 'alerts', 'privacy', 'widgets', 'canvas'];
 
 // ---- Widgets: images and web pages the owner adds (config.widgets), placed per screen (screen.widgets) ----
 export const WIDGET_TYPES = ['image', 'web', 'prices'];
@@ -60,6 +61,8 @@ export function defaultScreenProfile({ id = 's_main', slug = 'living-room', name
       nightMode: { enabled: false, from: '23:00', to: '07:00', dim: 0.35 },
       // Modern style glass material (ignored by Classic). The defaults reproduce the original Modern look.
       glass: { appearance: 'auto', opacity: 0.5, blur: 18, tint: 'dark', edge: true },
+      // the pills under the date of the usual designs (next event, happening now, birthdays, check-in/out)
+      highlights: true,
     },
     // people: calendar ids shown as columns by the 'people' layout (null = automatic); corner: where the
     // 'photoFrame' layout puts its small clock card (tl, tr, bl, br)
@@ -113,6 +116,9 @@ export function defaultScreenProfile({ id = 's_main', slug = 'living-room', name
     family: defaultScreenFamily(),
     // widgets on this screen, in stacking order: { widgetId, place: 'corner' | 'side', corner, size: 's' | 'm' | 'l' }
     widgets: [],
+    // the Personalizado layout ('canvas', server/core/canvasCore.js): its widgets, background and sidebar; inert on
+    // every other layout
+    canvas: defaultCanvas(),
   });
 }
 

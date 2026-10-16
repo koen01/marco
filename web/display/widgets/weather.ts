@@ -1,5 +1,5 @@
 // Weather block: current conditions, meta row, hourly strip and daily forecast pills.
-import type { Lang, WeatherResponse } from '../../shared/types';
+import type { DisplayConfig, Lang, WeatherResponse } from '../../shared/types';
 import { diffDays, formatTime, LOCALES, weekdayName, zonedParts } from '../../shared/i18n';
 import { ctx } from '../ctx';
 import { esc, setHTML } from '../dom';
@@ -23,13 +23,48 @@ const r1 = (n: number | null | undefined, lang: string) =>
   n === null || n === undefined || Number.isNaN(n) ? '–' : (Math.round(n * 10) / 10).toLocaleString(LOCALES[lang as Lang] ?? 'es-ES');
 
 export class Weather {
-  constructor(private root: HTMLElement, private opts: { hourly?: boolean; days?: boolean; compact?: boolean } = {}) {
+  /** The settings this block reads (the screen's, or a canvas item's merged over them). */
+  private readonly cfg: () => DisplayConfig;
+
+  /** `cfg`: where the settings come from (default: the screen's, ctx.cfg); every read goes through it. */
+  constructor(private root: HTMLElement, private opts: { hourly?: boolean; days?: boolean; compact?: boolean; cfg?: () => DisplayConfig } = {}) {
+    this.cfg = opts.cfg ?? (() => ctx.cfg);
     root.classList.add('weather');
     if (opts.compact) root.classList.add('compact');
+    // a new width (a phone turned, a panel resized): the forecast days are fitted again
+    if (typeof ResizeObserver !== 'undefined') {
+      let width = 0;
+      new ResizeObserver(() => {
+        const nw = Math.round(root.clientWidth);
+        if (nw === width) return;
+        width = nw;
+        if (this.last) this.render(...this.last);
+      }).observe(root);
+    }
+  }
+
+  /** What render() drew last, to draw it again at a new width. */
+  private last: [WeatherResponse | null, string] | null = null;
+
+  /**
+   * Forecast days wider than their column (a phone, a large text size): first a stacked day with the high only,
+   * then smaller symbols and text, then fewer days (three at least).
+   */
+  private fitDays(): void {
+    const row = this.root.querySelector<HTMLElement>('.wx-days');
+    if (!row || !row.clientWidth) return;
+    const over = () => Array.from(row.children as HTMLCollectionOf<HTMLElement>).some((d) => d.scrollWidth > d.clientWidth + 1);
+    for (const step of ['fit-1', 'fit-2']) {
+      if (!over()) return;
+      row.classList.add(step);
+    }
+    while (over() && row.children.length > 3) row.lastElementChild!.remove();
   }
 
   render(w: WeatherResponse | null, todayKey: string): void {
-    const { cfg, lang, tz, t } = ctx;
+    this.last = [w, todayKey];
+    const cfg = this.cfg();
+    const { lang, tz, t } = ctx;
     const wc = cfg.weather;
     this.root.style.display = wc.enabled && w ? '' : 'none';
     if (!wc.enabled || !w || !w.current) return;
@@ -63,7 +98,7 @@ export class Weather {
     }
 
     if (cfg.screen.style === 'modern') {
-      setHTML(this.root, this.modern(w, todayKey, meta.filter(Boolean)));
+      setHTML(this.root, this.modern(cfg, w, todayKey, meta.filter(Boolean)));
       return;
     }
 
@@ -102,6 +137,7 @@ export class Weather {
       html += `<div class="wx-days">${pills.join('')}</div>`;
     }
     setHTML(this.root, html);
+    this.fitDays();
   }
 
   /**
@@ -109,8 +145,8 @@ export class Weather {
    * high / low on the right, then a quiet details line, an hourly row (.wx-hourly, so the side-panel fitting
    * still drops it first) and the next days as columns.
    */
-  private modern(w: WeatherResponse, todayKey: string, meta: string[]): string {
-    const { cfg, lang, tz, t } = ctx;
+  private modern(cfg: DisplayConfig, w: WeatherResponse, todayKey: string, meta: string[]): string {
+    const { lang, tz, t } = ctx;
     const wc = cfg.weather;
     const c = w.current!;
     const f24 = cfg.datetime.format24;

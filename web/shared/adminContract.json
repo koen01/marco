@@ -583,6 +583,122 @@
     },
     {
       "method": "GET",
+      "path": "/api/admin/data/coins",
+      "query": [
+        "q"
+      ],
+      "feature": null,
+      "callers": [
+        "dataCoins"
+      ],
+      "request": null,
+      "response": "CoinSearchResult",
+      "responseArray": false,
+      "responseKeys": [
+        "coins"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/data/preview",
+      "query": [],
+      "feature": null,
+      "callers": [
+        "dataPreview"
+      ],
+      "request": "DataPreviewRequest",
+      "response": "DataPreviewResponse",
+      "responseArray": false,
+      "responseKeys": [
+        "items"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/data/sports/leagues",
+      "query": [],
+      "feature": null,
+      "callers": [
+        "dataLeagues"
+      ],
+      "request": null,
+      "response": "SportsLeaguesResult",
+      "responseArray": false,
+      "responseKeys": [
+        "leagues"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/data/sports/teams",
+      "query": [
+        "league",
+        "q"
+      ],
+      "feature": null,
+      "callers": [
+        "dataTeams"
+      ],
+      "request": null,
+      "response": "SportsTeamsResult",
+      "responseArray": false,
+      "responseKeys": [
+        "teams"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/data/stocks/key",
+      "query": [],
+      "feature": null,
+      "callers": [
+        "stocksKey"
+      ],
+      "request": null,
+      "response": "StocksKeyStatus",
+      "responseArray": false,
+      "responseKeys": [
+        "set",
+        "last4",
+        "checked?"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/data/stocks/key",
+      "query": [],
+      "feature": null,
+      "callers": [
+        "putStocksKey"
+      ],
+      "request": "{key}",
+      "response": "StocksKeyStatus",
+      "responseArray": false,
+      "responseKeys": [
+        "set",
+        "last4",
+        "checked?"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/data/stocks/symbols",
+      "query": [
+        "q"
+      ],
+      "feature": null,
+      "callers": [
+        "dataSymbols"
+      ],
+      "request": null,
+      "response": "SymbolSearchResult",
+      "responseArray": false,
+      "responseKeys": [
+        "symbols"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/admin/devices",
       "query": [],
       "feature": null,
@@ -986,6 +1102,21 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/api/admin/homeassistant/action",
+      "query": [],
+      "feature": "homeassistant",
+      "callers": [
+        "haAction"
+      ],
+      "request": "HaAdminActionRequest",
+      "response": "inline",
+      "responseArray": false,
+      "responseKeys": [
+        "ok"
+      ]
+    },
+    {
       "method": "GET",
       "path": "/api/admin/homeassistant/entities",
       "query": [
@@ -1002,7 +1133,91 @@
         "entity_id",
         "name",
         "state",
-        "unit?"
+        "unit?",
+        "domain?",
+        "device_class?",
+        "area?",
+        "icon?",
+        "supported_features?",
+        "attrs?"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/homeassistant/history",
+      "query": [
+        "entity",
+        "period"
+      ],
+      "feature": "homeassistant",
+      "callers": [
+        "haHistory"
+      ],
+      "request": null,
+      "response": "HaAdminHistory",
+      "responseArray": false,
+      "responseKeys": [
+        "period",
+        "series"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/homeassistant/slim",
+      "query": [],
+      "feature": "homeassistant",
+      "callers": [
+        "haSlim"
+      ],
+      "request": "{entities}",
+      "response": "inline",
+      "responseArray": false,
+      "responseKeys": [
+        "conn",
+        "states"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/homeassistant/statistic",
+      "query": [
+        "entity",
+        "period",
+        "stat"
+      ],
+      "feature": "homeassistant",
+      "callers": [
+        "haStatistic"
+      ],
+      "request": null,
+      "response": "HaStatistic",
+      "responseArray": false,
+      "responseKeys": [
+        "stat",
+        "period",
+        "value",
+        "unit"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/homeassistant/status",
+      "query": [],
+      "feature": "homeassistant",
+      "callers": [
+        "haStatus"
+      ],
+      "request": null,
+      "response": "HaLiveStatus",
+      "responseArray": false,
+      "responseKeys": [
+        "state",
+        "reason?",
+        "lastEventAt",
+        "count",
+        "watched",
+        "tokenSaved?",
+        "tokenForOtherUrl?"
       ]
     },
     {
@@ -1013,7 +1228,7 @@
       "callers": [
         "setHaToken"
       ],
-      "request": "{token}",
+      "request": "{token, url?}",
       "response": null,
       "responseArray": false,
       "responseKeys": null
@@ -1513,7 +1728,8 @@
         "alerts",
         "privacy",
         "family",
-        "widgets?"
+        "widgets?",
+        "canvas?"
       ]
     },
     {
@@ -1659,7 +1875,8 @@
         "createdAt",
         "lastUsedAt",
         "lastUsedIp",
-        "useCount"
+        "useCount",
+        "scopes?"
       ]
     },
     {
@@ -1670,7 +1887,7 @@
       "callers": [
         "createToken"
       ],
-      "request": "{name}",
+      "request": "{name, scopes?}",
       "response": "ApiTokenCreated",
       "responseArray": false,
       "responseKeys": [
@@ -1691,6 +1908,28 @@
       "responseArray": false,
       "responseKeys": [
         "ok"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/tokens/:id",
+      "query": [],
+      "feature": "apiTokens",
+      "callers": [
+        "setTokenScopes"
+      ],
+      "request": "{scopes}",
+      "response": "ApiTokenInfo",
+      "responseArray": false,
+      "responseKeys": [
+        "id",
+        "name",
+        "prefix",
+        "createdAt",
+        "lastUsedAt",
+        "lastUsedIp",
+        "useCount",
+        "scopes?"
       ]
     },
     {
@@ -1787,6 +2026,36 @@
         "settings",
         "status",
         "log"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/values",
+      "query": [],
+      "feature": "valueHooks",
+      "callers": [
+        "hookValues"
+      ],
+      "request": null,
+      "response": "inline",
+      "responseArray": false,
+      "responseKeys": [
+        "values"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/values/:key",
+      "query": [],
+      "feature": "valueHooks",
+      "callers": [
+        "deleteHookValue"
+      ],
+      "request": null,
+      "response": "inline",
+      "responseArray": false,
+      "responseKeys": [
+        "ok"
       ]
     },
     {

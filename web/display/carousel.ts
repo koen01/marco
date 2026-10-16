@@ -275,7 +275,7 @@ export class CarouselController {
     if (!b || !b.config) return ['config', 'events', 'countdowns', 'photos'];
     const out: BundlePart[] = [];
     const priv = b.config.privacy;
-    const privDue = [priv?.next, priv?.active ? priv?.until : null].some((x) => x && Date.parse(x) <= now);
+    const privDue = [priv?.next, priv?.active ? priv?.until : null, b.config.canvas?.next].some((x) => x && Date.parse(x) <= now);
     if (b.dirty || b.config.revision < this.revision || privDue) out.push('config', 'events', 'countdowns');
     else {
       if (!b.events || now - b.eventsAt > EVENTS_MAX_AGE) out.push('events');

@@ -121,3 +121,30 @@ export function isLowPower(mem?: number, cores?: number): boolean {
   if (typeof mem === 'number' && mem > 0 && mem < 2) return true;
   return typeof cores === 'number' && cores > 0 && cores < 2;
 }
+
+/** Desktop Chromium on an ARM board (a Raspberry Pi and the like) by its user agent; Android is not one. */
+export function isArmLinuxUA(ua: string): boolean {
+  return /Linux (armv\d+l?|aarch64)/i.test(ua) && !/Android/i.test(ua);
+}
+
+/** The GPU of a Raspberry Pi (VideoCore / V3D) or of a similar small ARM board (Mali), from the WebGL renderer name. */
+export function isLowPowerGPU(renderer: string | null | undefined): boolean {
+  return !!renderer && /V3D|VideoCore|Mali/i.test(renderer);
+}
+
+/**
+ * A WebGL renderer name that is the CPU drawing instead of a graphics chip: Chrome's SwiftShader, Mesa's llvmpipe and
+ * softpipe, Windows' Microsoft Basic Render Driver and WARP (what Chrome falls back to when the GPU driver crashed).
+ */
+export function isSoftwareGPU(renderer: string | null | undefined): boolean {
+  return !!renderer && /SwiftShader|llvmpipe|softpipe|Basic Render|\bWARP\b|Software Rasterizer|Software Adapter/i.test(renderer);
+}
+
+/**
+ * Desktop Linux on ARM (a Pi and the like) from the client hints (Chromium): `architecture` and `platform` of
+ * userAgentData. Macs and Windows on ARM are fast enough, and Android is not desktop Linux.
+ */
+export function isArmDesktop(architecture: string | null | undefined, platform: string | null | undefined, mobile?: boolean): boolean {
+  if (mobile || !/^Linux$/i.test(platform ?? '')) return false;
+  return /^arm/i.test(architecture ?? '');
+}

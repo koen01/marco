@@ -1,6 +1,6 @@
 // Glass material of the Modern display style (screen.glass), shared by the display and the admin preview.
 // Everything ends up as a handful of CSS custom properties on <html>: no extra layers, no extra backdrop-filters.
-import type { GlassConfig } from './types';
+import type { CanvasConfig, GlassConfig } from './types';
 
 export const GLASS_DEFAULTS: GlassConfig = { appearance: 'auto', opacity: 0.5, blur: 18, tint: 'dark', edge: true };
 
@@ -136,7 +136,7 @@ export const CALENDAR_BLUR_DEFAULT = 18;
  * Layouts where background.scope 'screen' changes something. The others already have the photo behind the whole
  * screen (left / right, big time, photo frame, board), or no photo at all (bedside, a full-screen widget).
  */
-export const SCREEN_PHOTO_PRESETS = ['bigCalendar', 'twoWeeks', 'today', 'agenda', 'topBottom', 'people', 'planner', 'kidsRoutines', 'kidsFamily', 'kidsMeals'];
+export const SCREEN_PHOTO_PRESETS = ['bigCalendar', 'twoWeeks', 'today', 'agenda', 'topBottom', 'people', 'planner', 'kidsRoutines', 'kidsFamily', 'kidsMeals', 'canvas'];
 
 /** The background photo goes behind the whole screen on this layout. */
 export function photoOnWholeScreen(bg: { enabled?: boolean; scope?: string } | undefined, preset: string): boolean {
@@ -154,4 +154,17 @@ export function calendarSheetAlpha(raw: unknown, opts: { light: boolean; lite: b
   const v = raw === null || raw === undefined || raw === '' || !Number.isFinite(x) ? CALENDAR_OPACITY_DEFAULT : clamp(x);
   const [lo, hi] = opts.light ? (opts.lite ? [0.66, 0.96] : [0.56, 0.95]) : opts.lite ? [0.5, 0.94] : [0.24, 0.9];
   return Math.round((lo + (hi - lo) * v) * 1000) / 1000;
+}
+
+/**
+ * The background a Personalizado screen (layout 'canvas') really shows, from its own canvas.background: the slideshow
+ * behind the whole screen ('photo'), only in the sidebar (sidebar fill 'photo'), or none ('ambient', 'solid').
+ * The saved screen.background is never rewritten (its source, interval and the rest still apply), so going back to
+ * another layout finds it as it was.
+ */
+export function effectiveBackground<B extends { enabled?: boolean; scope?: string }>(bg: B, canvas: Pick<CanvasConfig, 'background' | 'sidebar'> | null | undefined): B {
+  if (!canvas) return bg;
+  const photo = canvas.background === 'photo';
+  const side = !photo && canvas.sidebar?.side !== 'none' && canvas.sidebar?.fill === 'photo';
+  return { ...bg, enabled: photo || side, scope: photo ? 'screen' : 'side' };
 }

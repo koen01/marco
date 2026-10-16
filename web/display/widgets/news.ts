@@ -1,5 +1,5 @@
 // News ticker: headline + one-line summary, rotating with a smooth slide/crossfade.
-import type { NewsItem, NewsResponse } from '../../shared/types';
+import type { DisplayConfig, NewsItem, NewsResponse } from '../../shared/types';
 import { ctx } from '../ctx';
 import { el, esc, reducedMotion } from '../dom';
 import { refreshMarquee } from '../marquee';
@@ -13,7 +13,12 @@ export class News {
   private cur: HTMLElement | null = null;
   private sig = '';
 
-  constructor(private root: HTMLElement) {
+  /** The settings this ticker reads (the screen's, or a canvas item's merged over them). */
+  private readonly cfg: () => DisplayConfig;
+
+  /** `opts.cfg`: where the settings come from (default: the screen's, ctx.cfg); every read, timers included, goes through it. */
+  constructor(private root: HTMLElement, opts: { cfg?: () => DisplayConfig } = {}) {
+    this.cfg = opts.cfg ?? (() => ctx.cfg);
     root.classList.add('news');
     root.innerHTML = `<div class="news-stage"></div><div class="news-bar"><i></i></div>`;
     this.stage = root.querySelector('.news-stage')!;
@@ -21,7 +26,7 @@ export class News {
   }
 
   setData(n: NewsResponse | null): void {
-    const enabled = ctx.cfg.news.enabled && !!n && n.items?.length > 0;
+    const enabled = this.cfg().news.enabled && !!n && n.items?.length > 0;
     this.root.style.display = enabled ? '' : 'none';
     if (!enabled) {
       this.stop();
@@ -39,6 +44,13 @@ export class News {
     const keep = this.items.findIndex((i) => i.id === curId);
     this.idx = keep >= 0 ? keep : -1;
     if (keep < 0 || !this.cur || !this.timer) this.next();
+  }
+
+  /** Stop rotating (a canvas widget removed from the screen). */
+  destroy(): void {
+    this.stop();
+    this.items = [];
+    this.sig = '';
   }
 
   private stop() {
@@ -71,7 +83,7 @@ export class News {
         });
       } else old.remove();
     }
-    const sec = ctx.cfg.news.rotateSec;
+    const sec = this.cfg().news.rotateSec;
     // a headline too long for one line slides once to its end before the next item (marquee.ts)
     node.dataset.mqUntil = String(Date.now() + sec * 1000);
     refreshMarquee();

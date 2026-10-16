@@ -515,6 +515,71 @@ export class Photos {
 const toneCanvas = document.createElement('canvas');
 /** Latest measure of the photo (for the Modern glass tint / ink); null until a photo could be read. */
 export let photoStats: PhotoStats | null = null;
+/** The 48×32 sample of the latest photo (RGBA) and the photo's width / height, for toneOf(). */
+let toneBuf: Uint8ClampedArray | null = null;
+let toneAspect = 0;
+let toneSeq = 0;
+const toneCache = new Map<string, RegionTone>();
+
+function aspectOf(img: CanvasImageSource): number {
+  const o = img as { naturalWidth?: number; naturalHeight?: number; videoWidth?: number; videoHeight?: number; width?: number | { baseVal?: { value: number } }; height?: number | { baseVal?: { value: number } } };
+  const w = o.naturalWidth || o.videoWidth || (typeof o.width === 'number' ? o.width : 0);
+  const h = o.naturalHeight || o.videoHeight || (typeof o.height === 'number' ? o.height : 0);
+  return w && h ? w / h : 0;
+}
+
+/** What the photo looks like in one region: the same tone as --tone-bottom, its colour and its mean brightness. */
+export interface RegionTone extends PhotoStats {
+  /** mean luminance, 0..1 */
+  lum: number;
+}
+
+/**
+ * The photo behind a part of its frame, as fractions of the frame's box (0..1, the photo drawn to cover it, centred).
+ * null until a photo could be read. Cached per photo and region.
+ */
+export function toneOf(x0: number, y0: number, x1: number, y1: number, frameAspect: number): RegionTone | null {
+  const px = toneBuf;
+  if (!px) return null;
+  const W = 48, H = 32;
+  // the part of the photo the frame shows (object-fit: cover, centred)
+  let ox = 0, oy = 0, sx = 1, sy = 1;
+  if (toneAspect && frameAspect) {
+    if (toneAspect > frameAspect) {
+      sx = frameAspect / toneAspect;
+      ox = (1 - sx) / 2;
+    } else {
+      sy = toneAspect / frameAspect;
+      oy = (1 - sy) / 2;
+    }
+  }
+  const c = (v: number) => Math.min(1, Math.max(0, v));
+  const ax = Math.floor(c(ox + c(x0) * sx) * W), bx = Math.max(ax + 1, Math.ceil(c(ox + c(x1) * sx) * W));
+  const ay = Math.floor(c(oy + c(y0) * sy) * H), by = Math.max(ay + 1, Math.ceil(c(oy + c(y1) * sy) * H));
+  const key = `${toneSeq}|${ax},${ay},${bx},${by}`;
+  const hit = toneCache.get(key);
+  if (hit) return hit;
+  let sum = 0, sq = 0, n = 0, wr = 0, wg = 0, wb = 0, ws = 0;
+  for (let y = ay; y < Math.min(H, by); y++) {
+    for (let x = ax; x < Math.min(W, bx); x++) {
+      const i = (y * W + x) * 4;
+      const r = px[i], g = px[i + 1], b = px[i + 2];
+      const l = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      sum += l; sq += l * l; n++;
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      const w = 0.05 + (mx ? (mx - mn) / mx : 0) * Math.min(1, mx / 96);
+      wr += r * w; wg += g * w; wb += b * w; ws += w;
+    }
+  }
+  if (!n) return null;
+  const mean = sum / n, std = Math.sqrt(Math.max(0, sq / n - mean * mean));
+  const bright = Math.min(1, Math.max(0, (mean - 0.18) / 0.5));
+  const busy = Math.min(1, std / 0.22);
+  const out: RegionTone = { tone: Math.min(1, bright * 0.75 + busy * 0.35), rgb: [wr / ws, wg / ws, wb / ws].map(Math.round) as [number, number, number], lum: mean };
+  if (toneCache.size > 64) toneCache.clear();
+  toneCache.set(key, out);
+  return out;
+}
 function applyTone(img: CanvasImageSource, instant = false): void {
   try {
     const W = 48, H = 32;
@@ -555,6 +620,11 @@ function applyTone(img: CanvasImageSource, instant = false): void {
       wr += r * w; wg += g2 * w; wb += b * w; ws += w;
     }
     photoStats = { tone: toneBottom, rgb: [wr / ws, wg / ws, wb / ws].map(Math.round) as [number, number, number] };
+    // kept for toneOf(): the cards of a Personalizado screen each read the part of the photo right behind them
+    toneBuf = new Uint8ClampedArray(px);
+    toneAspect = aspectOf(img);
+    toneSeq++;
+    toneCache.clear();
     window.dispatchEvent(new Event('marco:photo-tone'));
     if (first) {
       void getComputedStyle(document.documentElement).getPropertyValue('--tone-bottom');

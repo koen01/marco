@@ -73,6 +73,12 @@ used on shared networks or behind an HTTPS reverse proxy on the Internet:
   `Content-Security-Policy: frame-ancestors 'self'` (only the admin's own preview can frame a page) and
   `Referrer-Policy: no-referrer`; the display and admin pages are sent with `Cache-Control: no-store`. Admin changes
   also refuse a `Sec-Fetch-Site` other than `same-origin`.
+- The display page also gets `script-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none';
+  form-action 'none'` (no inline or outside script). While a screen has a custom HTML card, `frame-src` limits its
+  frames to the server itself and the saved web widgets. Custom HTML cards (self-hosted only) never run code: the
+  HTML goes through an allowlist (elements, attributes, where `{{placeholders}}` may stand) and is drawn in an
+  `<iframe sandbox="">` with its own `default-src 'none'` policy and `pointer-events: none`, so it cannot run a
+  script, load anything from the network or navigate.
 - Webhooks (`/api/hooks/*`) only accept `Authorization: Bearer <token>`; tokens are stored as SHA-256 hashes and
   rate-limited (30 requests/minute per token).
 - Secrets (`data/secrets.json`, `.env`, exports that include secrets, `data/backups/`) must be kept private.

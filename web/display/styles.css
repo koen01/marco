@@ -484,6 +484,13 @@ body {
 .dp .rng i { position: absolute; top: 0; bottom: 0; border-radius: 9rem; background: linear-gradient(90deg, #6cc7ff, #ffc94a); }
 .dp .p { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 1.3rem; color: var(--rain); font-weight: 600; margin-top: 0.2rem; }
 .dp .p .ico { width: 1em; height: 1em; }
+/* forecast days that do not fit their column (a phone, a large text size), see Weather.fitDays */
+#app .wx-days.fit-1 .dp { flex-direction: column; justify-content: flex-start; gap: 0.2rem; padding-inline: 0.2rem; min-width: 0; }
+#app .wx-days.fit-1 .dp .dmn, #app .wx-days.fit-1 .dp .rng, #app .wx-days.fit-1 .dp .p { display: none; }
+#app .wx-days.fit-1 .dp .dn { letter-spacing: 0.04em; }
+#app .wx-days.fit-2 .dp svg { width: 3.4rem; height: 3.6rem; }
+#app .wx-days.fit-2 .dp .dn { font-size: 1.15rem; letter-spacing: 0; }
+#app .wx-days.fit-2 .dp .dmx { font-size: 1.9rem; }
 
 /* weather icon animations (only the big "current" icon is .anim) */
 .wx { overflow: visible; }
@@ -671,6 +678,9 @@ body {
   box-shadow: 0 0.2rem 1.2rem rgb(var(--c) / 0.22);
 }
 .ev.bar.single { background: rgb(var(--c) / 0.92); }
+/* a one-day all-day chip that wraps (a holiday, a birthday): only as tall as its words, never a solid block over the
+   spare line it may be given (calendar.ts planWrap; the lane under it stays free) */
+.ev.bar.single.wrap { align-self: start; }
 .ev.bar.cont-l { margin-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; padding-left: 1.2rem; }
 .ev.bar.cont-r { margin-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .ev.bar.cont-l::before {
@@ -1637,6 +1647,14 @@ html:not(.style-modern) #uw-side { margin: 0 -1rem; }
 .pw-bar--cheap { fill: var(--pw-cheap); }
 .pw-bar--high { fill: var(--pw-high); }
 .pw-bar.is-past { fill: var(--pw-ink); opacity: 0.16; }
+/* "De fondo" on a Personalizado card (prices.ts bgChart): the bars behind the card, under its price now, to its edges */
+.pw--bg { position: relative; isolation: isolate; }
+.pw--bg .pw-svg--bg { inset: 0 auto auto auto; z-index: -1; }
+.pw-bgl--cheap { color: var(--pw-cheap); }
+.pw-bgl--mid { color: var(--pw-mid); }
+.pw-bgl--high { color: var(--pw-high); }
+.pw-bgl .b0 { stop-color: currentColor; stop-opacity: 0.85; }
+.pw-bgl .b1 { stop-color: currentColor; stop-opacity: 0.08; }
 .pw-nowline { stroke: var(--pw-ink); stroke-width: 1.5; stroke-dasharray: 2 3; opacity: 0.55; }
 .pw-nowdot { fill: var(--pw-ink); }
 .pw-zero { stroke: var(--pw-ink-3); stroke-width: 1; }

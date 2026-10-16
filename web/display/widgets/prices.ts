@@ -20,6 +20,7 @@ import type { PricedSlot } from '../../../server/core/pricesCore.js';
 import { LOCALES, formatHM } from '../../shared/i18n';
 import { getJSON } from '../api';
 import { ctx } from '../ctx';
+import { fade } from './canvas/curve';
 
 const POLL_MS = 10 * 60_000;
 const RETRY_MS = 60_000;
@@ -208,6 +209,11 @@ export class PriceCard {
    * three figures, 0 with the price now in the header only; -1: not even then MIN_ROWS rows, the wide chart instead.
    */
   private rowsFit: { room: string; level: number } = { room: '', level: 2 };
+  /**
+   * A Personalizado card's "Estilo de la gráfica" set to "De fondo" (widgets/canvas/content.ts puts it on the card's
+   * box, custom.ts passes it on): the bars fill the card behind the price now, edge to edge (bgChart).
+   */
+  backdrop = false;
   /** called when the card first has prices, fails before having any, or turns stale / fresh */
   onState: ((s: 'loading' | 'ok' | 'stale' | 'failed') => void) | null = null;
 
@@ -360,7 +366,7 @@ export class PriceCard {
     const need = mode === 'nowchart' ? 22 : mode === 'chart' ? 16 : mode === 'next' ? 30 : mode === 'rows' ? 12 : 0;
     if (this.place !== 'full' && need && this.maxH < need * rem * k) mode = 'now';
     if (mode === 'next' && this.place !== 'full' && this.nextTooSmall === this.roomKey()) mode = 'now';
-    const sig = JSON.stringify([this.data?.fetchedAt, this.data?.grid?.fetchedAt, this.data?.stale, this.failed, o, mode, this.rowsFit.level, this.maxW, this.maxH, this.w.name, this.w.size, ctx.lang, ctx.tz, Math.floor(now / (o?.resolution === 'quarter' ? 900_000 : 3600_000))]);
+    const sig = JSON.stringify([this.data?.fetchedAt, this.data?.grid?.fetchedAt, this.data?.stale, this.failed, o, mode, this.rowsFit.level, this.maxW, this.maxH, this.w.name, this.w.size, ctx.lang, ctx.tz, this.backdrop, Math.floor(now / (o?.resolution === 'quarter' ? 900_000 : 3600_000))]);
     if (tick && sig === this.sig) return;
     this.sig = sig;
     const m = this.model(now);
@@ -384,13 +390,17 @@ export class PriceCard {
 
     // sizes: the cards with a chart take the room they are given, the others fit their content
     const chart = mode === 'chart' || mode === 'nowchart' || mode === 'full';
+    // "De fondo" (a Personalizado card): the bars behind the price now, from under it to the card's bottom edge, the
+    // card as large as its box
+    const behind = this.backdrop && (mode === 'nowchart' || mode === 'full');
+    card.classList.toggle('pw--bg', behind);
     card.style.width = '';
     card.style.height = '';
     card.style.maxWidth = `${this.maxW}px`;
     card.style.maxHeight = `${this.maxH}px`;
     if (chart) {
       const w = this.place === 'corner' ? this.maxW : this.maxW;
-      const h = this.place === 'full' ? this.maxH : Math.min(this.maxH, Math.round(w * (mode === 'nowchart' ? 0.66 : 0.52)));
+      const h = this.place === 'full' || behind ? this.maxH : Math.min(this.maxH, Math.round(w * (mode === 'nowchart' ? 0.66 : 0.52)));
       card.style.width = `${w}px`;
       card.style.height = `${h}px`;
     } else if (mode === 'next') {
@@ -433,11 +443,28 @@ export class PriceCard {
       const box = el('div', 'pw-chart');
       card.appendChild(box);
       // measured once in the document
-      requestAnimationFrame(() => this.chart(box, m, now));
+      requestAnimationFrame(() => (behind ? this.bgChart(box, m, now) : this.chart(box, m, now)));
     }
     if (mode === 'cheap') card.appendChild(this.cheapBlock(m, now, this.place === 'full' ? 4 : this.place === 'side' ? 3 : this.w.size === 's' ? 1 : this.w.size === 'm' ? 2 : 3));
     card.appendChild(this.footer(m, mode));
     if (this.place !== 'full' && !rows) this.fit(pk);
+    else if (mode === 'full' && card.parentElement?.classList.contains('uw-in-canvas')) this.fitWide(pk);
+  }
+
+  /**
+   * A Personalizado card drawn like the full screen is narrower than the screen: when the price and its unit no longer
+   * fit their half of the card, everything is drawn a little smaller so they do not run into the list next to them.
+   * The full-screen Widget layout never gets here.
+   */
+  private fitWide(pk: number): void {
+    const now = this.el.querySelector<HTMLElement>('.pw-now');
+    if (!now || !this.el.isConnected) return;
+    let k = pk;
+    for (let i = 0; i < 4 && now.scrollWidth > now.clientWidth + 1; i++) {
+      k = Math.max(FLOOR, (k * now.clientWidth) / now.scrollWidth - 0.01);
+      this.el.style.setProperty('--pk', k.toFixed(3));
+      if (k === FLOOR) return;
+    }
   }
 
   /**
@@ -699,6 +726,65 @@ export class PriceCard {
     const credit = grid && spot && grid.startsWith(spot) ? grid : [spot, grid].filter(Boolean).join(' · ');
     if (credit) f.appendChild(el('span', 'pw-credit', credit));
     return f;
+  }
+
+  /**
+   * The bars behind the card ("De fondo"): from the top of the chart's place to the card's bottom edge and from its
+   * left edge to its right one, no prices over them and no hours under them (the price now, the lowest and the highest
+   * are written over them). Each bar in its level's colour fades to its foot like the curves of the other cards
+   * (canvas/curve.ts), the past ones dimmed, the hour now marked by its line.
+   */
+  private bgChart(box: HTMLElement, m: Model, now: number): void {
+    const card = this.el;
+    if (!box.isConnected) return;
+    const W = Math.floor(card.clientWidth);
+    const H = Math.floor(card.clientHeight - box.offsetTop);
+    const bars = m.bars;
+    if (W < 40 || H < 30 || !bars.length) return;
+    const fs = parseFloat(getComputedStyle(box).fontSize) || 12;
+    const s = svg('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, class: 'pw-svg pw-svg--bg', 'aria-hidden': 'true' });
+    s.style.left = `${-box.offsetLeft}px`;
+    s.style.right = 'auto';
+    s.style.bottom = 'auto';
+    box.replaceChildren(s);
+    const start = m.todayStart;
+    const end = bars[bars.length - 1].t + bars[bars.length - 1].m * 60_000;
+    const span = Math.max(1, end - start);
+    const x = (t: number) => ((t - start) / span) * W;
+    const top = fs * 0.4;
+    const lo = Math.min(0, m.min);
+    const hi = Math.max(m.max, lo + 1e-9);
+    const y = (p: number) => top + (H - top) - ((p - lo) / (hi - lo)) * (H - top);
+    const zeroY = y(0);
+    const slotW = (15 * 60_000 / span) * W;
+    const gapFrac = slotW * (bars[0].m / 15) > 6 ? 0.22 : 0.08;
+    // one fade per level, in a group of that level's colour
+    const fills: Record<string, string> = {};
+    for (const lv of ['cheap', 'mid', 'high']) {
+      const g = svg('g', { class: `pw-bgl pw-bgl--${lv}` });
+      s.appendChild(g);
+      // over the chart's whole height, so every bar is faint at the foot where the lowest and highest are written
+      fills[lv] = fade(g, true, [top, H]);
+    }
+    for (const b of bars) {
+      const x0 = x(b.t);
+      const w = Math.max(1, x(b.t + b.m * 60_000) - x0);
+      const g = w * gapFrac;
+      const yv = y(b.p);
+      const lv = levelOf(b.p, b.t >= m.tomorrowStart ? m.limitsTomorrow : m.limits);
+      const past = b.t + b.m * 60_000 <= now;
+      const cur = b.t <= now && now < b.t + b.m * 60_000;
+      const r = Math.min((w - g) / 2, fs * 0.25);
+      const bar = svg('rect', {
+        x: x0 + g / 2, y: Math.min(yv, zeroY), width: Math.max(1, w - g), height: Math.max(1, Math.abs(zeroY - yv)), rx: r, ry: r,
+        class: `pw-bar pw-bar--${lv}${past ? ' is-past' : ''}${cur ? ' is-now' : ''}`,
+      });
+      // (a past hour keeps the dimmed ink of the stylesheet)
+      if (!past) bar.style.fill = fills[lv];
+      s.appendChild(bar);
+    }
+    const nx = x(now);
+    if (nx >= 0 && nx <= W) s.appendChild(svg('line', { x1: nx, x2: nx, y1: top, y2: H, class: 'pw-nowline' }));
   }
 
   /**

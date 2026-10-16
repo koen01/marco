@@ -3,7 +3,7 @@
 // display then polls GET /api/display/poll, which returns the same events as commands. A server that answers 404
 // there gets the older config revision check every 90 s.
 // No runtime imports on purpose: the module is unit-tested directly by node --test (server/test/display-live.test.js).
-import type { Announcement, DoorbellRing, IdentifyPayload, NightCommand, PollResponse, StreamHello } from '../shared/types';
+import type { Announcement, DoorbellRing, HaSnapshot, IdentifyPayload, NightCommand, PollResponse, StreamHello, ValuesSnapshot } from '../shared/types';
 
 export type LiveMode = 'sse' | 'poll';
 
@@ -98,6 +98,10 @@ export interface StreamHandlers {
   doorbellEnd?: (d: { id: string | null }) => void;
   /** Familia changed (a routine ticked, stars, a new family link): refetch the family state */
   family?: (d: { rev?: number }) => void;
+  /** Home Assistant states of a Personalizado screen changed (aliases only; haFeed.ts) */
+  ha?: (d: HaSnapshot) => void;
+  /** pushed values of a Personalizado screen changed (only the keys it shows; valuesFeed.ts) */
+  values?: (d: ValuesSnapshot) => void;
   /** link regenerated / device revoked / display access switched to private */
   revoked?: (d: { code: string }) => void;
   open?: () => void;
@@ -124,6 +128,12 @@ export function dispatch(name: string, d: any, h: StreamHandlers): boolean {
     case 'privacy': h.privacy?.({ active: d?.active === true, ...(typeof d?.screenId === 'string' ? { screenId: d.screenId } : {}) }); return true;
     case 'doorbell': if (d && typeof d.id === 'string' && typeof d.expiresAt === 'string') h.doorbell?.(d); return true;
     case 'family': h.family?.({ ...(typeof d?.rev === 'number' ? { rev: d.rev } : {}) }); return true;
+    case 'ha':
+      if (d && typeof d.rev === 'number' && d.states && typeof d.states === 'object' && !Array.isArray(d.states)) h.ha?.(d);
+      return true;
+    case 'values':
+      if (d && typeof d.rev === 'number' && d.values && typeof d.values === 'object' && !Array.isArray(d.values)) h.values?.(d);
+      return true;
     case 'doorbell-end': h.doorbellEnd?.({ id: typeof d?.id === 'string' ? d.id : null }); return true;
     case 'revoked': h.revoked?.({ code: typeof d?.code === 'string' ? d.code : 'invalid_key' }); return true;
     default: return false;

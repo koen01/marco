@@ -418,7 +418,7 @@ test('admin: section, nav entry, Diseño card, contract mirrors and every string
   const layout = read('web/admin/sections/Layout.tsx');
   assert.match(layout, /id="layout-widgets"/);
   assert.match(layout, /id === 'widget'/);
-  assert.match(read('web/shared/screens.ts'), /SCREEN_ONLY_KEYS = \['screen', 'layout', 'background', 'message', 'alerts', 'privacy', 'widgets'\]/);
+  assert.match(read('web/shared/screens.ts'), /SCREEN_ONLY_KEYS = \['screen', 'layout', 'background', 'message', 'alerts', 'privacy', 'widgets', 'canvas'\]/);
   const dict = read('web/admin/i18n-dict-widgets.ts');
   assert.match(read('web/admin/i18n-dict.ts'), /\.\.\.ROWS_WIDGETS/);
   const all = fs.readdirSync(new URL('../../web/admin/', import.meta.url)).filter((f) => f.startsWith('i18n-dict')).map((f) => read(`web/admin/${f}`)).join('\n');

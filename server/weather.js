@@ -9,6 +9,7 @@ import { wmoDescription, windDirLabel } from './core/lib/i18n.js';
 import { defaultScreen } from './core/screens.js';
 import { getConfig, getSecrets } from './store.js';
 import * as ha from './homeassistant.js';
+import { mirroredState } from './haLive.js';
 
 const VERSION = (() => {
   try {
@@ -43,6 +44,12 @@ const HA_TO_WMO = {
 const round1 = (n) => (n == null || Number.isNaN(+n) ? null : Math.round(+n * 10) / 10);
 const round0 = (n) => (n == null || Number.isNaN(+n) ? null : Math.round(+n));
 
+/** A Home Assistant state: from the live mirror when it has it (haLive.js), else one REST call. */
+const haState = (id) => {
+  const m = mirroredState(id);
+  return m ? Promise.resolve(m) : ha.getState(id);
+};
+
 async function applyHomeAssistant(data, w, lang) {
   if (!ha.haUsable()) return data;
   const num = (s) => {
@@ -51,7 +58,7 @@ async function applyHomeAssistant(data, w, lang) {
   };
   const tasks = [];
   if (w.provider === 'homeassistant' && w.haWeatherEntity) {
-    tasks.push(ha.getState(w.haWeatherEntity).then((s) => {
+    tasks.push(haState(w.haWeatherEntity).then((s) => {
       const a = s.attributes || {};
       const code = HA_TO_WMO[s.state];
       const cur = data.current;
@@ -79,11 +86,11 @@ async function applyHomeAssistant(data, w, lang) {
   }
   let indoor = null;
   if (w.haIndoorTempEntity) {
-    tasks.push(ha.getState(w.haIndoorTempEntity).then((s) => { indoor = { ...(indoor || {}), temp: round1(num(s)) }; })
+    tasks.push(haState(w.haIndoorTempEntity).then((s) => { indoor = { ...(indoor || {}), temp: round1(num(s)) }; })
       .catch((err) => console.warn('[weather] HA indoor temp:', err.message)));
   }
   if (w.haIndoorHumidityEntity) {
-    tasks.push(ha.getState(w.haIndoorHumidityEntity).then((s) => { indoor = { ...(indoor || {}), humidity: round0(num(s)) }; })
+    tasks.push(haState(w.haIndoorHumidityEntity).then((s) => { indoor = { ...(indoor || {}), humidity: round0(num(s)) }; })
       .catch((err) => console.warn('[weather] HA indoor humidity:', err.message)));
   }
   await Promise.all(tasks);

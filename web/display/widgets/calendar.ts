@@ -1,4 +1,5 @@
 // Month / week grid: huge thin day numbers, lane-allocated event chips and continuous multi-day bars.
+import type { DisplayConfig } from '../../shared/types';
 import { addDays, diffDays, gridStartOf, monthName, weekdayNames, weekdayOfKey } from '../../shared/i18n';
 import { chipColors } from '../color';
 import { ctx } from '../ctx';
@@ -92,7 +93,12 @@ export class MonthCalendar {
   private dow: HTMLElement;
   private weeks: HTMLElement;
 
-  constructor(root: HTMLElement) {
+  /** The settings this grid reads (the screen's, or a canvas item's merged over them). */
+  private readonly cfg: () => DisplayConfig;
+
+  /** `opts.cfg`: where the settings come from (default: the screen's, ctx.cfg); every read, page timers included, goes through it. */
+  constructor(root: HTMLElement, opts: { cfg?: () => DisplayConfig } = {}) {
+    this.cfg = opts.cfg ?? (() => ctx.cfg);
     this.root = root;
     root.classList.add('cal');
     root.innerHTML = `<div class="cal-head"><div class="cal-title"></div><div class="legend"></div></div>
@@ -103,7 +109,8 @@ export class MonthCalendar {
   }
 
   render(events: NEvent[], tick: Tick): void {
-    const { cfg, lang, tz, t } = ctx;
+    const cfg = this.cfg();
+    const { lang, tz, t } = ctx;
     const c = cfg.calendar;
     const isWeek = c.view === 'week';
     // eventStyle 'cards': one-day events are stacked cards (cardWeek); it takes precedence over compact busy days
@@ -195,6 +202,12 @@ export class MonthCalendar {
       reconcile(el, this.weekSpecs(row.start, layouts[w], Lw, today, nowMs, t, tz, isWeek, compact ? m : null, rowH), { flip: true });
     });
     this.applyPages();
+  }
+
+  /** Stop the page timer (a canvas widget removed from the screen). */
+  destroy(): void {
+    if (this.pageTimer) clearInterval(this.pageTimer);
+    this.pageTimer = null;
   }
 
   /** Busy days: page turns so far (every day shows page step % its page count, so they all turn together). */
@@ -524,7 +537,7 @@ export class MonthCalendar {
     ws: string, segs: Placed[], hidden: Set<Placed>, moreCount: number[], L: number, m: Metrics, rowH: number, done: Set<number>,
   ): Stack[] {
     const stacks: Stack[] = [];
-    const rotate = ctx.cfg.calendar.rotateBusyDays !== false;
+    const rotate = this.cfg().calendar.rotateBusyDays !== false;
     const lane = laneHeight(rowH, m.numH, L, m.laneH, m.laneMin, m.gap);
     for (let d = 0; d < 7; d++) {
       const a = 2 * d, b = 2 * d + 2;
@@ -561,7 +574,7 @@ export class MonthCalendar {
 
   /** One compact entry: emoji, time (none for all-day events), title; the colour shows as for a normal chip. */
   private lineHtml(sg: Placed, today: string, nowMs: number, tz: string): string {
-    const { cfg } = ctx;
+    const cfg = this.cfg();
     const e = sg.e;
     const col = chipColors(e.color);
     const allDay = !e.timed;
@@ -646,7 +659,7 @@ export class MonthCalendar {
 
   /** One card: time line on top (timed events), title below on `lines` lines; all-day ones look like their chips. */
   private cardHtml(sg: Placed, lines: number, today: string, nowMs: number, tz: string): string {
-    const { cfg } = ctx;
+    const cfg = this.cfg();
     const c = cfg.calendar;
     const e = sg.e;
     const col = chipColors(e.color);
@@ -681,7 +694,7 @@ export class MonthCalendar {
     el: HTMLElement, ws: string, segs: Placed[], size: { m: Metrics; cm: CardMetrics; rowH: number } | null,
     today: string, nowMs: number, t: Ctx['t'], tz: string, isWeek: boolean,
   ): void {
-    const { cfg } = ctx;
+    const cfg = this.cfg();
     const c = cfg.calendar;
     const rotate = c.rotateBusyDays !== false;
     const specs = this.dayCells(ws, today, isWeek);
@@ -793,7 +806,7 @@ export class MonthCalendar {
     ws: string, segs: Placed[], L: number, today: string, nowMs: number, t: Ctx['t'], tz: string, isWeek: boolean,
     compact: Metrics | null, rowH: number,
   ): Spec[] {
-    const { cfg } = ctx;
+    const cfg = this.cfg();
     const c = cfg.calendar;
     const specs: Spec[] = this.dayCells(ws, today, isWeek);
 

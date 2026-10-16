@@ -52,7 +52,8 @@ calendars, weather and news feeds *you* connect.
 > DAKboard is a trademark of its owner.
 
 **Contents:** [Features](#features) · [How it works](#how-it-works) · [Install](#install) ·
-[Try it](#try-it-in-one-minute) · [Raspberry Pi kiosk](#raspberry-pi-kiosk) ·
+[Try it](#try-it-in-one-minute) · [Custom screens](#custom-screens) · [Home Assistant](#home-assistant) ·
+[Raspberry Pi kiosk](#raspberry-pi-kiosk) ·
 [Google Calendar](#connecting-google-calendar) · [Other integrations](#other-integrations) · [Photos](#photos) ·
 [Screens, alerts & API](#multiple-screens-alerts-and-the-api) · [Configuration](#configuration-reference) ·
 [Security](#security) · [Development](#development)
@@ -80,6 +81,10 @@ calendars, weather and news feeds *you* connect.
 **Modern or Classic, per screen.** Modern is the default; Classic keeps the original look:
 
 ![The same screen in the Modern style (left) and the Classic style (right)](docs/screenshots/display-modern-vs-classic.webp)
+
+**Or build your own.** *Custom* screens put any cards, at any size, wherever you want them: the calendar, the
+family's routines, your Home Assistant lights, heating and blinds, crypto, sports and stocks. Several screens can take
+turns on one TV in a carousel. See [Custom screens](#custom-screens).
 
 **Glass options** (Modern style): automatic, clear or tinted glass, with a dark, light or photo-coloured tint,
 transparency, blur and a light edge:
@@ -182,7 +187,7 @@ transparency, blur and a light edge:
 | ![Command palette searching for night mode actions and settings](docs/screenshots/admin-home-palette.webp) | ![Local event editor: date, time, repeat, location and countdown](docs/screenshots/admin-local-edit.webp) | ![Upload conflict dialog: replace, keep both or skip](docs/screenshots/admin-photos-conflict.webp) |
 | ![Screens: one profile per room with its own layout and private link](docs/screenshots/admin-screens.webp) | ![Alerts page: send an alert now](docs/screenshots/admin-alerts.webp) | ![Activity log with filters](docs/screenshots/admin-activity.webp) |
 | ![Backups: export, import and automatic backups with restore](docs/screenshots/admin-backups.webp) | ![Countdowns: manual dates and automatic countdowns](docs/screenshots/admin-countdowns.webp) | ![Icon rules with a live tester for event titles](docs/screenshots/admin-icons.webp) |
-| ![Layout page: Modern or Classic style, glass settings and the live preview of the screen](docs/screenshots/admin-layout.webp) | ![Local events list with upcoming appointments](docs/screenshots/admin-local.webp) | ![Sign-in page of the admin panel](docs/screenshots/admin-login.webp) |
+| ![Layout page: Modern, Classic, Kids or Custom style, the appearance settings and the live preview of the screen](docs/screenshots/admin-layout.webp) | ![Local events list with upcoming appointments](docs/screenshots/admin-local.webp) | ![Sign-in page of the admin panel](docs/screenshots/admin-login.webp) |
 
 | | |
 |---|---|
@@ -485,7 +490,7 @@ Just want to see the display? Any running instance shows a built-in sample datas
 board layouts, the photo frame, Classic and glass styles, live weather effects, a portrait screen, the admin
 (layouts, calendars, gallery) and the dim bedside clock at night.
 
-[![Demo video: the living room screen in the Modern style with the month calendar, weather and upcoming events](docs/media/poster.webp)](https://github.com/mr-reb00t/marco/releases/download/media/marco-demo.mp4)
+[![Demo video: a Custom screen with Home Assistant cards (thermostat, lights, blind, camera and energy chart), the drag and drop editor, family, data and calendar screens](docs/media/poster.webp)](https://github.com/mr-reb00t/marco/releases/download/media/marco-demo.mp4)
 
 ## A planner for a busy family
 
@@ -559,6 +564,107 @@ Profile photos are stored in `data/avatars` and only reach the family page (with
 screens that show that person. A screen in privacy mode keeps the emoji. Exports include the photos. A photo you
 replace or remove, or the photo of someone you remove, is deleted a week later, so restoring a recent backup brings
 it back.
+
+## Custom screens
+
+*Layout → Custom* lets you build a screen yourself. Pick a template (or *Copy my current design* to start from the one
+you have, or *Calendar only* for one big calendar), then drag cards from the palette onto a 12×8 grid (8×12 on a
+portrait screen): clocks, the month, the week, the agenda, the weather, photos, countdowns, the family cards, your
+Home Assistant devices, crypto, sports and stocks, a value you send from anywhere, or a bit of your own HTML.
+
+Sizes are free: a card can be any width and height in whole cells, from a small tile to the whole screen, within
+what each kind of card can show well. Pull the corner handle to resize it; a tag shows its size in cells as you
+drag, and cards never overlap. Set its content, size and look (glass, a solid colour or no card) in the panel on the
+right. *Preview* shows the real screen before you save, and *Cancel* leaves it as it was.
+
+![A Custom screen with Home Assistant by room: lights, thermostat, blind, camera, door, music, an energy chart and sensors](docs/screenshots/display-custom-home.webp)
+
+| | |
+|---|---|
+| ![Family screen: each child's routine with stars, rewards, countdowns, the week's meals, chores and birthdays](docs/screenshots/display-custom-family.webp) | ![Data screen: the time, a headline, the weather, Bitcoin and Ethereum in large cards with their 30 day charts behind them, live Premier League and NBA scores, a stocks list and four coins](docs/screenshots/display-custom-data.webp) |
+| ![Bento screen: cards of many sizes, an analogue clock, a photo, the heating, a to-do list and music](docs/screenshots/display-custom-bento.webp) | ![Cinematic screen: a large clock over the photo with the weather, what is next and the music playing](docs/screenshots/display-custom-cinematic.webp) |
+| ![Light screen in the morning: the clock, the weather, the week, the to-do list, the heating, a blind and two lights](docs/screenshots/display-custom-light.webp) | ![Everyday wall screen: a sidebar with the clock and the week's weather, the month, today and tomorrow, what is next and a note](docs/screenshots/display-custom-everyday.webp) |
+
+The editor:
+
+| | |
+|---|---|
+| ![Templates: copy the current design, templates to start with (Calendar only among them) and one per usual design](docs/screenshots/admin-builder-templates.webp) | ![The palette: cards grouped by kind, here the family cards and the Data group with crypto, sports and stocks](docs/screenshots/admin-builder-palette.webp) |
+| ![Dragging the Countdowns card from the palette: the free cells light up where it will land](docs/screenshots/admin-builder-drag.webp) | ![Resizing a card with its corner handle: its size now and the new one in cells](docs/screenshots/admin-builder-resize.webp) |
+| ![Style tab: like the rest, glass, solid or no card, a card colour, corners and accent colour](docs/screenshots/admin-builder-inspector-style.webp) | ![Size tab: named sizes, width and height in cells and the text size](docs/screenshots/admin-builder-inspector-size.webp) |
+
+A few things worth knowing:
+
+- Each card can show only while something is true (a Home Assistant state or a value you send) or only at certain
+  hours, and can be hidden without deleting it. The editor marks why a card is hidden right now.
+- Each calendar card picks which of the screen's calendars it shows, so one screen can have the school calendar on
+  the left and the family's on the right.
+- Landscape and portrait: the portrait view is worked out from the landscape one until you change it yourself.
+- *Export this screen* saves the layout as a file without anything personal (no calendars, people, entities or
+  photos); after an import you pick those again.
+- **Carousels** put several screens in a loop on the same TV, each for as long as you choose, with an animation
+  between them (*System → Carousels*). A home screen, the family's morning and the data screen can take turns on one
+  wall; every TV on the same carousel switches at the same moment.
+- Custom is a Modern design. Modern, Classic, Kids and their layouts stay exactly as they were.
+
+<img src="docs/screenshots/display-custom-portrait.webp" width="280" align="right" alt="Custom screen in portrait: a kitchen tablet with the clock, the weather, today's meals, the shopping list, today, an oven timer and two lights">
+
+### Data cards
+
+The *Data* group of the palette has three cards. Your Marco server fetches the numbers, caches them and shares them
+with every screen; a screen never talks to these services itself.
+
+| Card | Source | Key |
+|---|---|---|
+| **Crypto:** 1 to 6 coins with price, change and a 24 h, 7 day or 30 day curve, as a list or one large card | [CoinGecko](https://www.coingecko.com/) public API | none |
+| **Sports:** live scores, next games and results for up to four teams or competitions, with crests | ESPN's public site API (unofficial and undocumented, so it may change without notice) | none |
+| **Stocks:** up to 12 symbols as a scrolling line or a list | [Finnhub](https://finnhub.io/) | your own, free: paste it in the Stocks card's settings in the editor |
+
+Prices are asked for every couple of minutes at most (scores every minute while a game is on), and a failed call
+keeps the last numbers and says how old they are.
+
+![The Data group of the palette and the Crypto card's settings: a list or one large card, the period, the curve and the chart style, here behind the price](docs/screenshots/admin-builder-data.webp)
+
+**Values from anywhere.** The *Value* card shows a number or a short text you push to Marco: the solar panels'
+production, the washing machine's state, the bin day. Send it with an API token that has the `values` scope:
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"values":[{"key":"solar.today","value":12.6,"unit":"kWh"},{"key":"washer","value":"Done"}]}' \
+  http://homeserver.lan:3000/api/hooks/values
+```
+
+A screen only receives the keys its own cards show. Details, limits and a Home Assistant automation are in
+[docs/API.md](docs/API.md#pushed-values-valor).
+
+<br clear="right">
+
+## Home Assistant
+
+Marco connects to your Home Assistant on your own network. In *Admin → Home Assistant* enter its local address
+(for example `http://homeassistant.local:8123`) and a long-lived access token (*your profile → Security → Long-lived
+access tokens*), then *Test connection*.
+
+| | |
+|---|---|
+| ![Home Assistant page: local URL, the saved token and the weather and indoor entities](docs/screenshots/admin-homeassistant.webp) | ![A Home Assistant light card picked in the editor, with its entity, what to show and touch options](docs/screenshots/admin-builder-homeassistant.webp) |
+
+- **Only what is on your screens.** The server follows just the entities your Custom screens show, over one
+  WebSocket connection, and never downloads the state of the whole house. The screens get a slim copy of those states
+  under made-up names, never the entity ids.
+- **The token never leaves the server.** It is kept in `data/secrets.json`, sent only to the address it was saved
+  for, and never reaches a screen or the browser again.
+- **Read-only by default.** Cards for lights, climate, blinds, switches, scenes, media players, sensors, charts,
+  gauges and statistics show their state. To control them by touching the screen, turn on *Allow touch on the
+  screen* in the editor's *Page* settings; each card can still be left out, and sensitive ones can ask for two taps.
+  Locks, alarms, gas valves, garage doors and gates are only ever shown.
+- **Cameras** show a fresh picture every few seconds, or a live view, through Home Assistant's own proxy, and by
+  default only to screens on your home network.
+- Home Assistant can also send **alerts**, a **doorbell** with the camera, and **values** to Marco; see
+  [API tokens and webhooks](#api-tokens-and-webhooks).
+
+Marco Cloud cannot reach a Home Assistant inside your home, so these cards are for self-hosted servers. The *Value*
+card and webhooks work on both.
 
 ## Private display links & pairing
 
@@ -1080,6 +1186,7 @@ Back up the whole folder (or use *Export*) to keep everything.
 | `?preset=…` `?view=month\|agenda\|week` `?theme=dark\|light` `?style=classic\|modern` `?side=left\|right` `?clock=analog` | Override layout options (handy for testing) |
 | `?preset=today\|people\|photoFrame\|twoWeeks\|board\|bedside` `?people=<calendar ids, comma separated>` `?corner=tl\|tr\|bl\|br` | Preview the newer layouts, the *Per person* columns and the *Photo frame* corner |
 | `?glass=clear\|tinted\|auto` `?glassOpacity=0..1` `?glassBlur=0..40` `?glassTint=dark\|light\|photo` `?glassEdge=0\|1` | Override the glass options of the Modern style |
+| `?highlights=0\|1` | Hide (or show) the pills under the date: the next event, birthdays and today's check-ins and check-outs (*Layout → Appearance*) |
 | `?wxfx=off\|simple\|rich` | Override the weather effect; with `?demo=1`, `?wx=rain\|drizzle\|thunder\|snow\|clear` (or a WMO code, e.g. `45` for fog) forces the weather |
 | `?ambient=aurora\|particles\|none` | Override the ambient backdrop behind the calendar |
 | `?demo=1&pair=1` `?demo=1&pair=invalid` `&pairLen=6\|8` | Preview the pairing screen or the “link no longer valid” screen with a sample code (no server needed) |

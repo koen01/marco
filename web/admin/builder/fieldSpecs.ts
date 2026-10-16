@@ -1,0 +1,296 @@
+// Inspector, Contenido tab: the options of each kind, described as data (fields.tsx draws them). Labels are Spanish
+// t() keys. The values and their ranges are the ones server/core/canvasCore.js validates.
+import type { CanvasKind } from '../../shared/types';
+
+export type Opt = { v: string | number; l: string };
+export type Spec =
+  | { k: string; type: 'bool'; label: string; hint?: string }
+  /** `show`: only while it applies (`widgets`: the saved widgets, for the card that shows one) */
+  | { k: string; type: 'seg'; label: string; opts: Opt[]; hint?: string; show?: (p: Record<string, any>, widgets: { id: string; type: string }[]) => boolean }
+  | { k: string; type: 'select'; label: string; opts: Opt[] }
+  | { k: string; type: 'num'; label: string; min: number; max: number; step?: number; unit?: 'days' | 'sec' | 'n' | 'min' }
+  /** any number, typed (the ends of a bar); `show`: only while it applies */
+  | { k: string; type: 'number'; label: string; step?: number; hint?: string; show?: (p: Record<string, any>) => boolean }
+  /** the rows under an Entidad card (null: chosen for the entity) */
+  | { k: 'features'; type: 'features'; label: string; hint?: string }
+  | { k: 'sourceIds'; type: 'sources'; label: string }
+  | { k: 'memberIds'; type: 'members'; label: string }
+  | { k: 'memberId'; type: 'member'; label: string }
+  | { k: 'widgetId'; type: 'widget'; label: string }
+  | { k: 'zones'; type: 'zones'; label: string }
+  | { k: string; type: 'text'; label: string; max: number; placeholder?: string; hint?: string }
+  /** one Home Assistant entity of the kind's domains (canvasCore CANVAS_KINDS[kind].ha), or of `domains` */
+  | { k: 'entity' | 'showWhen'; type: 'entity'; label: string; domains?: string[]; optional?: boolean; hint?: string }
+  /** a room's rows: an entity and an optional name each, up to six */
+  | { k: 'rows'; type: 'rows'; label: string }
+  /** a chart's series: an entity, a label and a colour each, up to four */
+  | { k: 'series'; type: 'series'; label: string }
+  /** a scene card's buttons: an entity, a label and an emoji each, up to six */
+  | { k: 'buttons'; type: 'buttons'; label: string }
+  /** the climate modes a card offers (null: all the entity has) */
+  | { k: 'modes'; type: 'modes'; label: string; hint?: string }
+  /** two breakpoints for the colour of a sensor (ok, warn, err) */
+  | { k: 'thresholds'; type: 'thresholds'; label: string; hint?: string }
+  /** the key of a pushed value (POST /api/hooks/values), with the keys the server has */
+  | { k: 'key'; type: 'valueKey'; label: string }
+  /** the custom HTML card's editor (HtmlEditor.tsx): HTML, CSS, bindings, examples, preview and errors */
+  | { type: 'html' }
+  /** the data cards: coins with their currency, teams and competitions, stock symbols, the Finnhub key */
+  | { k: 'coins'; type: 'coins'; label: string }
+  | { k: 'follow'; type: 'follow'; label: string; hint?: string }
+  | { k: 'symbols'; type: 'symbols'; label: string }
+  | { type: 'stocksKey' }
+  | { type: 'note'; text: string; go?: { label: string; route: string } }
+  /** a small heading over the fields that follow */
+  | { type: 'group'; label: string };
+
+const HIDE_PAST: Spec = { k: 'hidePast', type: 'bool', label: 'Ocultar lo que ya ha pasado' };
+const SOURCES: Spec = { k: 'sourceIds', type: 'sources', label: 'Calendarios' };
+const DATE_POS_FIELD: Spec = { k: 'datePos', type: 'seg', label: 'Posición de la fecha', opts: [{ v: 'above', l: 'Arriba' }, { v: 'below', l: 'Abajo' }] };
+const HA_NAME: Spec = { k: 'name', type: 'text', label: 'Nombre', max: 40, hint: 'Vacío: el nombre que tiene en Home Assistant.' };
+const SHOW_NAME: Spec = { k: 'showName', type: 'bool', label: 'Mostrar nombre' };
+const SHOW_STATE: Spec = { k: 'showState', type: 'bool', label: 'Mostrar estado', hint: 'La línea que dice cómo está (Encendido, Abierta, 21 °C).' };
+/** "Estilo de la gráfica" (canvasCore CHART_STYLES): the chart under the numbers or filling the card behind them. */
+const CHART_STYLE = (hint: string, show?: (p: Record<string, any>, widgets: { id: string; type: string }[]) => boolean): Spec => ({
+  k: 'chartStyle', type: 'seg', label: 'Estilo de la gráfica', opts: [{ v: 'below', l: 'Debajo' }, { v: 'background', l: 'De fondo' }], hint, show,
+});
+const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+
+export const FIELDS: Partial<Record<CanvasKind, Spec[]>> = {
+  'clock.digital': [
+    { k: 'seconds', type: 'bool', label: 'Segundos' },
+    { k: 'showDate', type: 'bool', label: 'Mostrar la fecha' },
+    { k: 'dateFormat', type: 'seg', label: 'Fecha', opts: [{ v: 'long', l: 'Larga' }, { v: 'short', l: 'Corta' }] },
+    DATE_POS_FIELD,
+    { k: 'weight', type: 'seg', label: 'Grosor', opts: [{ v: 'light', l: 'Fina' }, { v: 'regular', l: 'Normal' }, { v: 'bold', l: 'Gruesa' }] },
+  ],
+  'clock.analog': [
+    { k: 'face', type: 'select', label: 'Esfera', opts: [{ v: 'classic', l: 'Clásica' }, { v: 'minimal', l: 'Mínima' }, { v: 'dots', l: 'Puntos' }, { v: 'numbers', l: 'Números' }] },
+    { k: 'seconds', type: 'bool', label: 'Aguja de los segundos', hint: 'En la Raspberry Pi (modo ligero) no se muestra.' },
+    { k: 'showDate', type: 'bool', label: 'Mostrar la fecha' },
+    DATE_POS_FIELD,
+  ],
+  'clock.flip': [{ k: 'showDate', type: 'bool', label: 'Mostrar la fecha' }, DATE_POS_FIELD],
+  'clock.world': [
+    { k: 'zones', type: 'zones', label: 'Ciudades' },
+    { k: 'analog', type: 'bool', label: 'Relojes de agujas' },
+  ],
+  date: [
+    { k: 'style', type: 'seg', label: 'Estilo', opts: [{ v: 'page', l: 'Hoja de calendario' }, { v: 'line', l: 'Una línea' }] },
+    { k: 'weekday', type: 'seg', label: 'Día de la semana', hint: 'En la hoja de calendario.', opts: [{ v: 'above', l: 'Arriba' }, { v: 'below', l: 'Abajo' }] },
+    { k: 'isoWeek', type: 'bool', label: 'Número de semana' },
+    { k: 'sun', type: 'bool', label: 'Salida y puesta del sol' },
+  ],
+  'calendar.month': [
+    SOURCES,
+    { k: 'weeks', type: 'select', label: 'Semanas', opts: [{ v: 'auto', l: 'Automático' }, ...range(1, 6).map((n) => ({ v: n, l: String(n) }))] },
+    { k: 'eventStyle', type: 'seg', label: 'Eventos', opts: [{ v: 'lines', l: 'Líneas' }, { v: 'cards', l: 'Tarjetas' }] },
+    { k: 'maxEventsPerDay', type: 'num', label: 'Eventos por día como mucho', min: 1, max: 12, unit: 'n' },
+    { k: 'showLegend', type: 'bool', label: 'Leyenda de calendarios' },
+    HIDE_PAST,
+  ],
+  'calendar.week': [SOURCES, { k: 'start', type: 'seg', label: 'Empieza', opts: [{ v: 'today', l: 'Hoy' }, { v: 'monday', l: 'El lunes' }] }, HIDE_PAST],
+  'calendar.agenda': [
+    SOURCES,
+    { k: 'days', type: 'num', label: 'Días', min: 1, max: 14, unit: 'days' },
+    { k: 'maxPerDay', type: 'num', label: 'Eventos por día como mucho', min: 1, max: 10, unit: 'n' },
+    { k: 'compact', type: 'bool', label: 'Compacta' },
+    HIDE_PAST,
+  ],
+  'calendar.today': [SOURCES],
+  'calendar.next': [
+    SOURCES,
+    { k: 'count', type: 'num', label: 'Cuántos eventos', min: 1, max: 6, unit: 'n' },
+    { k: 'relative', type: 'bool', label: 'Cuánto falta', hint: 'Por ejemplo «en 25 min».' },
+  ],
+  'calendar.people': [
+    { k: 'memberIds', type: 'members', label: 'Personas' },
+    { k: 'days', type: 'num', label: 'Días', min: 1, max: 3, unit: 'days' },
+    HIDE_PAST,
+    { type: 'note', text: 'Cada persona sale con el calendario que tiene asignado en Familia.', go: { label: 'Ir a Familia', route: 'family' } },
+  ],
+  countdowns: [
+    { k: 'max', type: 'num', label: 'Cuántas como mucho', min: 1, max: 6, unit: 'n' },
+    { k: 'style', type: 'seg', label: 'Estilo', opts: [{ v: 'list', l: 'Lista' }, { v: 'cards', l: 'Tarjetas' }] },
+    { type: 'note', text: 'Las cuentas atrás se crean en su propia sección.', go: { label: 'Ir a Cuentas atrás', route: 'countdowns' } },
+  ],
+  'weather.now': [
+    { k: 'feelsLike', type: 'bool', label: 'Sensación térmica' },
+    { k: 'meta', type: 'bool', label: 'Viento y humedad' },
+  ],
+  'weather.hourly': [{ k: 'hours', type: 'seg', label: 'Horas', opts: [{ v: 6, l: '6' }, { v: 12, l: '12' }, { v: 24, l: '24' }] }],
+  'weather.forecast': [
+    { k: 'days', type: 'num', label: 'Días', min: 3, max: 7, unit: 'days' },
+    { k: 'layout', type: 'seg', label: 'Orden', opts: [{ v: 'row', l: 'En fila' }, { v: 'column', l: 'En columna' }] },
+  ],
+  message: [
+    { k: 'align', type: 'seg', label: 'Alineación', opts: [{ v: 'left', l: 'Izquierda' }, { v: 'center', l: 'Centro' }] },
+    { type: 'note', text: 'El texto se escribe en la sección Mensaje.', go: { label: 'Ir a Mensaje', route: 'message' } },
+  ],
+  todo: [
+    { k: 'maxRows', type: 'num', label: 'Filas como mucho', min: 1, max: 12, unit: 'n' },
+    { k: 'showDone', type: 'bool', label: 'Mostrar las hechas' },
+    { type: 'note', text: 'Las tareas se escriben en la sección Tareas.', go: { label: 'Ir a Tareas', route: 'todo' } },
+  ],
+  news: [{ k: 'rotateSec', type: 'num', label: 'Cambiar de titular cada', min: 5, max: 60, unit: 'sec' }],
+  photo: [
+    { k: 'intervalSec', type: 'num', label: 'Cambiar de foto cada', min: 10, max: 600, step: 10, unit: 'sec' },
+    { k: 'fit', type: 'seg', label: 'Encaje', opts: [{ v: 'cover', l: 'Llenar la tarjeta' }, { v: 'contain', l: 'Foto entera' }] },
+    { k: 'caption', type: 'bool', label: 'Pie de foto' },
+  ],
+  widget: [
+    { k: 'widgetId', type: 'widget', label: 'Widget' },
+    CHART_STYLE('De fondo: las barras de las horas llenan la tarjeta de borde a borde, detrás del precio de ahora.', (p, widgets) => widgets.find((w) => w.id === p.widgetId)?.type === 'prices'),
+  ],
+  spacer: [{ type: 'note', text: 'Un hueco que no se ve. Sirve para dejar libre una parte de la pantalla.' }],
+  'family.members': [{ k: 'memberIds', type: 'members', label: 'Personas' }, { k: 'showPoints', type: 'bool', label: 'Estrellas' }],
+  'family.routines': [{ k: 'memberId', type: 'member', label: 'De quién' }, { k: 'showDone', type: 'bool', label: 'Mostrar las hechas' }],
+  'family.points': [{ k: 'memberIds', type: 'members', label: 'Personas' }],
+  'family.rewards': [{ k: 'max', type: 'num', label: 'Cuántos como mucho', min: 1, max: 6, unit: 'n' }],
+  'family.chores': [{ k: 'memberIds', type: 'members', label: 'Personas' }, { k: 'showDone', type: 'bool', label: 'Mostrar las hechas' }],
+  'meals.week': [{ k: 'days', type: 'num', label: 'Días', min: 3, max: 7, unit: 'days' }],
+  birthdays: [{ k: 'max', type: 'num', label: 'Cuántos como mucho', min: 1, max: 8, unit: 'n' }],
+  announcement: [{ type: 'note', text: 'Los avisos se mandan desde Avisos.', go: { label: 'Ir a Avisos', route: 'alerts' } }],
+  'ha.tile': [
+    { k: 'entity', type: 'entity', label: 'Entidad' },
+    HA_NAME,
+    SHOW_NAME,
+    SHOW_STATE,
+    { k: 'features', type: 'features', label: 'Debajo', hint: 'Una fila en los tamaños pequeño y ancho, dos en el mediano. En el mini y en la línea no se ven. Toca el icono para encender o apagar.' },
+    { k: 'gaugeMin', type: 'number', label: 'La barra empieza en', show: (p) => Array.isArray(p.features) && p.features.includes('gauge') },
+    { k: 'gaugeMax', type: 'number', label: 'La barra termina en', show: (p) => Array.isArray(p.features) && p.features.includes('gauge') },
+  ],
+  'ha.gauge': [
+    { k: 'entity', type: 'entity', label: 'Sensor' },
+    HA_NAME,
+    SHOW_NAME,
+    { k: 'min', type: 'number', label: 'Mínimo' },
+    { k: 'max', type: 'number', label: 'Máximo' },
+    { k: 'decimals', type: 'num', label: 'Decimales', min: 0, max: 3, unit: 'n' },
+    { k: 'thresholds', type: 'thresholds', label: 'Colores según el valor', hint: 'Verde por debajo del primero, amarillo entre los dos y rojo por encima del segundo.' },
+    { k: 'invert', type: 'bool', label: 'Al revés', hint: 'Rojo por debajo y verde por encima, por ejemplo para la batería.' },
+  ],
+  'ha.statistic': [
+    { k: 'entity', type: 'entity', label: 'Sensor', hint: 'Un sensor con estadísticas en Home Assistant, como los de energía o de temperatura.' },
+    HA_NAME,
+    SHOW_NAME,
+    { k: 'stat', type: 'seg', label: 'Qué', opts: [{ v: 'change', l: 'Total' }, { v: 'mean', l: 'Media' }, { v: 'min', l: 'Mínimo' }, { v: 'max', l: 'Máximo' }] },
+    { k: 'period', type: 'seg', label: 'Cuándo', opts: [{ v: 'today', l: 'Hoy' }, { v: 'week', l: 'Esta semana' }, { v: 'month', l: 'Este mes' }] },
+    { k: 'decimals', type: 'num', label: 'Decimales', min: 0, max: 3, unit: 'n' },
+  ],
+  heading: [
+    { k: 'title', type: 'text', label: 'Título', max: 40, placeholder: 'Salón' },
+    { k: 'icon', type: 'text', label: 'Emoji', max: 8, placeholder: '🛋️' },
+    { k: 'align', type: 'seg', label: 'Alineación', opts: [{ v: 'left', l: 'Izquierda' }, { v: 'center', l: 'Centro' }] },
+    { k: 'line', type: 'bool', label: 'Línea debajo' },
+  ],
+  value: [
+    { k: 'key', type: 'valueKey', label: 'Clave' },
+    { k: 'label', type: 'text', label: 'Nombre', max: 40, hint: 'Vacío: el que llega con el valor, o la clave.' },
+    { k: 'unit', type: 'text', label: 'Unidad', max: 12, placeholder: 'kWh', hint: 'Vacía: la que llega con el valor.' },
+    { k: 'decimals', type: 'num', label: 'Decimales', min: 0, max: 3, unit: 'n' },
+    { k: 'icon', type: 'text', label: 'Emoji', max: 8, placeholder: '☀️' },
+    { k: 'staleAfterMin', type: 'num', label: 'En gris pasados', min: 0, max: 1440, step: 5, unit: 'min' },
+    { type: 'note', text: 'Se envía con POST /api/hooks/values. En API y webhooks tienes el ejemplo para Home Assistant.', go: { label: 'Abrir API y webhooks', route: 'api' } },
+  ],
+  'ha.sensor': [
+    { k: 'entity', type: 'entity', label: 'Sensor' },
+    HA_NAME,
+    SHOW_NAME,
+    { k: 'decimals', type: 'num', label: 'Decimales', min: 0, max: 3, unit: 'n' },
+    { k: 'sparkline', type: 'bool', label: 'Curva de hoy', hint: 'Cómo ha cambiado en las últimas 24 horas, con el mínimo y el máximo.' },
+    CHART_STYLE('De fondo: la curva llena la parte de abajo de la tarjeta, detrás del valor. Debajo: en una franja propia bajo el valor.', (p) => !!p.sparkline),
+    { k: 'thresholds', type: 'thresholds', label: 'Colores según el valor', hint: 'Verde por debajo del primero, amarillo entre los dos y rojo por encima del segundo.' },
+    { k: 'invert', type: 'bool', label: 'Al revés', hint: 'Rojo por debajo y verde por encima, por ejemplo para la batería.' },
+  ],
+  'ha.room': [
+    { k: 'title', type: 'text', label: 'Nombre de la habitación', max: 40, placeholder: 'Salón' },
+    { k: 'rows', type: 'rows', label: 'Filas' },
+  ],
+  'ha.chart': [
+    { k: 'series', type: 'series', label: 'Sensores' },
+    { k: 'period', type: 'seg', label: 'Periodo', opts: [{ v: '1h', l: '1 h' }, { v: '6h', l: '6 h' }, { v: '24h', l: '24 h' }, { v: '7d', l: '7 días' }] },
+    { k: 'type', type: 'seg', label: 'Tipo', opts: [{ v: 'line', l: 'Líneas' }, { v: 'area', l: 'Área' }, { v: 'bar', l: 'Barras' }] },
+    CHART_STYLE('De fondo: la gráfica llena la tarjeta de borde a borde bajo la leyenda, sin ejes.'),
+  ],
+  'ha.media': [
+    { k: 'entity', type: 'entity', label: 'Reproductor' },
+    HA_NAME,
+    SHOW_NAME,
+    SHOW_STATE,
+  ],
+  'ha.light': [
+    { k: 'entity', type: 'entity', label: 'Luz' },
+    HA_NAME,
+    SHOW_NAME,
+    SHOW_STATE,
+    { type: 'group', label: 'Qué mostrar' },
+    {
+      k: 'row', type: 'seg', label: 'Debajo', opts: [{ v: 'auto', l: 'Automático' }, { v: 'color', l: 'Color' }, { v: 'brightness', l: 'Brillo' }, { v: 'none', l: 'Nada' }],
+      hint: 'Desde el tamaño pequeño. Automático: los colores si la luz los tiene. En los tamaños cuadrado, mediano y alto, también el brillo.',
+    },
+    { type: 'note', text: 'Toca el icono para encender o apagar.' },
+  ],
+  'ha.switch': [
+    { k: 'entity', type: 'entity', label: 'Interruptor' },
+    HA_NAME,
+    SHOW_NAME,
+    SHOW_STATE,
+    { type: 'note', text: 'Toca el icono para encender o apagar.' },
+  ],
+  'ha.climate': [
+    { k: 'entity', type: 'entity', label: 'Climatización' },
+    HA_NAME,
+    { type: 'group', label: 'Qué mostrar' },
+    SHOW_NAME,
+    SHOW_STATE,
+    { k: 'modes', type: 'modes', label: 'Modos', hint: 'Los que se pueden elegir en la pantalla. Automático: apagado y los dos que más se usan de los que tiene.' },
+    { k: 'fan', type: 'bool', label: 'Ventilador', hint: 'Los modos del ventilador, en el tamaño alto.' },
+    { k: 'humidity', type: 'bool', label: 'Humedad', hint: 'En los tamaños mediano y alto.' },
+  ],
+  'ha.cover': [
+    { k: 'entity', type: 'entity', label: 'Persiana o toldo' },
+    HA_NAME,
+    SHOW_NAME,
+    SHOW_STATE,
+    { type: 'note', text: 'Las puertas de garaje y las cancelas solo se muestran: no se pueden abrir desde una pantalla.' },
+  ],
+  'ha.scene': [{ k: 'buttons', type: 'buttons', label: 'Botones' }],
+  'ha.camera': [
+    { k: 'entity', type: 'entity', label: 'Cámara' },
+    {
+      k: 'mode', type: 'seg', label: 'Imagen', opts: [{ v: 'snapshot', l: 'Cada pocos segundos' }, { v: 'live', l: 'En directo' }],
+      hint: 'En directo se ve fluido en las cámaras que envían MJPEG. La mayoría de las demás (Reolink, Tapo, UniFi y otras que llegan a Home Assistant por RTSP) se ven a unas dos imágenes por segundo. Solo una cámara en directo por pantalla, y nunca en el modo ligero ni en esta vista previa.',
+    },
+    { k: 'everySec', type: 'num', label: 'Nueva imagen cada', min: 2, max: 60, unit: 'sec' },
+    { k: 'fit', type: 'seg', label: 'Encaje', opts: [{ v: 'cover', l: 'Llenar la tarjeta' }, { v: 'contain', l: 'Imagen entera' }] },
+    { k: 'label', type: 'bool', label: 'Nombre de la cámara' },
+    {
+      k: 'showWhen', type: 'entity', label: 'Mostrar solo cuando', domains: ['binary_sensor'], optional: true,
+      hint: 'Por ejemplo un sensor de movimiento o el timbre: la tarjeta se ve solo mientras está activo.',
+    },
+  ],
+  html: [{ type: 'html' }],
+  market: [
+    { k: 'coins', type: 'coins', label: 'Monedas' },
+    { k: 'layout', type: 'seg', label: 'Cómo', opts: [{ v: 'list', l: 'En lista' }, { v: 'big', l: 'Una en grande' }], hint: 'En grande, si hay varias monedas se van turnando cada 10 segundos.' },
+    { k: 'range', type: 'seg', label: 'Periodo', opts: [{ v: '1d', l: '24 h' }, { v: '7d', l: '7 días' }, { v: '30d', l: '30 días' }] },
+    { k: 'chart', type: 'seg', label: 'Curva', opts: [{ v: 'area', l: 'Área' }, { v: 'line', l: 'Línea' }, { v: 'none', l: 'Sin curva' }] },
+    CHART_STYLE('Debajo: la curva bajo el precio. De fondo: la curva llena la tarjeta de borde a borde, detrás del precio; en una lista, cada moneda lleva la suya detrás.', (p) => p.chart !== 'none'),
+    { type: 'note', text: 'Precios de CoinGecko. Este servidor los pide cada dos minutos y los comparte con todas las pantallas.' },
+  ],
+  sports: [
+    { k: 'follow', type: 'follow', label: 'Equipos y competiciones' },
+    { k: 'show', type: 'seg', label: 'Qué partidos', opts: [{ v: 'auto', l: 'Automático' }, { v: 'next', l: 'Próximos' }, { v: 'last', l: 'Últimos' }], hint: 'Automático: el partido en directo o, si no hay, el último resultado y el siguiente partido de cada equipo.' },
+    { k: 'max', type: 'num', label: 'Partidos como mucho', min: 1, max: 8, unit: 'n' },
+    { k: 'crests', type: 'bool', label: 'Escudos' },
+    { type: 'note', text: 'Resultados de ESPN, cada minuto mientras se juega. Un equipo se sigue en una competición: para verlo también en la Champions, añádelo otra vez con esa competición.' },
+  ],
+  stocks: [
+    { k: 'symbols', type: 'symbols', label: 'Acciones y fondos' },
+    { k: 'layout', type: 'seg', label: 'Cómo', opts: [{ v: 'ticker', l: 'Línea que se mueve' }, { v: 'list', l: 'En lista' }] },
+    { k: 'sparkline', type: 'bool', label: 'Curva', hint: 'Se dibuja con las cotizaciones que este servidor va leyendo, así que tarda unas horas en llenarse.' },
+    CHART_STYLE('De fondo: la curva de cada valor detrás de su fila, de borde a borde.', (p) => p.layout === 'list' && !!p.sparkline),
+    { type: 'stocksKey' },
+  ],
+};

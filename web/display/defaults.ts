@@ -10,6 +10,7 @@ export const DEFAULT_CONFIG: DisplayConfig = {
     name: 'Living room', language: 'en', fontScale: 1, theme: 'dark', style: 'classic', accent: '#ff5a4e', orientation: 'auto', customCss: '',
     nightMode: { enabled: false, from: '23:00', to: '07:00', dim: 0.35 },
     glass: { ...GLASS_DEFAULTS },
+    highlights: true,
   },
   layout: { preset: 'bigCalendar', sidePanel: 'left', sideWidth: 0.36, people: null, corner: 'br', plannerBar: 'side' },
   background: {

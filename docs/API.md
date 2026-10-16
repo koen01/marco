@@ -92,6 +92,15 @@ saved without `security` (old admin builds, backups or exports from before 0.3) 
 | `GET /api/stream?screen=&client=&k=` | Server-Sent Events, see below |
 | `GET /api/display/poll?screen=&client=&cursor=&rev=&hidden=&preview=` | `PollResponse`: the same events as commands, for displays without a stream. See below |
 | `GET /api/display/doorbell/frame?n=` | The doorbell camera picture for this display's screen (`image/jpeg`, `image/png`, `image/webp` or `image/gif`, `Cache-Control: private, no-store`), only while that screen rings. `n` is a counter the display adds so nothing caches it. `404 { code: "no_ring" }` when the screen is not ringing (also for open display access from outside the LAN), `404 { code: "no_camera" }` when the ring has no camera, `503 { code: "homeassistant_off" }`, `502 { code: "camera_unavailable" }` (Home Assistant failed, took more than 6 s, answered something that is not an image or more than 4 MB). See [Doorbell camera](#doorbell-camera) |
+| `GET /api/display/ha?screen=` | `HaSnapshot` of a Personalizado screen's Home Assistant cards: `{ rev, conn: "ok" \| "down", full: true, screenId, states }`, `states` keyed by alias `<itemId>:<n>` (an entity id, a Home Assistant URL or an `entity_picture` never reaches a display). Each state is a slim view of one entity (`d`: light, switch, climate, cover, media, sensor, binary, scene, lock, alarm, other or unavailable; `n` its name; `at` when it last changed, ms; `c` the controls the card offers on a screen that allows touch, empty otherwise; `cf: true` when they need two taps). `{}` while the screen is private. `Cache-Control: no-store`. Displays on the poll channel ask every 10 s while a Home Assistant card is on screen |
+| `GET /api/display/ha/history/<itemId>` | `{ period, series: [{ label, unit, points: [[ms, value]] }] }` for a chart item (`1h`, `6h`, `24h` from the recorder history, `7d` from hourly statistics) or a sensor item with its curve (24 h). At most 200 points per series. Cached 2 min (15 min for 7 days) and shared by every screen. `404` for an item that is not one of these on this screen, `403 { error: "private" }`, `503 { error: "ha_off" }`, `502 { error: "ha_error" }` |
+| `POST /api/display/ha/action` | A tap on a Home Assistant control: `{ item, slot, control, value?, seq, confirm? }` (JSON, 2 KB at most). Answers `{ ok: true, seq }` or `{ ok: false, error, seq }`; see *Controls on a touch screen* under Home Assistant for every check and error |
+| `GET /api/display/ha/art/<itemId>` | The cover art of a media item: fetched only from Home Assistant's own `/api/media_player_proxy/<entity>` (an absolute `entity_picture` on another host is never fetched), JPEG, PNG, WebP or GIF up to 1 MB, cached 5 min, `Cache-Control: private, no-store`. Home network only by default, like the camera pictures (`403 { error: "lan_only" }`). `404 { error: "no_art" }`, `403`, `502` as above |
+| `GET /api/display/ha/camera/<itemId>?n=` | One picture of a Cámara card, through Home Assistant's own `/api/camera_proxy/<entity>` (built from the card's camera entity, never from an `entity_picture`). One picture per camera is shared by every screen (and the doorbell) for 500 ms, and requests that arrive together share one fetch. JPEG, PNG, WebP or GIF up to 4 MB only, `Cache-Control: private, no-store`, `X-Content-Type-Options: nosniff`. `403 { error: "lan_only" }` for a request that does not come straight from the home network (see *Cameras* under Home Assistant), `404` for an item that is not a camera of this screen, `404 { error: "hidden" }` while its `showWhen` sensor is off, `403 { error: "private" }`, `503 { error: "ha_off" }`, `502 { error: "camera_unavailable" }` |
+| `GET /api/display/ha/camera/<itemId>/live` | The live picture of a Cámara card set to *En directo*: `multipart/x-mixed-replace; boundary=marcoframe`, each part with its `Content-Type` and `Content-Length`. The same rules as a picture, plus: never for an admin session (`403 { error: "preview" }`), `404 { error: "not_live" }` for a card that is not live, `503 { error: "busy" }` when the server already streams 4 cameras or has 8 viewers, or when this display already has 2 live pictures open. Ends after 10 minutes (the display opens it again), when the camera stops sending for 15 s, or as soon as the card may not show it any more |
+| `GET /api/display/values?screen=` | `ValuesSnapshot` of the values pushed by `POST /api/hooks/values` that this screen shows: `{ rev, full: true, screenId, values: { <key>: { v, u?, l?, at } \| null } }`. Only the keys of its Valor cards and of custom cards bound to a key (hidden items left out); `null` when the server has no value for a key. `v` is a number, a string or `true`/`false`, `u` the unit, `l` the label, `at` when it was stored (ms). `{}` while the screen is private. `Cache-Control: no-store`. Displays on the poll channel ask every 30 s while such a card is on screen and the page is visible |
+| `GET /api/display/data?screen=` | `{ items: { <itemId>: DataItemData } }`: the numbers of this screen's data cards (Cripto, Deportes, Bolsa; see [Data cards](#data-cards)), worked out from this server's cache, never fetched by the display. Hidden items and items a condition hides now are left out. `403 { error: 'private' }` while the screen is private. `Cache-Control: no-store`. Displays ask every minute while such a card is on screen and the page is visible |
+| `GET /api/display/data/crest/<token>` | A team crest a data answer named by token (PNG, JPEG or WebP, 256 KB at most, `Cache-Control: private, max-age=86400`, `nosniff`), fetched by this server from ESPN's image host and kept a day. `404` for a token the server never handed out; `403` while the screen is private |
 | `GET /media/photos/<file>`, `GET /media/thumbs/<file>` | Gallery images (a display: only photos in the rotation of a screen it may read that shows the gallery and is not private with *hide photos*) and thumbnails (admin session only) |
 | `GET /media/immich/<assetId>?v=` | Immich preview image, proxied with the server's API key and cached on disk (`Cache-Control: private, max-age=2592000`). `404` for an id that is not in an album some screen plays (a display key or device token: its own screen's albums only), and while that screen is private with *hide photos*; `503` when Immich is not set up; `502` when Immich fails or answers something that is not an image of up to 8 MB. `?s=thumb`: album cover thumbnail, admin session only |
 
@@ -105,7 +114,9 @@ The admin and the display read these fields to decide which sections, actions an
   `announcements`, `displayCommands`, `openDisplayAccess`, `insecureTls`, `googleCalendar`, `googleLogin`,
   `passwordLogin`, `apiTokens`, `webhooks`, `backups`, `importExport`, `includeSecrets`, `activity`, `setupWizard`,
   `status`, `accountMenu`, `microsoftCalendar`, `updates`, `feedback`, `privacy`, `doorbell`, `doorbellLive`,
-  `carousels`, `immich`, `family`, `widgets`, `webWidgets`, `priceWidgets`, `familyPhotos`, `twoFactor`, `accountSettings`. A self-hosted server turns all of them on, except
+  `carousels`, `immich`, `family`, `widgets`, `webWidgets`, `priceWidgets`, `familyPhotos`, `twoFactor`, `accountSettings`,
+  `screenBuilder`, `valueHooks` (`/api/hooks/values` and the Valor card), `tokenScopes` (scopes on API tokens),
+  `stockQuotes` (the Bolsa card can get quotes; Marco Cloud only when the service has a Finnhub key). A self-hosted server turns all of them on, except
   `googleCalendar` and `googleLogin` (on when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set),
   `microsoftCalendar` (Outlook and Microsoft 365 calendars, on when `MICROSOFT_CLIENT_ID` and
   `MICROSOFT_CLIENT_SECRET` are set), `accountMenu`, `accountSettings` and `feedback` (always off). `updates` is the update banner,
@@ -214,6 +225,8 @@ calendar's.
 | `doorbell` | `{ id, screenId, startedAt, updatedAt, expiresAt, sound, frames, refreshMs }` | someone rang (`screenId`: the ringing screen; a display on a carousel asks for its frames with `?screen=<screenId>`); replayed on connect while it lasts. The same `id` again with a later `expiresAt` extends it. `frames: false` = no camera, `refreshMs` = time between two frame requests (750) |
 | `doorbell-end` | `{ id }` | the ring was dismissed |
 | `family` | `{ rev }` | Familia changed: a routine ticked (phone, TV or admin), stars, a reward, an import, a new or removed family link. Displays with a kids layout ask for `GET /api/display/family` again |
+| `ha` | `HaSnapshot` | Home Assistant states of a Personalizado screen: the full snapshot when the stream opens and when the connection to Home Assistant changes (`full: true`), then only the aliases that changed (`full: false`), at most one event a second per screen, aimed at that screen (`screenId`). Not sent on the poll channel |
+| `values` | `ValuesSnapshot` | Pushed values of a Personalizado screen: the snapshot when the stream opens (`full: true`, only for a screen that shows a key), then the keys that changed (`full: false`, `null` for a key that was cleared), at most one event a second, only to the screens that show those keys and never while one is private. Not sent on the poll channel |
 | `ping` | `{ t }` | every 25 s |
 | `revoked` | `{ code: "invalid_key" \| "key_required" }` | the link was regenerated or replaced by an import, the device revoked or dropped by an import, the screen deleted, display access switched to private for a keyless display, or (`key_required`) the admin session a stream was opened with ended (logout, logout everywhere, password change); the server then closes the stream. Every stream's credential is re-checked after config saves, imports, session revocation and on each heartbeat |
 
@@ -403,7 +416,8 @@ Rules for the mutating setup endpoints:
 | `POST /api/admin/refresh-displays` | `{ screens? }`, hard reload |
 | `POST /api/admin/announce` | `AnnounceRequest` (see webhooks) → `{ ok, announcement, delivered }` |
 | `GET /api/admin/announcements` · `DELETE /api/admin/announcements[/:id]` | Active + history; clear one or all |
-| `GET /api/admin/tokens` · `POST /api/admin/tokens { name }` · `DELETE /api/admin/tokens/:id` | API tokens (the full token is returned once on creation; max 20) |
+| `GET /api/admin/tokens` · `POST /api/admin/tokens { name, scopes? }` · `PATCH /api/admin/tokens/:id { scopes }` · `DELETE /api/admin/tokens/:id` | API tokens (the full token is returned once on creation; max 20). `scopes` (default `["*"]`): see [Token scopes](#token-scopes); an empty list or an unknown name is `400` |
+| `GET /api/admin/values` · `DELETE /api/admin/values/:key` | The values pushed by `POST /api/hooks/values` (the same list as `GET /api/hooks/values`); clearing one makes its cards show *Sin datos* |
 
 **Privacy mode** (`features.privacy`; see [Privacy mode](#privacy-mode))
 
@@ -436,8 +450,9 @@ Rules for the mutating setup endpoints:
 ## Webhooks (`/api/hooks/*`)
 
 Authentication: `Authorization: Bearer cs_…` only (no cookies, no tokens in URLs). JSON bodies.
-Errors: `401` missing/invalid token, `400` invalid data (e.g. unknown screen), `415` body is not JSON,
-`429` more than 30 requests per minute with the same token.
+Errors: `401` missing/invalid token, `403 { error: "scope", scope }` the token may not use this endpoint (see
+[Token scopes](#token-scopes)), `400` invalid data (e.g. unknown screen), `415` body is not JSON, `429` more than 30
+requests per minute with the same token.
 
 | Endpoint | Body | Response |
 |---|---|---|
@@ -448,6 +463,9 @@ Errors: `401` missing/invalid token, `400` invalid data (e.g. unknown screen), `
 | `GET /api/hooks/privacy` | none | `{ screens: [{ screenId, slug, name, active, until, by, resumesAt, scheduled }] }` |
 | `POST /api/hooks/privacy` | `mode` (`on`/`off`/`toggle`), at most one of `hours` (0 to 744), `until` (ISO date and time) or `untilTime` (`HH:MM`, the next time it comes round in the configured time zone); none = until turned off. `screens` (slugs or ids; omitted = all) | `{ ok, changed, screens }` (`changed`: ids of the screens that turned on or off) |
 | `POST /api/hooks/doorbell` | `{ action?: "ring"\|"dismiss", seconds?, screens?, camera?, sound? }`, see [Doorbell camera](#doorbell-camera) | `{ ok, action, delivered, screens, expiresAt? }` |
+| `POST /api/hooks/values` | `{ values: [{ key, value, unit?, label? }] }` (a single `{ key, value, unit?, label? }` too), see [Pushed values](#pushed-values-valor) | `{ ok, stored, waiting }` |
+| `GET /api/hooks/values` | none | `{ values: [{ key, value, unit?, label?, updatedAt, screens }] }` (`screens`: slugs of the screens that show it) |
+| `DELETE /api/hooks/values/:key` | none | `{ ok }`, `404` when there is no such value |
 
 `delivered` = number of connected displays that received it. Active announcements survive server restarts.
 
@@ -464,6 +482,103 @@ curl -H "Authorization: Bearer $TOKEN" http://192.168.1.50:3000/api/hooks/privac
 
 Privacy changes are logged in the activity log as `privacy.changed` (`{ mode, via: "admin"|"hook", screens?, active,
 until? }`).
+
+Marco never calls out to other services when something happens on a screen: there are no outgoing webhooks. The
+only system it talks to on its own is the Home Assistant it is set up with.
+
+### Token scopes
+
+Each token says what it may do (`scopes`, chosen in *API & webhooks* when it is created and changed later from the
+list). `*` (*Todo*, the default) allows every scope but `screen`, which has to be ticked on its own. A token made
+before scopes existed has no `scopes` field and keeps working exactly as before (`*`).
+
+| Scope | Endpoints |
+|---|---|
+| `announce` | `POST /api/hooks/announce` |
+| `commands` | `POST /api/hooks/reload`, `POST /api/hooks/night` |
+| `privacy` | `GET` and `POST /api/hooks/privacy` |
+| `doorbell` | `POST /api/hooks/doorbell` |
+| `values` | `POST`, `GET` and `DELETE /api/hooks/values` |
+| `screen` | reserved for a later version |
+
+`GET /api/hooks/ping` needs no scope. A refused request is `403 { error: "scope", scope }` and is logged as
+`token.rejected` with `reason: "scope"` (at most once a minute per address). Changing the scopes of a token is logged
+as `token.scopes`.
+
+### Pushed values (Valor)
+
+`POST /api/hooks/values` feeds the Valor card of Personalizado screens (and custom HTML cards bound to a key): energy
+from the solar panels, the washing machine's state, anything another system knows.
+
+- `key`: 1 to 40 characters `a-z 0-9 _ . -`. `value`: a number, a string of at most 120 characters, or `true` /
+  `false`. `unit` (16 characters) and `label` (40) are optional; when an update leaves them out the last ones are
+  kept. At most 20 values per request and 8 KB per body (`413` beyond that); a key sent twice in one request keeps
+  the last one.
+- One stored update per key every 2 s. A value that comes sooner is not refused: it waits for the end of those 2 s,
+  and a newer one replaces it while it waits (`waiting` in the answer counts them), so the last value always wins.
+  Send several keys in one request rather than one request per key: the token's 30 requests a minute are shared by
+  every endpoint.
+- At most 50 keys at once: a request with a new key beyond that is `409` and stores nothing. `DELETE
+  /api/hooks/values/:key` frees one.
+- Values are kept in memory and in `data/values.json` (written at most every 5 s), so they survive a restart. They
+  are never a config change: no backup, no new revision, no reload of the screens.
+- A screen only ever receives the keys it shows (`GET /api/display/values`, the SSE `values` event), and none while it
+  is private. The screen writes the value, the unit and the label as plain text: never as HTML, a link or a colour.
+- On the card: the value with the item's decimals, its unit (the item's, else the one sent), *hace 5 min* under it, and
+  grey once it is older than the item's *En gris pasados* (`staleAfterMin`, 0 = never). *Esperando datos* until the
+  screen has asked, *Sin datos* when there is no value for the key.
+
+In Home Assistant, one `rest_command` and one automation send every key together. *API & webhooks → Conectar desde
+Home Assistant* writes them for the keys and entities you pick:
+
+```yaml
+rest_command:
+  marco_values:
+    url: "http://192.168.1.50:3000/api/hooks/values"   # the address of your Marco server
+    method: POST
+    headers:
+      Authorization: "Bearer TOKEN"                    # a token with the values scope
+    content_type: "application/json"
+    payload: >-
+      {"values": [
+        {"key": "solar.today", "value": {{ states("sensor.solar_energy_today") | float(0) }}, "unit": "kWh"},
+        {"key": "washer", "value": {{ states("sensor.washing_machine_status")[:120] | tojson }}},
+        {"key": "garage.open", "value": {{ is_state("binary_sensor.garage_door", 'on') | tojson }}}
+      ]}
+
+automation marco:
+  - alias: "Values for Marco"
+    triggers:
+      - trigger: state
+        entity_id:
+          - sensor.solar_energy_today
+          - sensor.washing_machine_status
+          - binary_sensor.garage_door
+      - trigger: time_pattern
+        minutes: "/15"
+      - trigger: homeassistant
+        event: start
+    actions:
+      - action: rest_command.marco_values
+      - delay: "00:00:05"
+    mode: queued
+    max: 2
+    max_exceeded: silent
+```
+
+The `delay` with `mode: queued` and `max: 2` sends at most one request every 5 seconds, however often the sensors
+change, and a change that comes during the wait is sent right after it with the latest states, so nothing is lost.
+The time trigger sends them again every 15 minutes, so a card never stays grey for long after a missed update.
+`automation marco:` keeps this block apart from an `automation: !include automations.yaml` line you may already have.
+Texts are cut to 120 characters, the longest value the hook takes.
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"values":[{"key":"solar.today","value":12.6,"unit":"kWh"},{"key":"washer","value":"Done"}]}' \
+  http://192.168.1.50:3000/api/hooks/values
+curl -H "Authorization: Bearer $TOKEN" http://192.168.1.50:3000/api/hooks/values
+curl -X DELETE -H "Authorization: Bearer $TOKEN" http://192.168.1.50:3000/api/hooks/values/washer
+```
 
 ## Carousels
 
@@ -555,6 +670,52 @@ day-ahead prices and draws the card itself. The zones, sources, parsers, price m
 - `GET /api/admin/prices/token`: `{ set, hint }` (last 4 characters only). `PUT /api/admin/prices/token { token }`:
   20 to 64 letters, digits or dashes (empty removes it), tried once against ENTSO-E; `400 { error: 'token_invalid' }`
   when refused. Stored in `data/secrets.json` (`prices.entsoeToken`), included in exports with secrets.
+
+### Data cards
+
+The Personalizado kinds of the palette category *Datos* show numbers from public sources. The server fetches them, a
+display never does: it gets only the numbers of the items on its own screen from `GET /api/display/data`. What to ask,
+how to read the answers, how long to keep them and what a screen gets are in `server/core/dataCore.js` (pure, shared
+with Marco Cloud); `server/dataFeeds.js` does the network part.
+
+- **Sources.** Only `api.coingecko.com` (crypto, no key), `site.api.espn.com` and `a.espncdn.com` (sports and crests,
+  no key) and `finnhub.io` (stocks, a free key), over https, with paths built from validated ids. No address comes
+  from a screen's config or a request. Redirects are refused, answers over 1 MB (crests 256 KB) are refused, and every
+  call times out after 10 s.
+- **Cache.** One entry per upstream key for every screen and the builder: CoinGecko markets per currency every 2
+  minutes (one call for every coin wanted in that currency), 30 day charts every 6 hours, a league's scoreboard every
+  minute while a game is on or about to start and every 15 minutes otherwise, a team's results every hour and its
+  fixtures every 6 hours, a stock quote every 90 s while its market trades and every 15 minutes otherwise. Nothing is
+  asked more than once a minute. Calls to one host go one at a time with a gap between them, and a `429` is respected
+  for its `Retry-After`. A failed call keeps the last good numbers (`stale: true`, the card says how old they are) and
+  backs off from 2 minutes to 30.
+- `market` props: `{ coins: [{ id, sym, name, currency }] (1 to 6, CoinGecko ids, currency one of MARKET_CURRENCIES,
+  EUR by default), layout: 'list' | 'big', range: '1d' | '7d' | '30d', chart: 'area' | 'line' | 'none', chartStyle:
+  'below' | 'background' }`. Answer:
+  `{ kind: 'market', range, coins: [{ id, sym, name, cur, price, ch (%), pts: [[ms, price]] }], age, stale, error? }`.
+  The 24 h and 7 day curves come from CoinGecko's 7 day sparkline, which is in US dollars: its shape is scaled to the
+  price in the card's currency (the price and the change are exact).
+- `sports` props: `{ follow: [{ type: 'team' | 'league', league, team?, name }] (1 to 4, league one of
+  SPORTS_LEAGUES), show: 'auto' | 'next' | 'last', max: 1 to 8, crests }`. Answer: `{ kind: 'sports', groups: [{ label,
+  lg, sport, games: [{ id, t, st: 'pre' | 'in' | 'post', clk, half?, note?, home, away }] }], age, stale, error? }`,
+  each side `{ n, ab, sc, w, c, cr }` (`cr` a crest token). ESPN's site API is public but not documented or promised: it
+  may change without notice. A team is followed in one competition (its league, or a cup added as another entry).
+- `stocks` props: `{ symbols: [{ sym, name }] (1 to 12, Finnhub symbols), layout: 'ticker' | 'list', sparkline, chartStyle:
+  'below' | 'background' }` (the chart style of the list; the ticker keeps its small curves).
+  Answer: `{ kind: 'stocks', quotes: [{ sym, name, price, ch, pts }], age, stale, error?, needsKey? }`. No reliable
+  keyless source exists (Stooq's CSV links now sit behind a browser check), so stocks need a free Finnhub key. Its free
+  plan has no price history: the curve is drawn from the quotes this server has read, up to the last 24 hours.
+- The data kinds are private: a private screen gets placeholders, `GET /api/display/data` answers `403`.
+- Admin (session): `GET /api/admin/data/coins?q=` → `{ coins: [{ id, sym, name, rank }] }`; `GET
+  /api/admin/data/sports/leagues` → `{ leagues }`; `GET /api/admin/data/sports/teams?league=&q=` → `{ teams: [{ id,
+  name, abbr }] }`; `GET /api/admin/data/stocks/symbols?q=` → `{ symbols: [{ sym, name, type }] }` (`409 { error:
+  'no_key' }` without a key); `POST /api/admin/data/preview { items: [{ id, kind, props }] }` → `{ items }` for the
+  builder's preview (validated like a save, through the same cache). Searches are cached a day per text.
+- `GET /api/admin/data/stocks/key`: `{ set, last4 }`. `PUT /api/admin/data/stocks/key { key }`: 10 to 64 letters,
+  digits, `-` or `_` (empty removes it), tried once with one quote; `400 { error: 'key_invalid' }` when Finnhub refuses
+  it. Stored in `data/secrets.json` (`data.stocksKey`), sent to Finnhub in a header (never in a URL), never to a display,
+  included in exports with secrets.
+- `MARCO_DATA_FAKE=1`: made-up answers (`server/core/dataFake.js`), nothing leaves the machine.
 
 ## Familia
 
@@ -683,7 +844,121 @@ event.
 
 ### Home Assistant
 
-Create a token in *API & webhooks*, then in `configuration.yaml`:
+**Personalizado cards.** The server keeps a live copy of only the entities that saved Personalizado screens show
+(and the weather entities): one WebSocket connection with `subscribe_entities` for exactly that list, never
+`get_states` or every state change of the house. It reconnects with a backoff from 5 to 60 s; after 3 failures, with
+a Home Assistant older than 2022.4, or on a Node version without a global `WebSocket`, it asks for those entities over
+REST every 15 s. Every call to Home Assistant refuses redirects (a Home Assistant behind a redirect needs its final
+URL), and the stored token is only ever sent to the saved URL: *Probar conexión* with another URL needs that URL's
+token too (`{ ok: false, error: "new_url_needs_token" }`). The token is tied to the URL it was saved for
+(`PUT /api/admin/homeassistant/token` takes `{ token, url? }`): when the saved URL changes, in the admin or through
+an imported file, the old token is not used until it is saved again for the new URL (*Probar conexión* answers
+`{ ok: false, error: "token_other_url" }`). Admin routes (session): `GET
+/api/admin/homeassistant/entities?domain=light,switch` (name, state, unit, domain, device_class, area, icon and the
+attributes the builder uses; areas need a token of a Home Assistant administrator, otherwise `area` is `null`),
+`GET /api/admin/homeassistant/status` (`{ state: "connected" | "polling" | "error" | "off", reason?, lastEventAt,
+count, watched }`), `POST /api/admin/homeassistant/slim` (`{ entities }`, up to 40: slim states for items the builder
+has not saved yet), `GET /api/admin/homeassistant/history?entity=&period=` and `POST /api/admin/homeassistant/action`
+(`{ entity, kind, control, value?, props? }`: the editor's *Probar* button, with the same allowlist and clamping as a
+screen; the screen's touch switch does not apply, the owner is the one pressing).
+
+**Controls on a touch screen.** A Personalizado screen may let people use the Home Assistant cards by touching it
+(*Permitir tocar en la pantalla*, off by default; each card can then be left out). `POST /api/display/ha/action`
+checks, in this order, and answers the first refusal:
+
+| Check | Error |
+|---|---|
+| The body is JSON | `415 json_required` |
+| `Sec-Fetch-Site` (when sent) is `same-origin` and `Origin` (when sent) is this server | `403 cross_origin` |
+| `item`, `slot`, `control` present | `400 bad_request` |
+| The item is on the requesting screen (any screen of its carousel), with that slot and a kind with controls, and no condition hides it now | `404 not_found` |
+| The display uses its private link key or a paired device: never open access without a credential, never an admin session | `403 untrusted` |
+| The screen is not private right now | `403 private` |
+| The screen allows touch | `403 touch_off` |
+| The item (and a room's row) may be touched, and the control is one the card offers for that entity now | `403 not_allowed` |
+| The value is valid; numbers are clamped (brightness 1 to 100, colour temperature within the light's range, setpoints within the climate's range on its step with low below high, 0 to 100 for fans, covers and valves, 0 to 1 for volume, a number entity within its `min` and `max` on its `step`) and modes and options must be ones the entity has | `400 out_of_range` |
+| At most 20 actions per 10 s per screen and 5 per second per credential | `429 rate` |
+| A card that needs two taps sends the second one (or a press and hold) with `confirm: true` | `409 confirm_needed` |
+| Home Assistant answers | `503 ha_down`, `502 ha_error` |
+
+Only these services are ever called: `toggle`, `turn_on`, `turn_off` (light, switch, input_boolean, fan), brightness
+and colour temperature (`light.turn_on`), `fan.set_percentage`, `climate.set_temperature`, `set_hvac_mode`,
+`set_fan_mode`, `cover.open_cover`, `close_cover`, `stop_cover`, `set_cover_position`, `media_player.media_play_pause`,
+`media_next_track`, `media_previous_track`, `volume_set`, `scene.turn_on`, `script.turn_on`, `button.press`,
+`valve.open_valve`, `close_valve`, `stop_valve`, `set_valve_position`, `select.select_option` and
+`input_select.select_option` (an option the entity has), `number.set_value` and `input_number.set_value`, and
+`vacuum.start`, `pause` and `return_to_base`, on the entity the card was given. Locks, alarms, gas valves (device
+class `gas`, or the word "gas" in the entity id, its name or the card's name, since many integrations set no
+device class), garage doors and gates are only shown, and so are updates. A switch, script, button or cover whose device class, id or name
+looks like a door, a gate or a lock (in any of the five languages), and a valve of device class `water` (the house's
+water), needs the owner's tick in the editor before it can be used at all, and then always two taps; its log entries
+say so. That check is a
+speed bump: the safest thing is not to put such entities on a screen anyone can touch. Each action is logged as
+`ha.action` (throttled), never with the token.
+
+**Entidad rows.** An Entidad card (`ha.tile`) can have a row under it, chosen per card (`props.features`, at most
+three) or, when not chosen, worked out on the server from the entity's attributes: brightness and colour temperature
+for a light, up, stop and down and the position for a cover, open and close for a valve, −/+ (on the entity's step)
+and the modes for a climate, the options of a select, a slider or −/+ for a number, start, pause and back to the dock
+for a vacuum, the versions of an update, a bar for a percentage sensor. Each state the display gets lists them
+(`f`); the controls they open are in `c` as for every card.
+
+**Estadística.** `GET /api/display/ha/statistic/:item` answers `{ stat, period, value, unit }`: the change, mean,
+minimum or maximum of a sensor today, this week or this month, from Home Assistant's long-term statistics
+(`recorder/statistic_during_period`, over the mirror's WebSocket connection). Kept 5 minutes and shared by every
+screen; a failure is kept 15 s. The editor's preview uses `GET /api/admin/homeassistant/statistic?entity=&stat=&period=`.
+
+**Mostrar solo si.** Any Personalizado item can have a condition (`item.when`): a Home Assistant entity's state or a
+Valor key is equal to, not equal to, above or below a value. The server mirrors the entities those conditions read and
+works the conditions out itself: the display config only says which feed decides (`when: { src: "ha" | "value" }`),
+never the entity, the key or the value, and the `ha` and `values` snapshots and events of a screen with conditions
+carry `hide`, the ids of the items hidden now. A hidden item gets no states and no values, its history, statistic and
+camera routes answer `404 hidden` and its controls `404 not_found`. A private screen hides every item with a
+condition. A new reading of a condition's entity or key is sent to the screens only when it shows or hides an item,
+so a display never learns when something it does not show changes. Valor conditions work on Marco Cloud too.
+
+**Horario.** Any Personalizado item can also have a visibility schedule (`item.schedule`, up to 6 windows with the
+shape of privacy schedule rules: `{ id, enabled, days, from, to }`, days 0 = Sunday, `[]` = every day, `to < from`
+crosses midnight). Outside its windows the item is left out of `GET /api/display/config` altogether (it keeps its
+cells) and gets no states, values or data; a paused window does not count and no enabled window means always. The
+canvas block carries `next`, the ISO time a window of one of its items starts or ends next, and the display asks for
+its config again a few seconds after it. The schedule itself never reaches a display.
+
+**Sizes.** A Personalizado item on the main grid (12×8 cells on a landscape screen, 8×12 on a portrait one) has a
+position `{ zone: "main", x, y, size }` where `size` is a named size (`xs`, `s`, `m`, `w`, `t`, `l`, `xl`, `band`, `full`,
+`row`, `sq`; `CANVAS_SIZES` gives their cells per orientation). It may also carry its own `w` and `h`, whole cells
+from 1 to 12: then the box is `w`×`h` and `size` is the named size it is drawn like (the largest of its kind's sizes
+that fits in the box). Each kind has a range, `CANVAS_KINDS[kind].cells` = `[min w, min h, max w, max h]` in landscape
+cells, widened to hold its named sizes (`cellRange(kind, orientation)`: on a portrait screen at most 8 wide, and a
+kind that may take the whole height takes all 12 rows). Saving clamps a box to its kind's range (a warning), stores a
+box that is exactly a named size as the name alone, and refuses `w` without `h` or a value that is not a whole cell
+(an error; the named size is used). Screens saved before keep their named sizes and look the same. The portrait view
+drawn from the landscape one keeps a box of its own (at most 8 wide) before it tries the named sizes. The display
+config carries `w` and `h` as they are; sidebar items keep their `span` (2, 3, 4 or `fill`).
+
+**One screen as a file.** The editor's *Exportar esta pantalla* writes `{ format: "marco-screen", version: 1, canvas,
+picks, theme?, glass? }` with no calendar ids, family member ids, Home Assistant entity ids or saved widget ids (they
+are emptied and `picks` lists, per item id, what each card lost: `calendars`, `people`, `entities`, `widget`). Valor
+keys, coins, teams and symbols stay. Importing it (`canvasCore.readCanvasFile`, in the editor) empties those
+references again, gives every item a new id, leaves out the kinds this server does not offer (and, on Marco Cloud,
+Home Assistant conditions), and validates the result like a save; nothing is stored until the editor is saved.
+
+**Cameras.** A Cámara card shows a picture of a Home Assistant camera, new every 2 to 60 s (every 10 s at the
+fastest in lite mode or on a slow device), and nothing while the page is hidden. After 3 pictures in a row that did
+not come it says *Sin señal*. *En directo* streams the camera through Home Assistant's `/api/camera_proxy_stream`: smooth
+for cameras that send MJPEG, about 2 pictures a second for most others (RTSP cameras such as Reolink, Tapo or UniFi).
+One live camera per screen; never in lite mode, on a slow device or in the editor's preview (they use pictures
+instead). The server opens one stream per camera whatever the number of screens showing it, at most 4 cameras and 8
+viewers in all, reads every part, drops anything that is not a JPEG, PNG, WebP or GIF, ends the stream on a part over
+2 MB, and sends the pictures on with its own boundary, at most 10 a second (the newest one; a camera that sends
+60 a second would otherwise cost a screen megabytes a second to download and read). The stream to Home Assistant closes when the last viewer
+leaves. `showWhen` (a binary sensor) shows the card only while that sensor is on, for example a motion sensor.
+*Cámaras solo en la red de casa* (on by default, `homeassistant.cameraLanOnly: false` turns it off) answers camera
+pictures (and the cover art of Multimedia cards) only to displays connected straight to the home network: a request from outside or through a reverse proxy
+gets `403 lan_only`, so a display link opened through `PUBLIC_URL` or a tunnel does not show the inside of the house.
+The editor's preview gets its pictures from `GET /api/admin/homeassistant/camera?entity=camera.x` (session).
+
+**Webhooks.** Create a token in *API & webhooks*, then in `configuration.yaml`:
 
 ```yaml
 rest_command:

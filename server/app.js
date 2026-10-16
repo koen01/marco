@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import express from 'express';
-import { paths, ROOT } from './store.js';
+import { getConfig, paths, ROOT } from './store.js';
 import { sessionMiddleware, csrfGuard, loginHandler, logoutHandler, logoutAllHandler, meHandler,
   googleLoginHandler, googleConnectHandler, googleCallbackHandler, microsoftConnectHandler, microsoftCallbackHandler, twoFactorLoginHandler } from './auth.js';
 import { twoFactorRouter } from './routes/twofactor.js';
@@ -17,12 +17,16 @@ import { updatesRouter } from './routes/updates.js';
 import { eventsAdminRouter, eventsPublicRouter } from './routes/localEvents.js';
 import { accessAdminRouter, pairPublicRouter } from './routes/access.js';
 import { doorbellAdminRouter, doorbellPublicRouter } from './routes/doorbell.js';
+import { haAdminRouter, haDisplayRouter } from './routes/ha.js';
+import { valuesAdminRouter, valuesDisplayRouter } from './routes/values.js';
+import { dataAdminRouter, dataDisplayRouter } from './routes/data.js';
 import { setupRouter } from './setup.js';
 import { familyAdminRouter, familyPublicRouter, familyDisplayRouter, familyPhotoMedia } from './routes/family.js';
 import { geocodeRouter } from './geocode.js';
 import { hostGuard } from './lib/net.js';
 import { redactSecrets } from './core/activityCore.js';
 import { displayAuth, mediaAuth } from './displayAccess.js';
+import { checkTrustProxy } from './lib/trustProxy.js';
 import { immichMedia } from './immich.js';
 import { galleryMedia, thumbMedia } from './photos.js';
 
@@ -45,6 +49,39 @@ export function frameGuard(req, res, next) {
   res.status(403).type('text/plain').send('Forbidden');
 }
 
+/** The display page's policy: no script but this server's own files, no plugins, no <base>, no form posts. */
+export const DISPLAY_CSP = "script-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'";
+const cspCache = new WeakMap();
+
+/**
+ * The Content-Security-Policy of the display page for `cfg` (cached per saved config). While some screen shows a
+ * custom HTML card, `frame-src` also limits the frames of the page to this server and the addresses of the saved web
+ * widgets, so no frame can be sent anywhere else (the card's own frame cannot navigate, this is one more lock).
+ * Without a custom card it is left open, so web widgets keep working exactly as before (a page that sends its frame
+ * on to a sign-in elsewhere, a tap on a link in it). img-src, connect-src and style-src stay open (LAN images, Immich,
+ * inline styles).
+ */
+export function displayCsp(cfg) {
+  if (!cfg || typeof cfg !== 'object') return DISPLAY_CSP;
+  const hit = cspCache.get(cfg);
+  if (hit) return hit;
+  const cards = (cfg.screens ?? []).some((s) => s?.layout?.preset === 'canvas' && (s.canvas?.items ?? []).some((it) => it?.kind === 'html' && !it.hidden));
+  let csp = DISPLAY_CSP;
+  if (cards) {
+    const origins = new Set();
+    for (const w of cfg.widgets ?? []) {
+      if (w?.type !== 'web' || typeof w.options?.url !== 'string') continue;
+      try {
+        const u = new URL(w.options.url);
+        if (u.protocol === 'http:' || u.protocol === 'https:') origins.add(u.origin);
+      } catch { /* not an address: never framed */ }
+    }
+    csp += `; frame-src 'self'${[...origins].sort().map((o) => ` ${o}`).join('')}`;
+  }
+  cspCache.set(cfg, csp);
+  return csp;
+}
+
 /** Display-facing JSON endpoints: private mode requires a display key, a device token or an admin session. */
 export const DISPLAY_API_PATHS = ['/api/display', '/api/events', '/api/weather', '/api/news', '/api/photos', '/api/countdowns'];
 
@@ -59,8 +96,10 @@ export function createApp({ version, dist = path.join(ROOT, 'dist'), updater = n
   // from whenever that is not loopback: a proxy on another host (TRUST_PROXY=192.168.1.10), or any proxy in front
   // of the Docker container (it connects from the bridge gateway: TRUST_PROXY=172.16.0.0/12), so
   // X-Forwarded-Proto/For are honoured (secure cookies, real client IP, LAN checks). See lib/net.js isLanClient.
-  const trustProxy = process.env.TRUST_PROXY?.trim();
-  app.set('trust proxy', !trustProxy ? 'loopback' : trustProxy === 'true' ? true : /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy.split(',').map((x) => x.trim()));
+  // index.js checks it before the server starts (lib/trustProxy.js); a bad value here still says what is wrong
+  const trust = checkTrustProxy(process.env.TRUST_PROXY);
+  if (!trust.ok) throw new Error(trust.message);
+  app.set('trust proxy', trust.value);
 
   // Browser hardening on every response. Private display links live in the URL (/d/<key>): never leak them
   // through the Referer header. No MIME sniffing. Only this same origin may frame a page (the admin's live
@@ -82,7 +121,9 @@ export function createApp({ version, dist = path.join(ROOT, 'dist'), updater = n
   // Route-specific body limits must come before the global parser (body-parser skips already-parsed bodies).
   app.use(['/api/admin/import/preview', '/api/admin/import/apply'], express.json({ limit: '5mb' }));
   app.use('/api/display/heartbeat', express.json({ limit: '4kb' }));
+  app.use('/api/display/ha/action', express.json({ limit: '2kb' }));
   app.use('/api/pair', express.json({ limit: '2kb' }));
+  app.use('/api/hooks/values', express.json({ limit: '8kb' })); // core/valuesCore.js VALUES_LIMITS.bodyBytes
   app.use('/api/hooks', express.json({ limit: '16kb' }));
   app.use(['/api/family', '/api/display/family'], express.json({ limit: '4kb' }));
   app.use(express.json({ limit: '1mb' }));
@@ -113,14 +154,14 @@ export function createApp({ version, dist = path.join(ROOT, 'dist'), updater = n
   // Two-step sign-in settings (routes/twofactor.js).
   app.use('/api/admin', twoFactorRouter());
   app.use('/api/admin', updatesRouter({ version, updater }));
-  app.use('/api/admin', screensAdminRouter(), announceRouter(), systemRouter({ version }), eventsAdminRouter(), accessAdminRouter(), doorbellAdminRouter(), familyAdminRouter());
+  app.use('/api/admin', screensAdminRouter(), announceRouter(), systemRouter({ version }), eventsAdminRouter(), accessAdminRouter(), doorbellAdminRouter(), familyAdminRouter(), haAdminRouter(), valuesAdminRouter(), dataAdminRouter());
   // Display access (private links / paired devices / admin session; open mode = legacy LAN). displayAccess.js
   app.use(DISPLAY_API_PATHS, displayAuth());
   app.use('/api/stream', displayAuth({ allowQuery: true }));
   // Pairing (unauthenticated, rate-limited), the family page (its own key, rate-limited) and the public (display)
   // routers.
   app.use('/api', pairPublicRouter(), familyPublicRouter());
-  app.use('/api', displayPublicRouter(), eventsPublicRouter(), doorbellPublicRouter(), familyDisplayRouter());
+  app.use('/api', displayPublicRouter(), eventsPublicRouter(), doorbellPublicRouter(), familyDisplayRouter(), haDisplayRouter(), valuesDisplayRouter(), dataDisplayRouter());
   app.use('/api', publicRouter({ version }));
   app.use('/api', (req, res) => res.status(404).json({ error: 'not found' }));
 
@@ -152,9 +193,12 @@ export function createApp({ version, dist = path.join(ROOT, 'dist'), updater = n
       // The display and admin pages (also as /index.html, /admin/index.html) are never cached: a new build or a
       // revoked link takes effect on the next load.
       else if (p.endsWith('.html')) res.set('cache-control', 'no-store');
+      // the display page, asked for as /index.html
+      if (p === path.join(dist, 'index.html')) res.set('content-security-policy', displayCsp(getConfig()));
     } }));
     const sendHtml = (file, cache = 'no-store') => (req, res) => {
       res.set('cache-control', cache);
+      if (file === 'index.html') res.set('content-security-policy', displayCsp(getConfig()));
       res.sendFile(path.join(dist, file));
     };
     app.get(['/admin', '/admin/', '/admin/*splat'], (req, res, next) =>

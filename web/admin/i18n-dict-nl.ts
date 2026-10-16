@@ -4,11 +4,15 @@
 
 import { NL_TWOFA } from './i18n-dict-2fa';
 import { NL_ACCOUNT } from './i18n-dict-account';
+import { NL_BUILDER, NL_SINGULAR_BUILDER } from './i18n-dict-builder';
+import { NL_TILE } from './i18n-dict-tile';
 
 /** Every admin row but the Familia ones. */
 export const NL: Record<string, string> = {
   ...NL_TWOFA,
   ...NL_ACCOUNT,
+  ...NL_BUILDER,
+  ...NL_TILE,
   '(ninguno)': '(geen)',
   'Estás usando la contraseña inicial. Cámbiala: hasta entonces solo se acepta desde tu red local.': 'Je gebruikt het startwachtwoord. Wijzig het: tot dan wordt het alleen vanuit je lokale netwerk geaccepteerd.',
   'Sesiones': 'Sessies',
@@ -2123,6 +2127,7 @@ export const NL: Record<string, string> = {
 
 /** Singular forms of the count strings (i18n-plural.ts), used by t() when vars.n === 1. */
 export const NL_SINGULAR: Record<string, string> = {
+  ...NL_SINGULAR_BUILDER,
   'Funciona: {n} eventos en los próximos meses': 'Werkt: 1 afspraak in de komende maanden',
   'Timbre enviado a {n} pantallas': 'Deurbel naar 1 scherm gestuurd',
   '{n} fotos': '1 foto',

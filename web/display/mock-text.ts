@@ -112,6 +112,7 @@ export const DEMO_NL_DA: Record<string, [string, string]> = {
   'Reclaiming the space: how a small studio brings human presence back to the offices of a city that works from home': ['De ruimte terugwinnen: hoe een kleine studio weer leven brengt in de kantoren van een stad die thuiswerkt', 'Rummet tilbage: sådan bringer et lille studie liv tilbage til kontorerne i en by, der arbejder hjemmefra'],
   'Architects and neighbours talk about what the change means for the old town.': ['Architecten en buurtbewoners praten over wat de verandering betekent voor de oude binnenstad.', 'Arkitekter og naboer fortæller, hvad ændringen betyder for den gamle bydel.'],
   'Demo News': ['Voorbeeldnieuws', 'Eksempelnyheder'],
+  'City Herald': ['Stadsblad', 'Byavisen'],
   'Trip to Madeira': ['Reis naar Madeira', 'Rejse til Madeira'],
   'Halloween party': ['Halloweenfeest', 'Halloweenfest'],
   'Christmas': ['Kerst', 'Jul'],
@@ -171,6 +172,24 @@ export const DEMO_NL_DA: Record<string, [string, string]> = {
   'Ensalada y croquetas': ['Salade en kroketten', 'Salat og fiskefrikadeller'],
   'Elegir la peli del viernes': ['De film van vrijdag kiezen', 'Vælge fredagsfilmen'],
   '30 min más de tablet': ['30 min langer op de tablet', '30 min mere med tablet'],
+};
+
+/** The family demo in English, only on the showcase screens (&shot=show.*, mockCanvas.ts); elsewhere English keeps the
+ * Spanish family as the golden fixtures show it. Keys: the Spanish string. */
+export const DEMO_FAMILY_EN: Record<string, string> = {
+  'Mamá': 'Mum', 'Papá': 'Dad', 'Abuela Carmen': 'Grandma Carmen',
+  'Lavarse los dientes': 'Brush teeth', 'Hacer la cama': 'Make the bed', 'Deberes': 'Homework', 'Poner la mesa': 'Set the table',
+  'Vestirse solo': 'Get dressed', 'Preparar la mochila': 'Pack the school bag', 'Recoger los juguetes': 'Tidy up the toys',
+  'Dar de comer a Toby': 'Feed Toby', 'Llevar el vaso al fregadero': 'Cup to the sink', 'Practicar piano': 'Piano practice', 'Baño': 'Bath time',
+  'Sacar la basura': 'Take out the bins', 'Regar las plantas': 'Water the plants', 'Llamar a los nietos': 'Call the grandkids',
+  'Tostadas con tomate': 'Toast and jam', 'Lentejas con verduras': 'Lentil soup', 'Fruta y yogur': 'Fruit and yoghurt', 'Tortilla de patatas': 'Spanish omelette',
+  'Cereales con leche': 'Cereal and milk', 'Pollo asado con patatas': 'Roast chicken and potatoes', 'Bocadillo de queso': 'Cheese sandwich', 'Crema de calabaza': 'Pumpkin soup',
+  'Yogur con fruta': 'Yoghurt and berries', 'Macarrones con tomate': 'Pasta with tomato sauce', 'Plátano': 'Banana', 'Pescado al horno con arroz': 'Baked salmon and rice',
+  'Tostadas con aceite': 'Porridge', 'Garbanzos con espinacas': 'Chickpea curry', 'Galletas y leche': 'Cookies and milk', 'Sopa de fideos': 'Chicken noodle soup',
+  'Tortitas': 'Pancakes', 'Arroz a la cubana': 'Burrito bowls', 'Manzana': 'Apple', 'Pizza casera': 'Homemade pizza',
+  'Churros con chocolate': 'Waffles', 'Paella': 'Paella', 'Helado': 'Ice cream', 'Huevos rotos con jamón': 'Fish and chips',
+  'Fruta y tostadas': 'Fruit and toast', 'Cocido madrileño': 'Sunday roast', 'Bizcocho': 'Banana bread', 'Ensalada y croquetas': 'Soup and sandwiches',
+  'Elegir la peli del viernes': 'Pick the Friday film', '30 min más de tablet': '30 min more tablet time',
 };
 
 /** Demo headlines per language: [title, summary]. */

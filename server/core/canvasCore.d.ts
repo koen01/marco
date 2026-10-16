@@ -1,0 +1,168 @@
+// Types for canvasCore.js (Personalizado screens), used by the admin and the display.
+import type {
+  CanvasCategory, CanvasCondition, CanvasConfig, CanvasGlass, CanvasItem, CanvasItemStyle, CanvasKind, CanvasPos, CanvasSize, DisplayCanvas, GlassConfig, SideSpan,
+} from '../../web/shared/types';
+
+export type Orientation = 'landscape' | 'portrait';
+
+export const CANVAS_GRID: { landscape: { cols: number; rows: number }; portrait: { cols: number; rows: number } };
+export const CANVAS_SIZES: Record<CanvasSize, { landscape: [number, number]; portrait: [number, number] }>;
+export const CANVAS_SIZE_IDS: CanvasSize[];
+export const SIDE_SPANS: SideSpan[];
+export const SIDE_UNITS: number;
+export const SIDEBAR_SIDES: CanvasConfig['sidebar']['side'][];
+export const SIDEBAR_SIZES: CanvasConfig['sidebar']['size'][];
+export const SIDEBAR_SHARE: Record<CanvasConfig['sidebar']['size'], number>;
+export const SIDEBAR_FILLS: CanvasConfig['sidebar']['fill'][];
+export const CANVAS_SCRIMS: CanvasConfig['scrim'][];
+export const CANVAS_BACKGROUNDS: CanvasConfig['background'][];
+export const CANVAS_SURFACES: ('glass' | 'solid' | 'none')[];
+export const CANVAS_RADII: ('m' | 'l' | 'xl')[];
+export const CANVAS_LIMITS: { items: number; side: number; haEntities: number; liveCameras: number };
+export const CANVAS_ID_RE: RegExp;
+export const HA_ENTITY_RE: RegExp;
+export const VALUE_KEY_RE: RegExp;
+
+/** Collects validation problems: errors refuse the save, warnings are fixes made on the way. */
+export interface CanvasCollector {
+  err(path: string, message: string): void;
+  warn?(path: string, message: string): void;
+}
+export interface CanvasRefs {
+  /** the screen's calendars (the pool calendar widgets pick from); null = any */
+  sourceIds?: Set<string> | null;
+  /** config.widgets by id */
+  widgets?: Map<string, unknown>;
+  /** family member ids */
+  memberIds?: Set<string> | null;
+}
+export interface CanvasOpts {
+  canvasKinds?: readonly string[];
+  haControls?: boolean;
+  cameraLive?: boolean;
+}
+
+export interface CanvasKindDef {
+  cat: CanvasCategory;
+  sizes: CanvasSize[];
+  def: CanvasSize;
+  /** [min w, min h, max w, max h] in landscape cells (cellRange gives them per orientation) */
+  cells: [number, number, number, number];
+  side: boolean;
+  edition: 'all' | 'local';
+  feature?: string;
+  perScreen?: number;
+  ha?: { domains: string[]; max: number };
+  controls?: boolean;
+  bigType?: boolean;
+  events?: boolean;
+  family?: boolean;
+  private?: boolean;
+  reserved?: boolean;
+  /** the look a new item of this kind starts with (a Sección has no card) */
+  defStyle?: Partial<CanvasItemStyle>;
+  defaults(): Record<string, unknown>;
+  props(c: CanvasCollector, path: string, raw: Record<string, unknown>, refs: CanvasRefs, opts: CanvasOpts): Record<string, unknown>;
+}
+
+export const CANVAS_KINDS: Record<CanvasKind, CanvasKindDef>;
+export const CANVAS_KIND_IDS: CanvasKind[];
+export const DEFAULT_CANVAS_KINDS: CanvasKind[];
+export const CLOUD_CANVAS_KINDS: CanvasKind[];
+export const CANVAS_CATEGORIES: CanvasCategory[];
+export const DATA_KIND_IDS: CanvasKind[];
+export const CHART_STYLES: ('below' | 'background')[];
+export function canvasDataItems(screen: unknown, opts?: { now?: Date; tz?: string }): CanvasItem[];
+
+export function sizeCells(size: CanvasSize | string, orientation?: Orientation | string): [number, number];
+export function cellRange(kind: CanvasKind | string | CanvasKindDef, orientation?: Orientation | string): { minW: number; minH: number; maxW: number; maxH: number };
+export function posCells(pos: { size: CanvasSize | string; w?: number; h?: number } | null | undefined, orientation?: Orientation | string): [number, number];
+export function lookSize(kind: CanvasKind | string | CanvasKindDef, w: number, h: number, orientation?: Orientation | string): CanvasSize;
+export function boxOf(kind: CanvasKind | string | CanvasKindDef, w: number, h: number, orientation?: Orientation | string): { size: CanvasSize; w?: number; h?: number };
+export function boxAllowed(kind: CanvasKind | string | CanvasKindDef, w: number, h: number, orientation?: Orientation | string): boolean;
+export function canvasDefaults(kind: CanvasKind | string): Record<string, unknown>;
+export function defaultItemStyle(): CanvasItemStyle;
+export function defaultCanvas(): CanvasConfig;
+export function newCanvasId(taken?: Set<string>): string;
+export function cssProblem(css: string): string;
+export const CARD_BUILTINS: readonly ('time' | 'date' | 'weather' | 'nextEvent')[];
+export function normalizeGlassJs(raw: unknown, card?: false): GlassConfig;
+export function normalizeGlassJs(raw: unknown, card: true): CanvasGlass;
+export function portraitSide(side: CanvasConfig['sidebar']['side']): CanvasConfig['sidebar']['side'];
+
+export interface Occupancy { cols: number; rows: number; orientation: Orientation; cells: (string | null)[][] }
+export function makeOccupancy(orientation?: Orientation | string): Occupancy;
+export function fitsAt(occ: Occupancy, x: number, y: number, w: number, h: number): boolean;
+export function occupy(occ: Occupancy, id: string, x: number, y: number, w: number, h: number): void;
+export function nearestFree(occ: Occupancy, x: number, y: number, w: number, h: number): { x: number; y: number } | null;
+export function firstFree(occ: Occupancy, w: number, h: number): { x: number; y: number } | null;
+
+export function sanitizeCanvas(c: CanvasCollector, path: string, raw: unknown, refs?: CanvasRefs, opts?: CanvasOpts): CanvasConfig;
+export const TILE_FEATURES: readonly import('../../web/shared/types').TileFeature[];
+export const STAT_PERIODS: readonly ('today' | 'week' | 'month')[];
+export const STAT_TYPES: readonly ('change' | 'mean' | 'min' | 'max')[];
+export const CONDITION_OPS: readonly ('eq' | 'ne' | 'gt' | 'lt')[];
+export function readCondition(c: CanvasCollector, path: string, raw: unknown, opts?: { ha?: boolean }): CanvasCondition | null;
+export function conditionMet(when: CanvasCondition | null | undefined, raw: unknown): boolean;
+type ScreenLike = { layout?: { preset?: string }; canvas?: { items?: CanvasItem[] } } | null | undefined;
+export function conditionEntities(screen: ScreenLike): Set<string>;
+export function conditionKeys(screen: ScreenLike): Set<string>;
+export function conditionHidden(screen: ScreenLike, opts?: { ha?: (entity: string) => unknown; value?: (key: string) => unknown; isPrivate?: boolean }): Set<string>;
+export const ITEM_SCHEDULE_MAX: number;
+export function readSchedule(c: CanvasCollector, path: string, raw: unknown): import('../../web/shared/types').PrivacyRule[] | null;
+export function scheduleOn(item: Pick<CanvasItem, 'schedule'> | null | undefined, now?: Date, tz?: string): boolean;
+export function scheduleHidden(screen: ScreenLike, now?: Date, tz?: string): Set<string>;
+export function scheduleNext(screen: ScreenLike, now?: Date, tz?: string): number | null;
+export function haEntitiesOf(item: Pick<CanvasItem, 'kind' | 'props'>): string[];
+export function itemNames(item: Pick<CanvasItem, 'kind' | 'props'>): { entity: string; name: string }[];
+export function needsConfirm(domain: string, attrs?: Record<string, unknown> | null, entityId?: string, name?: string): boolean;
+export function itemAliases(item: Pick<CanvasItem, 'id' | 'kind' | 'props'>): { alias: string; entity: string; slot: number }[];
+export function deriveCanvasPortrait(items: Pick<CanvasItem, 'id' | 'kind' | 'pos'>[], sidebar?: CanvasConfig['sidebar']): { placed: { id: string; pos: CanvasPos }[]; omitted: string[] };
+export function projectCanvas(
+  screen: { layout?: { preset?: string }; screen?: { orientation?: string }; canvas?: CanvasConfig } | null | undefined,
+  opts?: { isPrivate?: boolean; canvasKinds?: readonly string[]; haControls?: boolean; members?: { id: string; calendarId: string | null }[]; now?: Date; tz?: string },
+): DisplayCanvas | null;
+export function canvasWidgetIds(screen: { layout?: { preset?: string }; canvas?: CanvasConfig } | null | undefined, opts?: { now?: Date; tz?: string }): string[];
+export function canvasEventsNeed(canvas: { items?: { kind: string; props?: Record<string, unknown> }[] } | null | undefined): number;
+
+export interface CanvasTemplate {
+  id: string;
+  /** Spanish key of the admin dictionaries */
+  name: string;
+  requires?: { ha?: boolean };
+  /** 'design': made from one of the existing designs (DESIGN_TEMPLATES) */
+  group?: 'design';
+  /** the screen theme the design is made for */
+  theme?: 'light' | 'dark';
+  canvas: Partial<Omit<CanvasConfig, 'items'>> & { items: { kind: CanvasKind; pos: CanvasPos; style?: Partial<CanvasItemStyle>; props?: Record<string, unknown> }[] };
+}
+export const CANVAS_TEMPLATES: CanvasTemplate[];
+export function canvasFromTemplate(id: string, refs?: CanvasRefs, opts?: CanvasOpts): CanvasConfig;
+export const DESIGN_TEMPLATES: Record<string, string>;
+export function canvasFromDesign(
+  screen: { layout?: { preset?: string; sidePanel?: string; sideWidth?: number }; background?: { enabled?: boolean; scope?: string }; calendar?: Record<string, unknown>; datetime?: { clock?: string } } | null | undefined,
+  refs?: CanvasRefs,
+  opts?: CanvasOpts,
+): { canvas: CanvasConfig; theme: 'light' | 'dark' | null; template: string };
+
+export type CanvasPick = 'calendars' | 'people' | 'entities' | 'widget';
+export const CANVAS_FILE_FORMAT: 'marco-screen';
+export const CANVAS_FILE_VERSION: number;
+export const CANVAS_FILE_MAX: number;
+export const CANVAS_PICKS: readonly CanvasPick[];
+export interface CanvasFile {
+  format: 'marco-screen';
+  version: number;
+  canvas: CanvasConfig;
+  picks: Record<string, CanvasPick[]>;
+  theme?: 'light' | 'dark';
+  glass?: unknown;
+}
+export function exportCanvasFile(canvas: CanvasConfig, screen?: { theme?: string | null; glass?: unknown }): CanvasFile;
+export function readCanvasFile(
+  raw: unknown,
+  refs?: CanvasRefs,
+  opts?: CanvasOpts,
+):
+  | { ok: true; canvas: CanvasConfig; picks: Record<string, CanvasPick[]>; dropped: number; conditions: number; theme: 'light' | 'dark' | null; glass: unknown }
+  | { ok: false; error: string; path?: string };

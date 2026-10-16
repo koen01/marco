@@ -9,7 +9,7 @@ import { requireAuth } from '../auth.js';
 import { getConfig } from '../store.js';
 import { sanitizeAnnounce, createAnnouncement, listAnnouncements, clearAnnouncements } from '../announce.js';
 import { resolveScreenList } from '../displays.js';
-import { listTokens, createToken, revokeToken } from '../tokens.js';
+import { listTokens, createToken, revokeToken, setTokenScopes } from '../tokens.js';
 import { logActivity, actorFrom } from '../activity.js';
 
 /**
@@ -60,9 +60,16 @@ export function announceRouter() {
   r.get('/tokens', (req, res) => res.json(listTokens()));
 
   r.post('/tokens', (req, res) => {
-    const out = createToken(req.body?.name, { req });
+    const out = createToken(req.body?.name, { req, scopes: req.body?.scopes });
     if (out.error) return res.status(out.status).json({ error: out.error });
     res.json(out);
+  });
+
+  // what a token may do (core/valuesCore.js TOKEN_SCOPES); its secret stays the same
+  r.patch('/tokens/:id', (req, res) => {
+    const out = setTokenScopes(String(req.params.id), req.body?.scopes, { req });
+    if (out.error) return res.status(out.status).json({ error: out.error });
+    res.json(out.info);
   });
 
   r.delete('/tokens/:id', (req, res) => {

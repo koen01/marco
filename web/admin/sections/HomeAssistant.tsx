@@ -1,13 +1,13 @@
 import type { ComponentChildren } from 'preact';
-import { useState } from 'preact/hooks';
-import type { TestHomeAssistantResponse } from '../../shared/types';
+import { useEffect, useState } from 'preact/hooks';
+import type { HaLiveStatus, TestHomeAssistantResponse } from '../../shared/types';
 import { api, ApiError, doorbellWithImage } from '../api';
 import { fetchErrorText } from '../apiErrors';
 import { toast } from '../components/feedback';
 import { HaEntityPicker, invalidateHaEntities } from '../components/HaEntityPicker';
 import { Icon } from '../components/icons';
 import { ScreenTargets } from '../components/AnnounceForm';
-import { Button, Callout, Card, Field, NumberInput, PageHeader, TextInput, ToggleRow } from '../components/ui';
+import { Button, Callout, Card, Field, NumberInput, PageHeader, StatusDot, TextInput, ToggleRow } from '../components/ui';
 import { has } from '../caps';
 import { t } from '../i18n';
 import { withPollNote } from '../liveNote';
@@ -17,12 +17,13 @@ export function HomeAssistantSection(props: SectionProps) {
   return (
     <>
       <HomeAssistantMain {...props} />
+      {props.cfg.homeassistant.enabled && <LiveCard {...props} />}
       {has('doorbell') && has('doorbellLive') && <DoorbellCard {...props} />}
     </>
   );
 }
 
-function HomeAssistantMain({ cfg, set, errors }: SectionProps) {
+function HomeAssistantMain({ cfg, set, errors, saved }: SectionProps) {
   const ha = cfg.homeassistant;
   const w = cfg.weather;
   const [token, setToken] = useState('');
@@ -30,13 +31,23 @@ function HomeAssistantMain({ cfg, set, errors }: SectionProps) {
   const [savingTok, setSavingTok] = useState(false);
   const [test, setTest] = useState<{ loading: boolean; res?: TestHomeAssistantResponse }>({ loading: false });
   const [reloadKey, setReloadKey] = useState(0);
+  // whether a token is saved (and for this address): the placeholder and the warnings say so
+  const [tok, setTok] = useState<{ saved: boolean; other: boolean } | null>(null);
+  const loadTok = () =>
+    api.haStatus().then(
+      (s) => setTok({ saved: !!s.tokenSaved, other: !!s.tokenForOtherUrl }),
+      () => undefined,
+    );
+  // again after a save of another address (the server compares the token's address with the saved one)
+  useEffect(() => void loadTok(), [saved?.homeassistant?.url]);
 
   const saveToken = async () => {
     setSavingTok(true);
     try {
-      await api.setHaToken(token.trim());
+      await api.setHaToken(token.trim(), ha.url.trim() || undefined);
       toast(t('Token guardado'));
       setToken('');
+      void loadTok();
       invalidateHaEntities();
       setReloadKey((k) => k + 1);
     } catch (e) {
@@ -58,7 +69,12 @@ function HomeAssistantMain({ cfg, set, errors }: SectionProps) {
     <>
       <PageHeader title="Home Assistant" desc={t('Usa sensores de tu casa (temperatura y humedad interior, estación meteorológica).')} />
       <Card id="ha-conn" title={t('Conexión')} icon="home">
-        <ToggleRow label={t('Activar Home Assistant')} checked={ha.enabled} onChange={(v) => set((d) => void (d.homeassistant.enabled = v))} />
+        <ToggleRow
+          label={t('Activar Home Assistant')}
+          hint={ha.enabled && tok && !tok.saved ? <span class="warn-text">{t('Falta el token: pégalo abajo y pulsa Guardar token.')}</span> : undefined}
+          checked={ha.enabled}
+          onChange={(v) => set((d) => void (d.homeassistant.enabled = v))}
+        />
         <div class={`stack ${ha.enabled ? '' : 'is-disabled'}`}>
           <Field label="URL" error={errors['homeassistant.url']} hint={t('Dirección local, p. ej. http://homeassistant.local:8123')}>
             <TextInput mono value={ha.url} error={!!errors['homeassistant.url']} placeholder="http://homeassistant.local:8123" onValue={(v) => set((d) => void (d.homeassistant.url = v))} prefix={<Icon name="link" size={14} />} />
@@ -77,7 +93,7 @@ function HomeAssistantMain({ cfg, set, errors }: SectionProps) {
                   type={(show ? 'text' : 'password') as 'password'}
                   value={token}
                   autocomplete="off"
-                  placeholder={t('•••••••• (sin cambios)')}
+                  placeholder={tok?.saved && !tok.other ? t('•••••••• (guardado)') : t('Pega aquí el token')}
                   onInput={(e) => setToken(e.currentTarget.value)}
                 />
                 <button type="button" class="input-group__btn" onClick={() => setShow(!show)} aria-label={t('Mostrar')}>
@@ -88,6 +104,9 @@ function HomeAssistantMain({ cfg, set, errors }: SectionProps) {
                 {t('Guardar token')}
               </Button>
             </div>
+            {tok?.saved && tok.other && (
+              <Callout kind="warn">{t('El token guardado es de otra dirección. Guárdalo de nuevo para esta.')}</Callout>
+            )}
           </Field>
           <div class="row-actions">
             <Button icon="play" loading={test.loading} onClick={runTest} disabled={!ha.url}>
@@ -100,7 +119,14 @@ function HomeAssistantMain({ cfg, set, errors }: SectionProps) {
                 </span>
               ) : (
                 <span class="err-text">
-                  <Icon name="alert" size={15} /> {fetchErrorText(test.res.error) || t('No se pudo conectar')}
+                  <Icon name="alert" size={15} />{' '}
+                  {test.res.error === 'new_url_needs_token'
+                    ? t('Para probar otra URL, escribe también su token.')
+                    : test.res.error === 'token_other_url'
+                      ? t('El token guardado es de otra URL. Guárdalo otra vez para esta.')
+                    : test.res.error === 'redirect_refused'
+                      ? t('Esa dirección redirige a otra. Escribe la dirección final de Home Assistant.')
+                      : fetchErrorText(test.res.error) || t('No se pudo conectar')}
                 </span>
               ))}
           </div>
@@ -108,7 +134,8 @@ function HomeAssistantMain({ cfg, set, errors }: SectionProps) {
         </div>
       </Card>
       <Card
-        title={t('Entidades')}
+        title={t('Tiempo e interior')}
+        desc={t('Para la tarjeta del tiempo de todos los diseños: el tiempo de Home Assistant (si lo eliges como fuente en Tiempo) y la temperatura y humedad de dentro de casa. Las pantallas Personalizado eligen sus entidades en el editor.')}
         icon="activity"
         muted={!ha.enabled}
         actions={
@@ -153,6 +180,103 @@ function HomeAssistantMain({ cfg, set, errors }: SectionProps) {
         </div>
       </Card>
     </>
+  );
+}
+
+/** Names of the Casa cards (the builder's palette names, t() keys), without loading the builder. */
+const HA_KIND_NAMES: Record<string, string> = {
+  'ha.tile': 'Entidad', 'ha.light': 'Luz', 'ha.switch': 'Interruptor', 'ha.climate': 'Clima', 'ha.cover': 'Persiana', 'ha.sensor': 'Sensor',
+  'ha.room': 'Habitación', 'ha.chart': 'Gráfica', 'ha.camera': 'Cámara', 'ha.media': 'Multimedia', 'ha.scene': 'Escenas', html: 'HTML propio',
+  'ha.gauge': 'Indicador', 'ha.statistic': 'Estadística',
+};
+
+/** The entities a Personalizado item binds (the same fields as canvasCore haEntitiesOf). */
+function entitiesOf(it: { kind: string; props: Record<string, unknown>; when?: { src: string; entity?: string } }): string[] {
+  // the entity of "Mostrar solo si" counts too, on any card
+  const cond = it.when?.src === 'ha' && it.when.entity ? [it.when.entity] : [];
+  if (!it.kind.startsWith('ha.') && it.kind !== 'html') return cond;
+  const p = it.props as Record<string, any>;
+  const list = [...cond, p.entity, p.showWhen, ...(p.rows ?? []).map((r: any) => r?.entity), ...(p.series ?? []).map((x: any) => x?.entity), ...(p.buttons ?? []).map((b: any) => b?.entity), ...(p.bind ?? []).map((b: any) => b?.entity)];
+  return [...new Set(list.filter((e): e is string => typeof e === 'string' && !!e))];
+}
+
+const REASONS: Record<string, string> = {
+  no_websocket: 'Esta versión de Node no tiene WebSocket: Marco pregunta cada 15 segundos.',
+  old_version: 'Tu Home Assistant es anterior a 2022.4: Marco pregunta cada 15 segundos.',
+  auth: 'Home Assistant no acepta el token.',
+  unreachable: 'No se puede conectar con Home Assistant.',
+};
+
+/** When something happened, in words ("hace 5 min"). */
+function agoText(at: number | null): string {
+  if (!at) return '';
+  const min = Math.floor((Date.now() - at) / 60_000);
+  if (min < 1) return t('ahora mismo');
+  if (min < 60) return t('hace {n} min', { n: min });
+  return t('hace {n} h', { n: Math.floor(min / 60) });
+}
+
+/**
+ * The live link the screens use (server/haLive.js): connected in real time, asking every 15 s, or no connection,
+ * with the last update and how many entities it follows; and which screens show which entities.
+ */
+function LiveCard({ full, cfg, set }: SectionProps) {
+  const [st, setSt] = useState<HaLiveStatus | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const load = () => api.haStatus().then((s) => alive && setSt(s), () => undefined);
+    load();
+    const id = window.setInterval(load, 10_000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, []);
+  const used = full.screens
+    .filter((s) => s.layout?.preset === 'canvas')
+    .map((s) => ({ name: s.name, items: (s.canvas?.items ?? []).filter((it) => !it.hidden).map((it) => ({ kind: it.kind, entities: entitiesOf(it) })).filter((x) => x.entities.length) }))
+    .filter((s) => s.items.length);
+  const label = !st ? t('Cargando…') : st.state === 'connected' ? t('Conectado en directo') : st.state === 'polling' ? t('Modo consulta') : st.state === 'off' ? t('Falta la URL o el token') : t('Sin conexión');
+  const dot = !st ? 'idle' : st.state === 'connected' ? 'ok' : st.state === 'polling' ? 'warn' : st.state === 'off' ? 'idle' : 'error';
+  return (
+    <Card id="ha-live" title={t('En las pantallas')} icon="activity">
+      <div class="row-actions">
+        <StatusDot state={dot} />
+        <strong>{label}</strong>
+        {st && st.state !== 'off' && (
+          <span class="muted small">
+            {[st.lastEventAt ? t('Última actualización {when}', { when: agoText(st.lastEventAt) }) : '', t('{n} entidades', { n: st.count })].filter(Boolean).join(' · ')}
+          </span>
+        )}
+      </div>
+      {st?.reason && REASONS[st.reason] && <p class="muted small">{t(REASONS[st.reason])}</p>}
+      <p class="muted small">{t('Marco sigue en directo solo las entidades que muestran tus pantallas Personalizado y el tiempo, nunca toda la casa. Las pantallas no ven nunca el token ni los nombres internos de las entidades.')}</p>
+      <Field label={t('Usado en pantallas')}>
+        {used.length ? (
+          <ul class="ha-used">
+            {used.map((s) => (
+              <li>
+                <strong>{s.name}</strong>
+                <span class="muted small">
+                  {s.items.map((it) => `${t(HA_KIND_NAMES[it.kind] ?? 'Condición')}: ${it.entities.join(', ')}`).join(' · ')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="muted small">{t('Ninguna pantalla muestra todavía tarjetas de Casa. Añádelas en Diseño, con el estilo Personalizado.')}</p>
+        )}
+      </Field>
+      <ToggleRow
+        label={t('Cámaras solo en la red de casa')}
+        hint={t('Las tarjetas de cámara solo se ven en pantallas conectadas directamente a la red de casa. Una pantalla que llega desde fuera o a través de un proxy no las ve. Si lo desactivas, cualquier pantalla con su enlace privado las ve.')}
+        checked={cfg.homeassistant.cameraLanOnly !== false}
+        onChange={(v) => set((d) => {
+          if (v) delete d.homeassistant.cameraLanOnly;
+          else d.homeassistant.cameraLanOnly = false;
+        })}
+      />
+    </Card>
   );
 }
 

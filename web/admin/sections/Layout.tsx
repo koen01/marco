@@ -1,6 +1,9 @@
-import { useRef } from 'preact/hooks';
+import type { ComponentType } from 'preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { CALENDAR_BLUR_DEFAULT, CALENDAR_OPACITY_DEFAULT, GLASS_DEFAULTS, glassVars, normalizeGlass, SCREEN_PHOTO_PRESETS, type PhotoStats } from '../../shared/glass';
-import type { BackgroundScope, DisplayStyle, FrameCorner, GlassConfig, LayoutPreset, PlannerBar, WidgetPlacement } from '../../shared/types';
+import type { BackgroundScope, CanvasConfig, DisplayStyle, FrameCorner, GlassConfig, LayoutPreset, PlannerBar, WidgetPlacement } from '../../shared/types';
+import { defaultCanvas } from '../../../server/core/canvasCore.js';
+import { CanvasStyleThumb, CanvasThumb } from '../builder/thumb';
 import { Icon } from '../components/icons';
 import { EventStyleField, PLANNER_CALENDAR, undoPlannerPick, weeksCap, WeeksField } from '../components/PlannerFields';
 import { Button, Callout, Card, ColorPicker, Field, PageHeader, ReorderButtons, Segmented, Select, Slider, ToggleRow } from '../components/ui';
@@ -28,6 +31,8 @@ export const PRESETS: { id: LayoutPreset; name: string; desc: string; wizard?: b
   { id: 'kidsRoutines', name: 'Rutinas', desc: 'Una columna por niño con sus rutinas de mañana, tarde y noche, su progreso y sus estrellas.', group: 'kids' },
   { id: 'kidsFamily', name: 'Familia', desc: 'El día de toda la familia: agenda de hoy, rutinas, comidas y tareas, con un saludo arriba.', group: 'kids' },
   { id: 'kidsMeals', name: 'Semana de comidas', desc: 'El menú de toda la semana con hoy resaltado, la hora y lo próximo de hoy.', group: 'kids' },
+  // Personalizado (screen.canvas): picked from the style cards, not from this grid (shown here only while it is the layout)
+  { id: 'canvas', name: 'Personalizado', desc: 'Coloca tú los widgets en una cuadrícula: relojes, calendarios, el tiempo, fotos y más, cada uno con su tamaño y su aspecto.' },
 ];
 const isKidsPreset = (id: string) => PRESETS.some((p) => p.id === id && p.group === 'kids');
 
@@ -345,15 +350,18 @@ export function Schematic({ id, side, plannerBar = 'side' }: { id: LayoutPreset;
  * (screen.style 'modern' + layout.preset kidsRoutines / kidsFamily / kidsMeals), so older configs and the display
  * need nothing new. Picking it selects a kids layout; Moderno or Clásico go back to a normal one.
  */
-export type StyleChoice = DisplayStyle | 'kids';
+export type StyleChoice = DisplayStyle | 'kids' | 'canvas';
 export const STYLES: { id: StyleChoice; name: string; desc: string }[] = [
   { id: 'modern', name: 'Moderno', desc: 'Más minimalista, al estilo de Apple: tarjetas de cristal sobre la foto, reloj de pantalla de bloqueo y menos líneas.' },
   { id: 'classic', name: 'Clásico', desc: 'El aspecto de siempre: reloj fino, tarjetas con borde y la cuadrícula completa.' },
   { id: 'kids', name: 'Niños', desc: 'Colores suaves, rutinas con estrellas y el menú de la semana. Basado en el moderno.' },
+  // Personalizado (screen.canvas, the builder): like Niños, the Modern style with its own layout ('canvas')
+  { id: 'canvas', name: 'Personalizado', desc: 'Coloca tú los widgets en una cuadrícula: relojes, calendarios, el tiempo, fotos y más, cada uno con su tamaño y su aspecto.' },
 ];
 
 /** Style card shown as chosen for a screen. */
-export const styleChoiceOf = (style: string | undefined, preset: string): StyleChoice => (isKidsPreset(preset) ? 'kids' : style === 'modern' ? 'modern' : 'classic');
+export const styleChoiceOf = (style: string | undefined, preset: string): StyleChoice =>
+  isKidsPreset(preset) ? 'kids' : preset === 'canvas' ? 'canvas' : style === 'modern' ? 'modern' : 'classic';
 
 /** Tiny drawing of the kids style: pastel cards with avatar circles, progress bars and check circles. */
 function KidsStyleThumb() {
@@ -392,6 +400,7 @@ function KidsStyleThumb() {
 /** Tiny drawing of each display style (same scene: photo with clock + widgets, calendar on the right). */
 export function StyleThumb({ id }: { id: StyleChoice }) {
   if (id === 'kids') return <KidsStyleThumb />;
+  if (id === 'canvas') return <CanvasStyleThumb />;
   const modern = id === 'modern';
   const accent = 'var(--accent)';
   const rows = [0, 1, 2, 3];
@@ -505,7 +514,7 @@ const opacityWord = (v: number) =>
   v < 0.2 ? 'Muy transparente' : v < 0.42 ? 'Más transparente' : v <= 0.58 ? 'Equilibrado' : v <= 0.8 ? 'Más sólido' : 'Muy sólido';
 
 /** Glass options of the Modern style (like the iPhone's Liquid Glass settings). */
-export function GlassCard({ cfg, set }: Pick<SectionProps, 'cfg' | 'set'>) {
+export function GlassCard({ cfg, set, title }: Pick<SectionProps, 'cfg' | 'set'> & { title?: string }) {
   const g = normalizeGlass(cfg.screen.glass);
   const put = <K extends keyof GlassConfig>(k: K, v: GlassConfig[K]) =>
     set((d) => void (d.screen.glass = { ...normalizeGlass(d.screen.glass), [k]: v }));
@@ -514,9 +523,9 @@ export function GlassCard({ cfg, set }: Pick<SectionProps, 'cfg' | 'set'>) {
     <Card
       id="layout-glass"
       scope="screen"
-      title={t('Cristal')}
+      title={t(title ?? 'Cristal')}
       icon="sparkles"
-      desc={t('Cómo se ven las tarjetas de cristal del estilo Moderno en esta pantalla.')}
+      desc={title ? t('El cristal de las tarjetas que no tienen su propio estilo.') : t('Cómo se ven las tarjetas de cristal del estilo Moderno en esta pantalla.')}
       actions={
         <Button size="sm" variant="ghost" disabled={isDefault} onClick={() => set((d) => void (d.screen.glass = { ...GLASS_DEFAULTS }))}>
           {t('Restablecer')}
@@ -570,7 +579,8 @@ export function GlassCard({ cfg, set }: Pick<SectionProps, 'cfg' | 'set'>) {
 export function PhotoScopeFields({ cfg, set, kids }: Pick<SectionProps, 'cfg' | 'set'> & { kids: boolean }) {
   const b = cfg.background;
   const scope: BackgroundScope = b.scope === 'screen' ? 'screen' : 'side';
-  const applies = SCREEN_PHOTO_PRESETS.includes(cfg.layout.preset);
+  // Personalizado has its own background setting (screen.canvas.background)
+  const applies = SCREEN_PHOTO_PRESETS.includes(cfg.layout.preset) && cfg.layout.preset !== 'canvas';
   const hint = !b.enabled
     ? t('Las fotos de fondo están desactivadas en esta pantalla.')
     : !applies
@@ -908,13 +918,43 @@ export function LayoutSection(props: SectionProps) {
   const style: DisplayStyle = cfg.screen.style === 'modern' ? 'modern' : 'classic';
   const choice = styleChoiceOf(cfg.screen.style, l.preset);
   const kids = choice === 'kids';
-  // a server without Familia (features.family) offers no kids style, unless this screen already has one
-  const styles = STYLES.filter((o) => o.id !== 'kids' || kids || has('family'));
-  // the normal layout to go back to when leaving Niños: the last one picked here on this screen, else the saved one,
-  // else the big calendar (the page stays mounted when another screen is picked, so it is kept per screen)
+  const canvasOn = choice === 'canvas';
+  // a server without Familia (features.family) offers no kids style, unless this screen already has one; the same
+  // for Personalizado (features.screenBuilder)
+  const styles = STYLES.filter((o) => (o.id !== 'kids' || kids || has('family')) && (o.id !== 'canvas' || canvasOn || has('screenBuilder')));
+  // the normal layout to go back to when leaving Niños or Personalizado: the last one picked here on this screen, else
+  // the saved one, else the big calendar (the page stays mounted when another screen is picked, so it is kept per screen)
   const lastNormal = useRef(new Map<string, LayoutPreset>());
-  if (!isKidsPreset(l.preset)) lastNormal.current.set(props.screenId, l.preset);
-  const pickStyle = (v: StyleChoice) =>
+  const isSpecial = (p: string | undefined) => !!p && (isKidsPreset(p) || p === 'canvas');
+  if (!isSpecial(l.preset)) lastNormal.current.set(props.screenId, l.preset);
+  const savedPreset = props.saved.screens.find((s) => s.id === props.screenId)?.layout.preset;
+  // the design "Copiar mi diseño actual" copies onto the grid
+  const copyFrom: LayoutPreset | null = lastNormal.current.get(props.screenId) ?? (savedPreset && savedPreset !== 'canvas' ? savedPreset : null);
+  // the builder (web/admin/builder/), loaded the first time it opens
+  const [builder, setBuilder] = useState<{ C: ComponentType<any>; templates: boolean } | null>(null);
+  const openBuilder = (templates: boolean) =>
+    import('../builder/BuilderModal')
+      .then((m) => setBuilder({ C: m.BuilderModal, templates }))
+      .catch((e) => console.warn('[builder] load', e));
+  // the page closes the editor when another screen is picked
+  useEffect(() => setBuilder(null), [props.screenId]);
+  const pickStyle = (v: StyleChoice) => {
+    if (v === 'canvas') {
+      const empty = !(cfg.canvas?.items?.length);
+      set((d) => {
+        d.screen.style = 'modern';
+        if (d.layout.preset === 'canvas') return;
+        if (d.layout.preset === 'planner') {
+          const was = props.saved.screens.find((s) => s.id === props.screenId);
+          if (was && was.layout.preset !== 'planner') undoPlannerPick(d.calendar, was.calendar);
+        }
+        d.layout.preset = 'canvas';
+        d.canvas ??= defaultCanvas();
+      });
+      // an empty grid starts with the templates
+      if (choice !== 'canvas' || empty) void openBuilder(empty);
+      return;
+    }
     set((d) => {
       if (v === 'kids') {
         // the kids layouts are drawn with the Modern style underneath
@@ -931,15 +971,14 @@ export function LayoutSection(props: SectionProps) {
         return;
       }
       d.screen.style = v;
-      if (isKidsPreset(d.layout.preset)) {
-        const was = props.saved.screens.find((s) => s.id === props.screenId);
-        const savedPreset = was?.layout.preset;
-        const back = lastNormal.current.get(props.screenId) ?? (savedPreset && !isKidsPreset(savedPreset) ? savedPreset : 'bigCalendar');
+      if (isSpecial(d.layout.preset)) {
+        const back = lastNormal.current.get(props.screenId) ?? (savedPreset && !isSpecial(savedPreset) ? savedPreset : 'bigCalendar');
         // back to the planner: what it is made for comes back too (entering Niños took it away, see above)
         if (back === 'planner' && savedPreset !== 'planner') Object.assign(d.calendar, PLANNER_CALENDAR);
         d.layout.preset = back;
       }
     });
+  };
   return (
     <>
       <PageHeader title={t('Diseño')} scope="screen" desc={t('Elige cómo se distribuyen los elementos en la pantalla.')} />
@@ -950,10 +989,10 @@ export function LayoutSection(props: SectionProps) {
         icon="palette"
         desc={t('Independiente de la plantilla: cada pantalla puede tener su propio estilo.')}
       >
-        <Field label={t('Estilo')}>
+        <Field label={t('Estilo')} class={styles.length > 3 ? 'style-field--4' : undefined}>
           <Segmented value={choice} options={styles.map((o) => ({ value: o.id, label: t(o.name) }))} onChange={pickStyle} />
         </Field>
-        <div class="preset-grid style-grid" id="layout-kids">
+        <div class={`preset-grid style-grid ${styles.length > 3 ? 'style-grid--4' : ''}`} id="layout-kids">
           {styles.map((o) => (
             <button type="button" class={`preset ${choice === o.id ? 'is-active' : ''}`} onClick={() => pickStyle(o.id)} aria-pressed={choice === o.id}>
               <StyleThumb id={o.id} />
@@ -994,8 +1033,20 @@ export function LayoutSection(props: SectionProps) {
           </Field>
         </div>
         <PhotoScopeFields cfg={cfg} set={set} kids={kids} />
+        {!canvasOn && !kids && (
+          <ToggleRow
+            label={t('Avisos bajo la fecha')}
+            hint={t('El próximo evento, los cumpleaños y las entradas y salidas de hoy.')}
+            checked={cfg.screen.highlights !== false}
+            onChange={(v) => set((d) => void (d.screen.highlights = v))}
+          />
+        )}
       </Card>
-      {!kids && (style === 'modern' ? <GlassCard cfg={cfg} set={set} /> : <WeatherPanelCard cfg={cfg} set={set} />)}
+      {canvasOn && <CanvasCard cfg={cfg} onOpen={() => void openBuilder(!(cfg.canvas?.items?.length))} />}
+      {!kids && (canvasOn ? <GlassCard cfg={cfg} set={set} title="Estilo por defecto de las tarjetas" /> : style === 'modern' ? <GlassCard cfg={cfg} set={set} /> : <WeatherPanelCard cfg={cfg} set={set} />)}
+      {builder && <builder.C {...props} onClose={() => setBuilder(null)} startWithTemplates={builder.templates} copyFrom={copyFrom} />}
+      {!canvasOn && (
+      <>
       {kids && !cfg.family.enabled && (
         <Callout>
           {t('Activa la familia en la sección Familia para ver rutinas.')}{' '}
@@ -1005,7 +1056,7 @@ export function LayoutSection(props: SectionProps) {
         </Callout>
       )}
       <div class="preset-grid" id="layout-presets">
-        {PRESETS.filter((p) => kids === (p.group === 'kids') && (p.id !== 'widget' || has('widgets') || l.preset === 'widget')).map((p) => (
+        {PRESETS.filter((p) => kids === (p.group === 'kids') && (p.id !== 'widget' || has('widgets') || l.preset === 'widget') && (p.id !== 'canvas' || l.preset === 'canvas')).map((p) => (
           <button
             type="button"
             class={`preset ${l.preset === p.id ? 'is-active' : ''}`}
@@ -1073,6 +1124,33 @@ export function LayoutSection(props: SectionProps) {
           </Field>
         </div>
       </Card>
+      </>
+      )}
     </>
+  );
+}
+
+/** Personalizado: a drawing of the saved layout, what it holds, and the button that opens the editor. */
+function CanvasCard({ cfg, onOpen }: { cfg: SectionProps['cfg']; onOpen: () => void }) {
+  const cv: CanvasConfig = cfg.canvas ?? defaultCanvas();
+  const n = cv.items.length;
+  const side = { none: 'sin barra lateral', left: 'barra lateral a la izquierda', right: 'barra lateral a la derecha', top: 'barra lateral arriba', bottom: 'barra lateral abajo' }[cv.sidebar.side];
+  const bg = { photo: 'foto', ambient: 'animado', solid: 'color' }[cv.background];
+  return (
+    <Card id="layout-canvas" scope="screen" title={t('Personalizado')} icon="layout" desc={t('Los widgets de esta pantalla, colocados por ti.')}>
+      <div class="canvas-card">
+        <button type="button" class="canvas-card__thumb" onClick={onOpen} aria-label={t('Abrir editor')}>
+          <CanvasThumb cv={cv} portrait={cfg.screen.orientation === 'portrait'} light={cfg.screen.theme === 'light'} />
+        </button>
+        <div class="canvas-card__text">
+          <p>
+            {n ? t('{n} widgets', { n }) : t('Todavía no hay widgets')} · {t(side)} · {t('fondo')}: {t(bg)}
+          </p>
+          <Button variant="primary" icon="edit" onClick={onOpen}>
+            {t('Abrir editor')}
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }

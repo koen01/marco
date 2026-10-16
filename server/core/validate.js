@@ -18,6 +18,7 @@ import {
   BAND_NAME_MAX, BAND_PRESET_IDS, GRID_IDS, gridCompany, HOLIDAY_SETS, MAX_BAND_PRICE, MAX_BANDS, MIN_BAND_PRICE, TARIFF_MODES,
 } from './tariffsCore.js';
 import { sanitizeFamily, sanitizeScreenFamily, KIDS_PRESETS } from './familyCore.js';
+import { sanitizeCanvas } from './canvasCore.js';
 import {
   PRICE_ZONE_IDS, PRICE_VIEWS, PRICE_UNITS, PRICE_RESOLUTIONS, PRICE_AXES, PRICE_SHAPES, MAX_VAT, MIN_SURCHARGE, MAX_SURCHARGE,
 } from './pricesCore.js';
@@ -33,6 +34,8 @@ export const LAYOUT_PRESETS = [
   'widget',
   // kids layouts (Familia): the display shows them with the Modern style only
   ...KIDS_PRESETS,
+  // Personalizado: widgets placed on a grid (screen.canvas, core/canvasCore.js); Modern style only
+  'canvas',
 ];
 /** calendar.eventStyle: 'lines' (one-line chips, the original look) or 'cards' (time on top, title below). */
 export const EVENT_STYLES = ['lines', 'cards'];
@@ -54,8 +57,10 @@ export function isHttpUrl(s, protocols = ['http:', 'https:']) {
 }
 
 class Ctx {
-  constructor() { this.errors = []; }
+  constructor() { this.errors = []; this.warnings = []; }
   err(path, msg) { this.errors.push({ path, message: msg }); }
+  /** Something fixed on the way (the save goes on): a canvas widget moved to a free spot, an unknown time zone. */
+  warn(path, msg) { this.warnings.push({ path, message: msg }); }
 }
 
 // --- primitive coercers: return sanitized value or the default (recording an error when invalid) ---
@@ -228,7 +233,7 @@ function requiredStr(ctx, path, v, d, max) {
   return s;
 }
 
-function sanitizeScreenProfile(ctx, p, raw, seenIds, seenSlugs, familyMemberIds = [], widgetIds = new Set()) {
+function sanitizeScreenProfile(ctx, p, raw, seenIds, seenSlugs, familyMemberIds = [], widgetIds = new Set(), canvasRefs = {}, opts = {}) {
   const D = defaultScreenProfile();
   const x = obj(ctx, p, raw);
   const name = str(ctx, `${p}.name`, x.name, '', 60).trim() || 'Screen';
@@ -266,6 +271,8 @@ function sanitizeScreenProfile(ctx, p, raw, seenIds, seenSlugs, familyMemberIds 
       tint: oneOf(ctx, `${p}.screen.glass.tint`, gl.tint, GD.tint, ['dark', 'light', 'photo']),
       edge: bool(ctx, `${p}.screen.glass.edge`, gl.edge, GD.edge),
     },
+    // the pills under the date of the usual designs (next event, happening now, birthdays, check-in/out)
+    highlights: bool(ctx, `${p}.screen.highlights`, sc.highlights, D.screen.highlights),
   };
 
   const ly = obj(ctx, `${p}.layout`, x.layout);
@@ -393,11 +400,19 @@ function sanitizeScreenProfile(ctx, p, raw, seenIds, seenSlugs, familyMemberIds 
   // Familia on this screen: who appears (unknown members dropped quietly), touch, QR card (familyCore.js)
   const family = sanitizeScreenFamily(x.family, (path, m) => ctx.err(path, m), `${p}.family`, familyMemberIds);
   const widgets = sanitizeWidgetPlacements(ctx, `${p}.widgets`, x.widgets, widgetIds);
+  // Personalizado: the screen's calendars are the pool its calendar widgets pick from
+  const known = canvasRefs.sourceIds ?? null;
+  const pool = calendar.sourceIds ? calendar.sourceIds.filter((s) => !known || known.has(s)) : known ? [...known] : null;
+  const canvas = sanitizeCanvas(ctx, `${p}.canvas`, x.canvas, {
+    sourceIds: pool ? new Set(pool) : null, widgets: canvasRefs.widgets ?? new Map(), memberIds: new Set(familyMemberIds),
+  }, opts);
+  // the Personalizado layout is a Modern design (there is no Classic one)
+  if (layout.preset === 'canvas') screen.style = 'modern';
 
   return {
     // "v_" belongs to carousels (isCarouselId); a screen id with it gets a new one
     id: id(ctx, `${p}.id`, typeof x.id === 'string' && x.id.startsWith(CAROUSEL_PREFIX) ? undefined : x.id, 's_', seenIds), slug, name,
-    screen, layout, background, calendar, datetime, weather, news, todo, message, countdowns, alerts, privacy, family, widgets,
+    screen, layout, background, calendar, datetime, weather, news, todo, message, countdowns, alerts, privacy, family, widgets, canvas,
   };
 }
 
@@ -778,6 +793,10 @@ export function migrateConfig(raw) {
  * `opts.widgetProtocols` (default ['http:', 'https:']) refuses other URL schemes with 'https required', and
  * `opts.minWidgetRefreshSec` (default none) refuses shorter refreshes. Marco Cloud passes ['image'], ['https:'], 30.
  * `opts.immichAvailable` false (servers without Immich, such as Marco Cloud): a screen with the Immich source is refused.
+ * Personalizado screens (core/canvasCore.js sanitizeCanvas): `opts.canvasKinds` (default every kind but the reserved
+ * ones) refuses other kinds with 'not available on this server', `opts.haControls` false turns every touch control off
+ * and `opts.cameraLive` false turns live cameras into snapshots. Marco Cloud passes CLOUD_CANVAS_KINDS, false, false.
+ * `warnings` lists what was fixed on the way without refusing the save (a widget moved to a free spot).
  */
 export function validateConfig(input, opts = {}) {
   const ctx = new Ctx();
@@ -902,6 +921,9 @@ export function validateConfig(input, opts = {}) {
       sound: bool(ctx, 'homeassistant.doorbell.sound', db.sound, DD.sound),
     },
   };
+  // Cámara cards answer only displays on the home network unless the owner turns that off ("Cámaras solo en la red de
+  // casa"). Kept only when off, so configs that never touched it stay exactly as they were.
+  if (!bool(ctx, 'homeassistant.cameraLanOnly', ha.cameraLanOnly, true)) homeassistant.cameraLanOnly = false;
 
   // Immich photo library: one server per install. The API key lives in secrets.json.
   const imm = obj(ctx, 'immich', c.immich);
@@ -936,13 +958,17 @@ export function validateConfig(input, opts = {}) {
   const widgets = arr(ctx, 'widgets', c.widgets, [], MAX_WIDGETS)
     .map((x, i) => sanitizeWidget(ctx, `widgets[${i}]`, x, widgetSeen, opts)).filter(Boolean);
   const widgetIds = new Set(widgets.map((w) => w.id));
+  const canvasRefs = {
+    sourceIds: new Set([...RESERVED_SOURCE_IDS, ...calendar.sources.map((s) => s.id)]),
+    widgets: new Map(widgets.map((w) => [w.id, w])),
+  };
 
   // ---- F1 screens
   let rawScreens = arr(ctx, 'screens', c.screens, D.screens, MAX_SCREENS);
   if (!rawScreens.length) { ctx.err('screens', 'at least one screen'); rawScreens = D.screens; }
   const seenIds = new Set();
   const seenSlugs = new Set();
-  const screens = rawScreens.map((s, i) => sanitizeScreenProfile(ctx, `screens[${i}]`, s, seenIds, seenSlugs, familyMemberIds, widgetIds));
+  const screens = rawScreens.map((s, i) => sanitizeScreenProfile(ctx, `screens[${i}]`, s, seenIds, seenSlugs, familyMemberIds, widgetIds, canvasRefs, opts));
   if (opts.immichAvailable === false) {
     screens.forEach((s, i) => { if (s.background.source === 'immich') ctx.err(`screens[${i}].background.source`, 'Immich is not available'); });
   }
@@ -987,7 +1013,7 @@ export function validateConfig(input, opts = {}) {
     version: CONFIG_VERSION, revision, defaultScreen, screens,
     calendar, datetime, weather, news, todo, localEvents, birthdays, eventRules, countdowns, schedules, carousels, widgets, homeassistant, immich, auth, security, family,
   };
-  return { ok: ctx.errors.length === 0, errors: ctx.errors, value };
+  return { ok: ctx.errors.length === 0, errors: ctx.errors, warnings: ctx.warnings, value };
 }
 
 /**

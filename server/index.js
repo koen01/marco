@@ -5,6 +5,7 @@ import path from 'node:path';
 import { initStore, getConfig, events as storeEvents, paths, ROOT, migratedOnLoad, StoreError } from './store.js';
 import { ensurePassword } from './auth.js';
 import { createApp } from './app.js';
+import { checkTrustProxy } from './lib/trustProxy.js';
 import { syncDisplayKeys, onDisplayAccessConfig, revalidateStreams } from './displayAccess.js';
 import { broadcast, closeAll, reresolveClients, setStreamValidator } from './sse.js';
 import { startRefresher, stopRefresher, runRefresh } from './refresher.js';
@@ -13,12 +14,21 @@ import { setServerVersion, flushDisplays, reresolveDisplays, subscriptionFor } f
 import { pruneScreens } from './announce.js';
 import { pruneDoorbellScreens } from './doorbell.js';
 import { flushTokenUsage } from './tokens.js';
+import { flushValues } from './values.js';
 import { logSetupHint } from './setup.js';
 import { invalidateIcsParsing } from './calendars.js';
 import { serverUpdater } from './routes/updates.js';
 import { onPrivacyConfig, syncPrivacy, stopPrivacy } from './privacy.js';
 import { startPhotoSweep } from './familyPhotos.js';
 import { cleanStoredPhotos } from './photos.js';
+import { startHomeAssistantLive, stopHomeAssistantLive } from './haService.js';
+
+// TRUST_PROXY: a value Express cannot read stops here with a plain message (not a stack trace later on)
+const trust = checkTrustProxy(process.env.TRUST_PROXY);
+if (!trust.ok) {
+  console.error(trust.message);
+  process.exit(1);
+}
 
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 
@@ -48,6 +58,8 @@ setTimeout(() => { try { const n = cleanStoredPhotos(); if (n) console.log(`[pho
 startPhotoSweep();
 // Every heartbeat re-checks each open stream's credential (sessions expire, keys / devices change).
 setStreamValidator(() => revalidateStreams());
+// Home Assistant: the live mirror of the entities Personalizado screens show (haLive.js).
+startHomeAssistantLive();
 const app = createApp({ version: pkg.version });
 
 // Config saved (admin, restore, import or server-side) → re-resolve each display's screen (slug renamed / screen
@@ -90,8 +102,9 @@ function shutdown(sig) {
   console.log(`[server] ${sig}, shutting down`);
   stopRefresher();
   stopPrivacy();
+  stopHomeAssistantLive();
   serverUpdater(pkg.version).stop();
-  try { flushDisplays(); flushTokenUsage(); } catch { /* ignore */ }
+  try { flushDisplays(); flushTokenUsage(); flushValues(); } catch { /* ignore */ }
   closeAll();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 3000).unref();

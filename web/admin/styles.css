@@ -2159,6 +2159,156 @@ input:checked + .check-box {
   flex-direction: column;
   gap: 6px;
 }
+.ha-combo {
+  position: relative;
+}
+.ha-combo__trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+.ha-combo__trigger:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.ha-combo__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ha-combo__label.is-placeholder {
+  color: var(--muted);
+}
+.ha-combo__state {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.ha-combo.is-open .ha-combo__trigger {
+  border-color: var(--accent);
+  box-shadow: var(--focus);
+}
+.ha-combo__pop {
+  position: fixed;
+  z-index: 130;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border-radius: var(--r);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+}
+.ha-combo__pop > .input-group {
+  flex: none;
+}
+.ha-combo__list {
+  list-style: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.ha-combo__group {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--surface);
+}
+.ha-combo__opt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 8px 6px 4px;
+  border-radius: calc(var(--r) - 2px);
+  cursor: pointer;
+}
+.ha-combo__opt.is-active {
+  background: var(--surface-3);
+}
+.ha-combo__check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  color: var(--accent);
+}
+.ha-combo__opt.is-on .ha-combo__name {
+  color: var(--accent);
+  font-weight: 600;
+}
+.ha-combo__opt.is-used .ha-combo__name {
+  color: var(--muted);
+}
+.ha-combo__name {
+  flex: 1 1 auto;
+  min-width: min(45%, 9em);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ha-combo__tag {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--surface-3);
+  white-space: nowrap;
+}
+.ha-combo__opt .ha-combo__state {
+  max-width: 35%;
+}
+.ha-combo__none,
+.ha-combo__more {
+  padding: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+@media (pointer: coarse) {
+  .ha-combo__opt {
+    min-height: 44px;
+  }
+  .ha-combo__pop .input {
+    font-size: 16px;
+  }
+}
+.ha-used {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ha-used li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-wrap: anywhere;
+}
 .row-actions {
   display: flex;
   align-items: center;
@@ -2713,6 +2863,18 @@ input:checked + .check-box {
   flex: none;
   color: #fff;
   background: var(--ok);
+}
+.toast__action {
+  flex: none;
+  margin-left: 4px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent-soft, rgb(127 127 127 / 0.14));
+  color: var(--accent);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
 }
 .toast--error .toast__icon {
   background: var(--err);

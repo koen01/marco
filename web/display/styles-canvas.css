@@ -1,0 +1,729 @@
+/* =============================================================================================
+   Marco: Personalizado (layout 'canvas', web/display/widgets/canvas.ts). A Modern design only: every rule is scoped
+   to the canvas containers or to #app.preset-canvas under .style-modern, so the other layouts look exactly as before.
+   The root rules use "#app#app" on purpose: they must win over the frame rules of the other layouts and of the
+   orientation (#app.portrait, #app.bg-screen, .side-right) without touching those files.
+   ============================================================================================= */
+
+#canvas, #canvas-side { display: none; }
+
+/* ------------------------------------------------------------------------------- the frame */
+.style-modern #app#app.preset-canvas { grid-template-columns: 100%; grid-template-rows: 100%; }
+.style-modern #app#app.preset-canvas > .photo-area,
+.style-modern #app#app.preset-canvas > .side,
+.style-modern #app#app.preset-canvas > .main { grid-column: 1; grid-row: 1; }
+.style-modern #app#app.preset-canvas .main > :not(#canvas),
+.style-modern #app#app.preset-canvas .side > :not(#canvas-side) { display: none !important; }
+.style-modern #app#app.preset-canvas #uw-corners { display: none; }
+.style-modern #app#app.preset-canvas .main {
+  padding: 0;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+  color: var(--m-ink);
+}
+.style-modern #app#app.preset-canvas .side { padding: 0; gap: 0; background: none; text-shadow: none; z-index: 3; }
+.style-modern #app#app.preset-canvas.no-photo > .photo-area { display: none; }
+/* "Oscurecer foto" (canvas.dim) */
+.style-modern #app#app.preset-canvas .scrim { background: rgb(0 0 0 / var(--cv-dim, 0.15)); }
+/* ... only at the top and the bottom, where clocks and bands usually sit, or towards the edges (canvas.scrim) */
+.style-modern #app#app.preset-canvas.cv-scrim-topBottom .scrim {
+  background: linear-gradient(to bottom, rgb(0 0 0 / calc(var(--cv-dim, 0.15) * 2)) 0%, rgb(0 0 0 / calc(var(--cv-dim, 0.15) * 0.3)) 38%, rgb(0 0 0 / calc(var(--cv-dim, 0.15) * 0.3)) 62%, rgb(0 0 0 / calc(var(--cv-dim, 0.15) * 2)) 100%);
+}
+.style-modern #app#app.preset-canvas.cv-scrim-edges .scrim {
+  background: radial-gradient(ellipse 75% 70% at 50% 50%, rgb(0 0 0 / calc(var(--cv-dim, 0.15) * 0.25)) 40%, rgb(0 0 0 / calc(var(--cv-dim, 0.15) * 2.2)) 100%);
+}
+/* a plain background: the theme's, or canvas.color */
+.style-modern #app#app.preset-canvas.cv-bg-solid { background: var(--cv-bg, var(--bg)); }
+
+/* sidebar on each side (left and right turn into top and bottom on a portrait screen, main.ts) */
+.style-modern #app#app.preset-canvas.cv-side-none > .side { display: none; }
+.style-modern #app#app.preset-canvas.cv-side-left { grid-template-columns: var(--cv-side, 28%) minmax(0, 1fr); }
+.style-modern #app#app.preset-canvas.cv-side-left > .side { grid-column: 1; }
+.style-modern #app#app.preset-canvas.cv-side-left > .main { grid-column: 2; }
+.style-modern #app#app.preset-canvas.cv-side-right { grid-template-columns: minmax(0, 1fr) var(--cv-side, 28%); }
+.style-modern #app#app.preset-canvas.cv-side-right > .side { grid-column: 2; }
+.style-modern #app#app.preset-canvas.cv-side-right > .main { grid-column: 1; }
+.style-modern #app#app.preset-canvas.cv-side-top { grid-template-rows: var(--cv-side, 28%) minmax(0, 1fr); }
+.style-modern #app#app.preset-canvas.cv-side-top > .side { grid-row: 1; }
+.style-modern #app#app.preset-canvas.cv-side-top > .main { grid-row: 2; }
+.style-modern #app#app.preset-canvas.cv-side-bottom { grid-template-rows: minmax(0, 1fr) var(--cv-side, 28%); }
+.style-modern #app#app.preset-canvas.cv-side-bottom > .side { grid-row: 2; }
+.style-modern #app#app.preset-canvas.cv-side-bottom > .main { grid-row: 1; }
+/* the photo only in the sidebar (sidebar fill 'photo'): the slideshow sits in the sidebar's cell */
+.style-modern #app#app.preset-canvas.cv-side-left:not(.bg-screen) > .photo-area { grid-column: 1; grid-row: 1; }
+.style-modern #app#app.preset-canvas.cv-side-right:not(.bg-screen) > .photo-area { grid-column: 2; grid-row: 1; }
+.style-modern #app#app.preset-canvas.cv-side-top:not(.bg-screen) > .photo-area { grid-column: 1; grid-row: 1; }
+.style-modern #app#app.preset-canvas.cv-side-bottom:not(.bg-screen) > .photo-area { grid-column: 1; grid-row: 2; }
+.style-modern #app#app.preset-canvas.bg-screen > .photo-area { grid-column: 1 / -1; grid-row: 1 / -1; }
+
+/* sidebar fills: one glass sheet, a solid bar, or the photo (cards then keep their own surface) */
+.style-modern #app#app.preset-canvas.cv-fill-glass > .side {
+  background: rgb(var(--g-rgb, 22 22 26) / var(--g-a, 0.42));
+  -webkit-backdrop-filter: var(--g-filter, blur(3rem) saturate(1.8));
+  backdrop-filter: var(--g-filter, blur(3rem) saturate(1.8));
+}
+.style-modern #app#app.preset-canvas.cv-fill-solid > .side { background: rgb(var(--g-solid, 28 28 30)); }
+
+/* ------------------------------------------------------------------------------- grids */
+.style-modern #app.preset-canvas #canvas:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(var(--cv-cols, 12), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--cv-rows, 8), minmax(0, 1fr));
+  gap: 1.2rem;
+  padding: 2.4rem;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
+  position: relative;
+}
+.style-modern #app.preset-canvas #canvas-side:not([hidden]) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+  gap: 1.2rem;
+  padding: 2.4rem 2rem;
+  height: 100%;
+  box-sizing: border-box;
+}
+.style-modern #app.preset-canvas #canvas-side.is-row { grid-template-rows: minmax(0, 1fr); grid-template-columns: repeat(8, minmax(0, 1fr)); padding: 2rem 2.4rem; }
+
+/* ------------------------------------------------------------------------------- cards */
+#app.preset-canvas .cv-item { position: relative; display: flex; min-width: 0; min-height: 0; }
+#app.preset-canvas .cv-item[hidden] { display: none; }
+#app.preset-canvas .cv-item.is-empty, #app.preset-canvas .cv-item.is-cond-off { visibility: hidden; }
+#app.preset-canvas .cv-card {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--m-ink, #fff);
+  --fg: var(--m-ink, #fff);
+  --fg-2: var(--m-ink-2, rgb(255 255 255 / 0.62));
+  --fg-3: rgb(255 255 255 / 0.36);
+  /* each card carries its own material (widgets/canvas.ts look()): the Modern tokens are declared again here so they
+     resolve against the card's --g-* and not the ones of <html> */
+  --m-glass: rgb(var(--g-rgb, 22 22 26) / var(--g-a, 0.42));
+  --m-blur: var(--g-filter, blur(3.06rem) saturate(1.8));
+}
+#app.preset-canvas .cv-card.r-m { border-radius: var(--m-r-md, 2.2rem); }
+#app.preset-canvas .cv-card.r-l { border-radius: var(--m-r-lg, 2.6rem); }
+#app.preset-canvas .cv-card.r-xl { border-radius: 3.2rem; }
+#app.preset-canvas .cv-card.is-glass {
+  background: var(--m-glass);
+  -webkit-backdrop-filter: var(--m-blur);
+  backdrop-filter: var(--m-blur);
+  box-shadow: var(--m-shadow), inset 0 1px 0 rgb(255 255 255 / 0.1);
+}
+#app.preset-canvas .cv-card.is-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(150deg, rgb(255 255 255 / calc(0.42 * var(--g-edge, 1))), rgb(255 255 255 / calc(0.08 * var(--g-edge, 1))) 32%, rgb(255 255 255 / calc(0.02 * var(--g-edge, 1))) 60%, rgb(255 255 255 / calc(0.14 * var(--g-edge, 1))));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+#app.preset-canvas .cv-card.is-glass.no-edge::before { display: none; }
+#app.preset-canvas .cv-card.is-solid { background: rgb(var(--g-solid, 28 28 30)); box-shadow: var(--m-shadow); }
+/* nothing to blur (no photo behind): the glass becomes the solid material, as in the other Modern layouts */
+#app.preset-canvas.no-photo .cv-card.is-glass { background: rgb(var(--g-solid, 28 28 30)); -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* ... but the animated backdrop (canvas.background 'ambient') moves behind them: real glass there. It sits before the
+   lite, low-power and blur-budget rules (same weight), so those still get their denser tint without blur */
+#app.preset-canvas.cv-bg-ambient .cv-card.is-glass { background: var(--m-glass); -webkit-backdrop-filter: var(--m-blur); backdrop-filter: var(--m-blur); }
+/* lite, a slow device (.low-power, canvas.perf 'low') and the cards past the blur budget: a denser tint, no blur */
+.lite #app.preset-canvas .cv-card.is-glass,
+.low-power #app.preset-canvas .cv-card.is-glass,
+#app.preset-canvas .cv-card.is-glass.no-blur { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgb(var(--g-rgb, 28 28 32) / var(--g-a, 0.74)); }
+.low-power #app#app.preset-canvas.cv-fill-glass > .side { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgb(var(--g-rgb, 28 28 32) / max(var(--g-a, 0.74), 0.74)); }
+/* nothing on a slow device blurs: not the cards, not the bars, not the notices over them */
+html.low-power.style-modern *, html.low-power.style-modern *::before, html.low-power.style-modern *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+/* light theme: light cards with dark text */
+.theme-light #app.preset-canvas .cv-card.is-glass:not(.has-own),
+.theme-light #app.preset-canvas .cv-card.is-solid:not(.has-own) { color: #000; --fg: #000; --fg-2: rgb(60 60 67 / 0.62); --fg-3: rgb(60 60 67 / 0.32); --m-ink: #000; --m-ink-2: rgb(60 60 67 / 0.62); }
+.theme-light #app.preset-canvas .cv-card.is-glass:not(.has-own) { background: rgb(242 242 247 / 0.74); }
+.theme-light #app.preset-canvas.no-photo .cv-card.is-glass:not(.has-own),
+.theme-light #app.preset-canvas .cv-card.is-solid:not(.has-own) { background: #fff; box-shadow: 0 0.1rem 0.4rem rgb(0 0 0 / 0.06); }
+/* the light glass over the animated backdrop stays translucent */
+.theme-light #app.preset-canvas.cv-bg-ambient .cv-card.is-glass:not(.has-own) { background: rgb(242 242 247 / 0.74); box-shadow: var(--m-shadow), inset 0 1px 0 rgb(255 255 255 / 0.1); }
+.theme-light #app#app.preset-canvas.cv-fill-glass > .side { background: rgb(242 242 247 / 0.74); }
+.theme-light #app#app.preset-canvas.cv-fill-solid > .side { background: #fff; }
+/* cards without their own surface on a light bar take its dark text, like the cards on the light theme */
+.theme-light #app#app.preset-canvas.cv-fill-glass > .side .cv-card.is-none,
+.theme-light #app#app.preset-canvas.cv-fill-solid > .side .cv-card.is-none { color: #000; --fg: #000; --fg-2: rgb(60 60 67 / 0.62); --fg-3: rgb(60 60 67 / 0.32); --m-ink: #000; --m-ink-2: rgb(60 60 67 / 0.62); text-shadow: none; }
+#app.preset-canvas .cv-card.is-none { background: none; box-shadow: none; text-shadow: 0 0.1rem 0.6rem rgb(0 0 0 / 0.45); }
+.theme-light #app.preset-canvas .cv-card.is-none { text-shadow: 0 0.1rem 0.5rem rgb(0 0 0 / 0.25); }
+/* the ink of each card follows its own material (look()): dark text on light glass or a light colour */
+#app.preset-canvas .cv-card.is-ink-dark:not(.is-none) { color: rgb(0 0 0 / 0.88); --fg: #000; --fg-2: rgb(60 60 67 / 0.66); --fg-3: rgb(60 60 67 / 0.4); --m-ink: rgb(0 0 0 / 0.88); --m-ink-2: rgb(60 60 67 / 0.66); }
+#app.preset-canvas .cv-card.is-glass.is-thin:not(.is-ink-dark) { text-shadow: 0 0.1rem 0.6rem rgb(0 0 0 / 0.4); }
+#app.preset-canvas .cv-card.is-ink-dark:not(.is-none) { --m-fill: rgb(255 255 255 / 0.45); --m-sep: rgb(60 60 67 / 0.16); --line: rgb(60 60 67 / 0.13); text-shadow: none; }
+/* a card with its own dark material on a light-theme screen keeps white text, and the rows inside it the dark fills */
+.theme-light #app.preset-canvas .cv-card.has-own:not(.is-ink-dark):not(.is-none) {
+  color: var(--m-ink, #fff); --fg: #fff; --fg-2: rgb(255 255 255 / 0.62); --fg-3: rgb(255 255 255 / 0.36); --m-ink: rgb(255 255 255 / 0.92); --m-ink-2: rgb(255 255 255 / 0.62);
+  --m-fill: rgb(255 255 255 / 0.07); --m-sep: rgb(255 255 255 / 0.12); --line: rgb(255 255 255 / 0.1);
+}
+/* every light card of the light theme (the theme's glass and solid cards, a card's own light material, the cards on a
+   light bar): opaque inks that read on light glass over any photo (secondary text at least 4.5:1, tertiary about
+   3:1, server/test/display-canvas-contrast.test.js), darker lines, and no shadow behind dark text (it blurs it) */
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)),
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none {
+  --fg-2: #3f3f44; --fg-3: #5f5f64; --m-ink-2: #3f3f44; --m-sep: rgb(60 60 67 / 0.2); --line: rgb(60 60 67 / 0.16);
+  /* the accent and the state colours as text: a deeper shade, so a red weekday or a green value reads on light glass */
+  --cv-accent-ink: color-mix(in srgb, var(--accent, #ff5a4e) 74%, #000);
+  --ha-ok: #11733a; --ha-alert: #c4261c;
+  text-shadow: none;
+}
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)) :is(.cv-zone-off, .cv-date-wd, .cv-next-ev.is-now .cv-next-when, .cal-dow > div.is-today, .num.m1 > span, .news-src, .pp-sec.is-today .pp-day, .pp-ev.ongoing .pp-tm, .bd-day:first-child, .ag-day.today .ag-date b),
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none :is(.cv-zone-off, .cv-date-wd, .cv-next-ev.is-now .cv-next-when, .cal-dow > div.is-today, .num.m1 > span, .news-src, .pp-sec.is-today .pp-day, .pp-ev.ongoing .pp-tm, .bd-day:first-child, .ag-day.today .ag-date b) { color: var(--cv-accent-ink); }
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)) :is(.cd.is-today, .cd.is-tomorrow) .cd-when,
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none :is(.cd.is-today, .cd.is-tomorrow) .cd-when { color: var(--deep, var(--tint)); }
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)) .cv-next-ev:not(.is-now) .cv-next-when,
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none .cv-next-ev:not(.is-now) .cv-next-when { color: var(--deep, var(--tint)); }
+/* the compact agenda's rows are white for the photo; on a light card they take its ink */
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)) .agenda.compact .ag-ev,
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none .agenda.compact .ag-ev { color: var(--fg); }
+/* a saved prices widget on a light card: its light card in every drawing (the small one was a dark panel with the
+   light card's grey ink on it), with the light card's inks */
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)) .pw,
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none .pw {
+  --pw-bg: #fff; --pw-ink: #000; --pw-ink-2: var(--fg-2); --pw-ink-3: var(--fg-3); --pw-sep: rgb(60 60 67 / 0.13); --pw-band: rgb(60 60 67 / 0.05); --pw-track: rgb(60 60 67 / 0.1);
+  --pw-cheap: #0a84ff; --pw-mid: #d4a000; --pw-high: #ff3b30; --pw-cheap-ink: #0071a4; --pw-mid-ink: #a05a00; --pw-high-ink: #d70015;
+  -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 0.1rem 0.3rem rgb(0 0 0 / 0.05), 0 0.8rem 2.4rem rgb(0 0 0 / 0.08);
+}
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)) .pw::before,
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none .pw::before { display: none; }
+/* the seconds of a clock and the chance of rain: white and a pale blue are made for dark glass */
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)) .clock .sec,
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none .clock .sec { color: var(--fg-2); }
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)) :is(.cv-wx-hours, .cv-wx-days) .p,
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none :is(.cv-wx-hours, .cv-wx-days) .p { color: #0a62b0; }
+#app.preset-canvas .cv-title { flex: none; padding: 1.6rem 2.2rem 0; font-size: calc(1.6rem * var(--cv-scale, 1)); font-weight: 600; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.preset-canvas .cv-title[hidden] { display: none; }
+#app.preset-canvas .cv-body {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 1.8rem 2.2rem;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+#app.preset-canvas .cv-card.is-none > .cv-body { padding: 0.8rem; }
+/* the widgets inside a card are not cards of their own */
+#app.preset-canvas .cv-card .cd-card, #app.preset-canvas .cv-card .msg, #app.preset-canvas .cv-card .todo, #app.preset-canvas .cv-card .weather, #app.preset-canvas .cv-card .agenda.compact .ag-list {
+  background: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  padding: 0;
+  margin: 0;
+}
+#app.preset-canvas .cv-card .cd-card::before, #app.preset-canvas .cv-card .msg::before, #app.preset-canvas .cv-card .todo::before, #app.preset-canvas .cv-card .weather::before, #app.preset-canvas .cv-card .agenda.compact .ag-list::before { display: none !important; }
+#app.preset-canvas .cv-hint {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 60rem;
+  padding: 3rem 4rem;
+  font-size: 2.6rem;
+  font-weight: 600;
+  text-align: center;
+}
+/* in the admin's builder the empty grid is the editor itself: no "open the editor" card */
+.cv-builder #app.preset-canvas .cv-hint { display: none; }
+
+/* ------------------------------------------------------------------------------- clocks */
+#app.preset-canvas .cv-clock { align-items: center; justify-content: center; text-align: center; }
+#app.preset-canvas .cv-clock > div { display: flex; flex-direction: column; align-items: center; max-width: 100%; }
+#app.preset-canvas .cv-clock .clock-wrap { align-items: center; }
+.style-modern #app.preset-canvas .cv-clock .clock.digital { font-size: calc(10rem * var(--wk, 1)); }
+.style-modern #app.preset-canvas .cv-clock .date { font-size: calc(2.4rem * var(--wk, 1)); margin: 0 0 0.3em; text-align: center; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; color: inherit; }
+#app.preset-canvas .cv-clock.cv-nodate .date { display: none; }
+.style-modern #app.preset-canvas .cv-clock[data-weight='light'] .clock.digital { font-weight: 300; }
+.style-modern #app.preset-canvas .cv-clock[data-weight='bold'] .clock.digital { font-weight: 700; }
+#app.preset-canvas .cv-analog { align-items: center; justify-content: center; gap: 1rem; }
+#app.preset-canvas .cv-dial { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+#app.preset-canvas .cv-dial svg, #app.preset-canvas .cv-analog .clock.analog svg, #app.preset-canvas .cv-zone-dial svg { width: 100%; height: 100%; max-width: 100%; max-height: 100%; }
+#app.preset-canvas .clock.analog .dot { fill: rgb(255 255 255 / 0.85); }
+#app.preset-canvas .clock.analog .num { fill: rgb(255 255 255 / 0.92); font: 600 19px var(--font-num); }
+#app.preset-canvas .clock.analog.face-minimal .rim, #app.preset-canvas .cv-dial svg.face-minimal .rim { fill: rgb(22 22 26 / 0.2); }
+/* a light card: a light face with dark hands (white hands on a grey disc read poorly there) */
+.theme-light #app.preset-canvas .cv-card:is(.is-glass, .is-solid):not(.has-own) :is(.clock.analog, .cv-dial, .cv-zone-dial) svg { filter: drop-shadow(0 0.4rem 1.6rem rgb(0 0 0 / 0.12)); }
+.theme-light #app.preset-canvas .cv-card:is(.is-glass, .is-solid):not(.has-own) :is(.clock.analog, .cv-dial, .cv-zone-dial) .rim { fill: rgb(255 255 255 / 0.9); stroke: rgb(60 60 67 / 0.18); }
+.theme-light #app.preset-canvas .cv-card:is(.is-glass, .is-solid):not(.has-own) :is(.clock.analog, .cv-dial, .cv-zone-dial) .tk { stroke: rgb(60 60 67 / 0.3); }
+.theme-light #app.preset-canvas .cv-card:is(.is-glass, .is-solid):not(.has-own) :is(.clock.analog, .cv-dial, .cv-zone-dial) .tk.big { stroke: #1c1c1e; }
+.theme-light #app.preset-canvas .cv-card:is(.is-glass, .is-solid):not(.has-own) :is(.clock.analog, .cv-dial, .cv-zone-dial) :is(.hh, .mh) { stroke: #1c1c1e; }
+.theme-light #app.preset-canvas .cv-card:is(.is-glass, .is-solid):not(.has-own) :is(.clock.analog, .cv-dial, .cv-zone-dial) .num { fill: #1c1c1e; }
+.theme-light #app.preset-canvas .cv-card:is(.is-glass, .is-solid):not(.has-own) :is(.clock.analog, .cv-dial, .cv-zone-dial) .dot { fill: rgb(60 60 67 / 0.6); }
+.theme-light #app.preset-canvas .cv-card:is(.is-glass, .is-solid):not(.has-own) :is(.clock.analog, .cv-dial, .cv-zone-dial) .pin { fill: #fff; }
+#app.preset-canvas .cv-date { flex: none; font-size: 2.2rem; font-weight: 600; text-align: center; }
+#app.preset-canvas .cv-date[hidden] { display: none; }
+#app.preset-canvas .cv-flip { align-items: center; justify-content: center; gap: 0.8rem; }
+#app.preset-canvas .cv-flip-row { display: flex; align-items: center; gap: 0.08em; font-family: var(--font-num); font-weight: 600; font-size: calc(9rem * var(--wk, 1)); line-height: 1; font-variant-numeric: tabular-nums; perspective: 4em; }
+#app.preset-canvas .cv-flip .fd { display: inline-block; min-width: 0.66em; padding: 0.08em 0.06em; text-align: center; border-radius: 0.12em; background: rgb(255 255 255 / 0.1); box-shadow: inset 0 -0.02em 0 rgb(0 0 0 / 0.3); }
+#app.preset-canvas .cv-flip .fd:empty::before { content: '\00a0'; }
+#app.preset-canvas .cv-flip .fc { padding: 0 0.04em; opacity: 0.8; transform: translateY(-0.05em); }
+#app.preset-canvas .cv-flip .fd.flip { animation: cv-flip 0.6s cubic-bezier(0.3, 0.7, 0.3, 1); }
+@keyframes cv-flip { from { transform: rotateX(-90deg); } to { transform: rotateX(0); } }
+.lite #app.preset-canvas .cv-flip .fd.flip { animation: none; }
+#app.preset-canvas .cv-flip .cv-date { font-size: calc(2rem * var(--wk, 1)); }
+#app.preset-canvas .cv-world { justify-content: center; gap: 1.2rem; }
+#app.preset-canvas .cv-zone { display: grid; grid-template-columns: minmax(0, 1fr) auto calc(3rem * var(--wk, 1)); align-items: baseline; gap: 1.2rem; font-size: calc(2.4rem * var(--wk, 1)); }
+#app.preset-canvas .cv-world.is-analog .cv-zone { grid-template-columns: calc(5.6rem * var(--wk, 1)) minmax(0, 1fr) auto calc(3rem * var(--wk, 1)); align-items: center; }
+#app.preset-canvas .cv-zone-dial { width: calc(5.6rem * var(--wk, 1)); height: calc(5.6rem * var(--wk, 1)); }
+#app.preset-canvas .cv-zone-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.preset-canvas .cv-zone-time { font-family: var(--font-num); font-weight: 600; font-size: 1.25em; font-variant-numeric: tabular-nums; }
+#app.preset-canvas .cv-zone-off { font-style: normal; color: var(--accent); font-weight: 700; font-size: 0.8em; }
+/* no zone a day ahead or behind: no empty column for it at the right edge */
+#app.preset-canvas .cv-world:not(.has-off) .cv-zone { grid-template-columns: minmax(0, 1fr) auto; }
+#app.preset-canvas .cv-world.is-analog:not(.has-off) .cv-zone { grid-template-columns: calc(5.6rem * var(--wk, 1)) minmax(0, 1fr) auto; }
+#app.preset-canvas .cv-world:not(.has-off) .cv-zone-off { display: none; }
+/* a very wide box: the names and their times stay together in the middle, not at the two edges */
+#app.preset-canvas .cv-zone { width: 100%; max-width: 16em; margin-inline: auto; }
+#app.preset-canvas .cv-datecard { align-items: center; justify-content: center; text-align: center; gap: 0.2rem; }
+#app.preset-canvas .cv-date-wd { font-size: calc(2.2rem * var(--wk, 1)); font-weight: 600; color: var(--accent); text-transform: capitalize; }
+#app.preset-canvas .cv-date-num { font-family: var(--font-num); font-size: calc(8rem * var(--wk, 1)); font-weight: 600; line-height: 1; letter-spacing: -0.03em; }
+#app.preset-canvas .cv-date-mo { font-size: calc(2rem * var(--wk, 1)); font-weight: 500; color: var(--fg-2); text-transform: capitalize; }
+#app.preset-canvas .cv-date-line { font-size: calc(2.8rem * var(--wk, 1)); font-weight: 600; }
+#app.preset-canvas .cv-date-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem 1.6rem; margin-top: 0.8rem; font-size: calc(1.7rem * var(--wk, 1)); color: var(--fg-2); }
+#app.preset-canvas .cv-date-meta span { display: inline-flex; align-items: center; gap: 0.5rem; }
+#app.preset-canvas .cv-date-meta svg { width: 1.3em; height: 1.3em; }
+
+/* ------------------------------------------------------------------------------- calendars */
+#app.preset-canvas .cv-cal > div, #app.preset-canvas .cv-agenda > div { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#app.preset-canvas .cv-agenda > .agenda { display: block; overflow: hidden; padding: 0; }
+/* two columns of days only where the card is wide */
+#app.preset-canvas .cv-agenda > .agenda { columns: auto; }
+#app.preset-canvas .cv-agenda > .agenda { column-fill: auto; }
+/* rows flow one by one into the columns (a clipped flex list cannot be split, so a long day would jump whole) */
+#app.preset-canvas .cv-agenda .ag-list { display: block; overflow: visible; }
+#app.preset-canvas .cv-agenda .ag-ev { break-inside: avoid; }
+#app.preset-canvas .cv-agenda .cv-fit-hide { display: none !important; }
+#app.preset-canvas .cv-cal .cv-fit-hide { visibility: hidden !important; }
+#app.preset-canvas .cv-cal .legend.cv-legend-off { display: none; }
+/* a chip too narrow for its words (calendar.ts fitGrid): the time alone, or only its icon */
+#app.preset-canvas .cv-cal .ev.cv-chip-notitle > .tt, #app.preset-canvas .cv-cal .ev.cv-chip-icon > :is(.tt, .tm) { display: none; }
+#app.preset-canvas .cv-view { display: flex; flex-direction: column; }
+/* a narrow card: the date after "Hoy" is cut with an ellipsis, never past the card's edge */
+#app.preset-canvas .cv-view .td-head { min-width: 0; }
+#app.preset-canvas .cv-view .td-title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* a narrow box: the first all-day chip shrinks (its title and its note end in …) instead of running past the edge */
+#app.preset-canvas .cv-view .td-chip { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+#app.preset-canvas .cv-view .td-l1.cv-noi i { display: none; }
+#app.preset-canvas .cv-view .td-chip em { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Today in a small card (canvas/calendar.ts fitToday): no big "next" card, fewer hour labels */
+#app.preset-canvas .cv-view.cv-td-nonext .td-next { display: none; }
+#app.preset-canvas .cv-view.cv-td-nonext .td-line { min-height: 0; }
+#app.preset-canvas .cv-view.cv-td-step-2 .td-hr:not(:nth-child(2n + 1)) > span,
+#app.preset-canvas .cv-view.cv-td-step-4 .td-hr:not(:nth-child(4n + 1)) > span,
+#app.preset-canvas .cv-view.cv-td-step-6 .td-hr:not(:nth-child(6n + 1)) > span { display: none; }
+#app.preset-canvas .cv-next { justify-content: center; gap: calc(1.2rem * var(--nx, 1)); }
+#app.preset-canvas .cv-next-ev { display: flex; align-items: center; gap: calc(1.4rem * var(--nx, 1)); min-width: 0; }
+#app.preset-canvas .cv-next-em { flex: none; width: calc(4.4rem * var(--nx, 1)); height: calc(4.4rem * var(--nx, 1)); border-radius: calc(1.2rem * var(--nx, 1)); display: grid; place-items: center; font-family: var(--font-emoji); font-size: calc(2.6rem * var(--nx, 1)); background: rgb(var(--c) / 0.22); }
+#app.preset-canvas .cv-next-dot { width: calc(1.2rem * var(--nx, 1)); height: calc(1.2rem * var(--nx, 1)); border-radius: 50%; background: rgb(var(--c)); }
+#app.preset-canvas .cv-next-txt { display: flex; flex-direction: column; min-width: 0; }
+#app.preset-canvas .cv-next-when { font-size: calc(1.6rem * var(--nx, 1)); font-weight: 600; color: var(--tint, var(--accent)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.preset-canvas .cv-next-ev.is-now .cv-next-when { color: var(--accent); }
+#app.preset-canvas .cv-next-tt { font-size: calc(2.4rem * var(--nx, 1)); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.preset-canvas .cv-next-none { font-size: calc(2rem * var(--nx, 1)); color: var(--fg-2); }
+#app.preset-canvas .cv-cd { justify-content: center; }
+#app.preset-canvas .cv-cd .cd-card { font-size: 2rem; }
+#app.preset-canvas .cv-cd.is-cards .cd-card { flex-direction: row; flex-wrap: wrap; gap: 0.8rem; }
+/* a narrow card: the "in 9 days" line goes under the name instead of squeezing it */
+#app.preset-canvas .cv-cd.is-narrow .cd-card .cd { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 1.4rem; row-gap: 0.2rem; }
+#app.preset-canvas .cv-cd.is-narrow .cd-card .cd-em { grid-row: 1 / span 2; }
+#app.preset-canvas .cv-cd.is-narrow .cd-card .cd-when { grid-column: 2; text-align: left; }
+
+/* ------------------------------------------------------------------------------- weather */
+#app.preset-canvas .cv-wx { justify-content: center; gap: 1rem; }
+#app.preset-canvas .cv-wx-now { display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: center; gap: 0.6rem 1.6rem; }
+/* grown to its box and still narrower than it: the words centred across the card (canvas/weather.ts fillNow) */
+#app.preset-canvas .cv-wx-now.no-hl .cv-wx-hl { display: none; }
+#app.preset-canvas .cv-wx-now.is-centred { grid-template-columns: auto minmax(0, max-content); justify-content: center; }
+#app.preset-canvas .cv-wx-head { display: flex; align-items: center; gap: 0.8rem; }
+#app.preset-canvas .cv-wx-icon svg { width: calc(5.6rem * var(--wk, 1)); height: calc(5.6rem * var(--wk, 1)); }
+#app.preset-canvas .cv-wx-temp { font-family: var(--font-num); font-size: calc(6.4rem * var(--wk, 1)); font-weight: 500; line-height: 1; letter-spacing: -0.03em; }
+#app.preset-canvas .cv-wx-side { display: flex; flex-direction: column; min-width: 0; gap: 0.2rem; }
+#app.preset-canvas .cv-wx-cond { font-size: calc(2rem * var(--wk, 1)); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.preset-canvas .cv-wx-hl, #app.preset-canvas .cv-wx-loc { font-size: calc(1.6rem * var(--wk, 1)); color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.preset-canvas .cv-wx-meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.4rem 1.6rem; font-size: calc(1.6rem * var(--wk, 1)); color: var(--fg-2); }
+#app.preset-canvas .cv-wx-meta .m { display: inline-flex; align-items: center; gap: 0.4rem; }
+#app.preset-canvas .cv-wx-meta svg { width: 1.2em; height: 1.2em; }
+#app.preset-canvas .cv-wx-meta em { font-style: normal; }
+/* "Feels like 19°": a word's space between the label and its value at every size (the gap above is in rem) */
+#app.preset-canvas .cv-wx-meta em + b { margin-left: 0.2em; }
+#app.preset-canvas .cv-wx-meta b { color: var(--fg); font-weight: 600; }
+#app.preset-canvas .cv-wx .wx-src { grid-column: 1 / -1; font-size: 1.1rem; color: var(--fg-3); }
+/* the weather icons are drawn for a dark page: darker lines on a card with dark text, as on the kids layouts */
+.theme-light #app.preset-canvas .cv-card.is-glass:not(.has-own) .cv-wx svg [stroke='#eef2f7'],
+.theme-light #app.preset-canvas .cv-card.is-solid:not(.has-own) .cv-wx svg [stroke='#eef2f7'],
+.theme-light #app#app.preset-canvas.cv-fill-glass > .side .cv-card.is-none .cv-wx svg [stroke='#eef2f7'],
+.theme-light #app#app.preset-canvas.cv-fill-solid > .side .cv-card.is-none .cv-wx svg [stroke='#eef2f7'],
+#app.preset-canvas .cv-card.is-ink-dark:not(.is-none) .cv-wx svg [stroke='#eef2f7'] { stroke: #7d889b; }
+.theme-light #app.preset-canvas .cv-card.is-glass:not(.has-own) .cv-wx svg [fill='#0b0d12'],
+.theme-light #app.preset-canvas .cv-card.is-solid:not(.has-own) .cv-wx svg [fill='#0b0d12'],
+.theme-light #app#app.preset-canvas.cv-fill-glass > .side .cv-card.is-none .cv-wx svg [fill='#0b0d12'],
+.theme-light #app#app.preset-canvas.cv-fill-solid > .side .cv-card.is-none .cv-wx svg [fill='#0b0d12'],
+#app.preset-canvas .cv-card.is-ink-dark:not(.is-none) .cv-wx svg [fill='#0b0d12'] { fill: #ffffff; fill-opacity: 1; }
+.theme-light #app.preset-canvas .cv-card.is-glass:not(.has-own) .cv-wx svg [stroke='#eae6ff'],
+.theme-light #app.preset-canvas .cv-card.is-solid:not(.has-own) .cv-wx svg [stroke='#eae6ff'],
+.theme-light #app#app.preset-canvas.cv-fill-glass > .side .cv-card.is-none .cv-wx svg [stroke='#eae6ff'],
+.theme-light #app#app.preset-canvas.cv-fill-solid > .side .cv-card.is-none .cv-wx svg [stroke='#eae6ff'],
+#app.preset-canvas .cv-card.is-ink-dark:not(.is-none) .cv-wx svg [stroke='#eae6ff'] { stroke: #8b7fd6; }
+.theme-light #app.preset-canvas .cv-card.is-glass:not(.has-own) .cv-wx svg [fill='#eae6ff'],
+.theme-light #app.preset-canvas .cv-card.is-solid:not(.has-own) .cv-wx svg [fill='#eae6ff'],
+.theme-light #app#app.preset-canvas.cv-fill-glass > .side .cv-card.is-none .cv-wx svg [fill='#eae6ff'],
+.theme-light #app#app.preset-canvas.cv-fill-solid > .side .cv-card.is-none .cv-wx svg [fill='#eae6ff'],
+#app.preset-canvas .cv-card.is-ink-dark:not(.is-none) .cv-wx svg [fill='#eae6ff'] { fill: #8b7fd6; }
+.theme-light #app.preset-canvas .cv-card.is-glass:not(.has-own) .cv-wx svg [stroke='#ffffff'],
+.theme-light #app.preset-canvas .cv-card.is-solid:not(.has-own) .cv-wx svg [stroke='#ffffff'],
+.theme-light #app#app.preset-canvas.cv-fill-glass > .side .cv-card.is-none .cv-wx svg [stroke='#ffffff'],
+.theme-light #app#app.preset-canvas.cv-fill-solid > .side .cv-card.is-none .cv-wx svg [stroke='#ffffff'],
+#app.preset-canvas .cv-card.is-ink-dark:not(.is-none) .cv-wx svg [stroke='#ffffff'] { stroke: #9fb4cc; }
+.theme-light #app.preset-canvas .cv-card.is-glass:not(.has-own) .cv-wx svg [stroke='#ffc94a'],
+.theme-light #app.preset-canvas .cv-card.is-solid:not(.has-own) .cv-wx svg [stroke='#ffc94a'],
+.theme-light #app#app.preset-canvas.cv-fill-glass > .side .cv-card.is-none .cv-wx svg [stroke='#ffc94a'],
+.theme-light #app#app.preset-canvas.cv-fill-solid > .side .cv-card.is-none .cv-wx svg [stroke='#ffc94a'],
+#app.preset-canvas .cv-card.is-ink-dark:not(.is-none) .cv-wx svg [stroke='#ffc94a'] { stroke: #f0a400; }
+#app.preset-canvas .cv-wx-hours, #app.preset-canvas .cv-wx-days { display: flex; justify-content: space-between; gap: 0.8rem; min-width: 0; overflow: hidden; }
+#app.preset-canvas .cv-wx-hours .h, #app.preset-canvas .cv-wx-days .d { flex: 1 1 0; min-width: 5.6rem; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; font-size: 1.8rem; }
+#app.preset-canvas .cv-wx-hours .hl, #app.preset-canvas .cv-wx-days .dn { color: var(--fg-2); font-weight: 600; text-transform: capitalize; }
+#app.preset-canvas .cv-wx-hours .hi svg, #app.preset-canvas .cv-wx-days .di svg { width: 4.4rem; height: 4.4rem; }
+#app.preset-canvas .cv-wx-hours .hv, #app.preset-canvas .cv-wx-days .dmx { font-weight: 600; font-family: var(--font-num); }
+#app.preset-canvas .cv-wx-days .dmn { color: var(--fg-2); font-family: var(--font-num); }
+#app.preset-canvas .cv-wx-hours .p, #app.preset-canvas .cv-wx-days .p { font-size: 1.4rem; color: #64b5ff; font-weight: 600; }
+#app.preset-canvas .cv-wx-days .rng { display: none; }
+#app.preset-canvas .cv-wx-forecast.is-column .cv-wx-days { flex-direction: column; justify-content: center; }
+#app.preset-canvas .cv-wx-forecast.is-column .d { flex-direction: row; justify-content: space-between; min-width: 0; }
+#app.preset-canvas .cv-wx-forecast.is-column .dn { flex: 0 0 5rem; text-align: left; }
+#app.preset-canvas .cv-wx-forecast.is-column .di svg { width: 3.4rem; height: 3.4rem; }
+#app.preset-canvas .cv-wx-forecast.is-column .rng { display: block; position: relative; flex: 1; height: 0.6rem; border-radius: 0.3rem; background: rgb(255 255 255 / 0.12); }
+#app.preset-canvas .cv-wx-forecast.is-column .rng i { position: absolute; top: 0; bottom: 0; border-radius: inherit; background: linear-gradient(90deg, #64b5ff, #ffb347); }
+
+/* ------------------------------------------------------------------------------- content */
+#app.preset-canvas .cv-msg { justify-content: center; align-items: center; text-align: center; }
+#app.preset-canvas .cv-msg.is-left { align-items: flex-start; text-align: left; }
+#app.preset-canvas .cv-msg .msg { font-size: 3rem; }
+#app.preset-canvas .cv-todo .todo li { font-size: 2.2rem; }
+/* a card with its own accent: the circles and the ticks in it */
+#app.preset-canvas .cv-card[style*="--accent:"] .cv-todo .todo li .ico { color: var(--accent); opacity: 1; }
+#app.preset-canvas .cv-news { padding: 0; }
+#app.preset-canvas .cv-news > .news { position: relative; flex: 1; min-height: 0; }
+#app.preset-canvas .cv-news .news-bar { display: none; }
+#app.preset-canvas .cv-news .news-stage { position: absolute; inset: 1.6rem 2.2rem; }
+#app.preset-canvas .cv-news .news-h { font-size: 1.5rem; font-weight: 600; }
+#app.preset-canvas .cv-news .news-title { font-size: 2.4rem; font-weight: 600; }
+#app.preset-canvas .cv-news .news-sum { font-size: 1.8rem; color: var(--fg-2); }
+#app.preset-canvas .cv-item[data-size='m'] .cv-news .news-title, #app.preset-canvas .cv-item[data-size='l'] .cv-news .news-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+#app.preset-canvas .cv-photo { padding: 0; }
+#app.preset-canvas .cv-ph { position: absolute; inset: 0; background-size: cover; background-position: center; }
+#app.preset-canvas .cv-ph.contain { background-size: contain; background-repeat: no-repeat; }
+#app.preset-canvas .cv-ph-cap { position: absolute; left: 1.6rem; right: 1.6rem; bottom: 1.2rem; z-index: 1; font-size: 1.4rem; color: rgb(255 255 255 / 0.85); text-shadow: 0 0.1rem 0.6rem rgb(0 0 0 / 0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.preset-canvas .cv-ph-cap:empty { display: none; }
+#app.preset-canvas .cv-widget { padding: 0; }
+#app.preset-canvas .cv-media { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+#app.preset-canvas .cv-media > .uw { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+#app.preset-canvas .uw.uw-failed.uw-in-canvas { display: flex; }
+#app.preset-canvas .cv-value { justify-content: center; gap: 0.4rem; }
+#app.preset-canvas .cv-val-head { display: flex; align-items: center; gap: 0.8rem; min-width: 0; font-size: calc(1.8rem * var(--wk, 1)); font-weight: 600; color: var(--fg-2); }
+#app.preset-canvas .cv-val-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#app.preset-canvas .cv-val-num { display: inline-flex; align-self: flex-start; align-items: baseline; gap: 0.6rem; white-space: nowrap; }
+#app.preset-canvas .cv-val-num b { font-family: var(--font-num); font-size: calc(6rem * var(--wk, 1)); font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+#app.preset-canvas .cv-val-num b.is-text { font-family: inherit; font-size: calc(3.8rem * var(--wk, 1)); letter-spacing: 0; }
+#app.preset-canvas .cv-val-unit { font-size: calc(2.2rem * var(--wk, 1)); color: var(--fg-2); }
+#app.preset-canvas .cv-val-note { font-size: calc(1.4rem * var(--wk, 1)); color: var(--fg-3); }
+#app.preset-canvas .cv-value.is-stale .cv-val-num { opacity: 0.45; }
+#app.preset-canvas .cv-ph-card { align-items: center; justify-content: center; gap: 1rem; text-align: center; color: var(--fg-2); }
+#app.preset-canvas .cv-ph-text { font-size: 1.8rem; font-weight: 600; max-width: 36rem; }
+#app.preset-canvas .cv-lock { width: 3.6rem; height: 3.6rem; opacity: 0.7; }
+#app.preset-canvas .cv-item.is-cramped .cv-body { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.4rem), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 2.4rem), transparent); }
+
+/* ------------------------------------------------------------------------------- Familia y hogar (canvas/family.ts) */
+/* The markup of the kids layouts (widgets/kids.ts) at card size, on the card's own material: the kids colours follow
+   the card's ink (--fg), each person's colour comes in --kc as there. */
+#app.preset-canvas .cv-fam {
+  --k-ink: var(--fg);
+  --k-ink-2: var(--fg-2);
+  --k-ink-3: var(--fg-3);
+  --k-track: rgb(255 255 255 / 0.14);
+  --k-fill: rgb(255 255 255 / 0.07);
+  --k-raise: rgb(255 255 255 / 0.12);
+  --k-star: #ffc94d;
+  --k-star-bg: rgb(255 201 77 / 0.16);
+  --k-mix: #2a2a30;
+  --k-accent-ink: var(--accent);
+  font-family: var(--font-ui);
+  gap: 0.8rem;
+}
+.theme-light #app.preset-canvas .cv-card:not(.has-own) .cv-fam,
+#app.preset-canvas .cv-card.is-ink-dark .cv-fam {
+  --k-track: rgb(0 0 0 / 0.08);
+  --k-fill: rgb(0 0 0 / 0.04);
+  --k-raise: #ffffff;
+  --k-star: #8a5300;
+  --k-star-bg: #fff1cc;
+  --k-mix: #ffffff;
+  --k-accent-ink: color-mix(in srgb, var(--accent) 62%, black);
+}
+#app.preset-canvas .cv-fam [style*='--kc:'] { --kc-soft: color-mix(in srgb, var(--kc) 30%, var(--k-mix)); --kc-ink: var(--kc-tint); }
+.theme-light #app.preset-canvas .cv-card:not(.has-own) .cv-fam [style*='--kc:'],
+#app.preset-canvas .cv-card.is-ink-dark .cv-fam [style*='--kc:'] { --kc-soft: color-mix(in srgb, var(--kc) 22%, white); --kc-ink: var(--kc-shade); }
+#app.preset-canvas .cv-fam .fit-hide { display: none !important; }
+#app.preset-canvas .cv-fam .kf-list { display: flex; flex-direction: column; gap: 0.8rem; min-height: 0; }
+/* lists keep their height (rows are dropped whole by the fitting, a shrunk list would slide under "+N más") */
+#app.preset-canvas .cv-fam > .kf-list, #app.preset-canvas .cv-fam > .cvf-people { flex: none; }
+#app.preset-canvas .cv-fam .kf-more { flex: none; font-size: 1.6rem; font-weight: 600; color: var(--k-ink-2); }
+#app.preset-canvas .cv-fam .kf-more:empty { display: none; }
+#app.preset-canvas .cv-fam .k-empty {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem;
+  text-align: center; color: var(--k-ink-2); font-size: 1.8rem; padding: 0.4rem;
+}
+#app.preset-canvas .cv-fam .k-empty b { color: var(--k-ink); font-weight: 600; text-wrap: balance; }
+#app.preset-canvas .cv-fam .k-empty > span:not(.k-empty-em) { font-size: 1.6rem; text-wrap: balance; }
+#app.preset-canvas .cv-fam .k-empty-em { font-family: var(--font-emoji); font-size: 4rem; line-height: 1; }
+/* avatar, name, stars, progress */
+#app.preset-canvas .cv-fam .k-av {
+  flex: none; position: relative; display: grid; place-items: center; width: 5.2rem; height: 5.2rem; border-radius: 50%;
+  background: var(--kc-soft); box-shadow: inset 0 0 0 0.3rem var(--kc);
+}
+#app.preset-canvas .cv-fam .k-av i { font-style: normal; font-family: var(--font-emoji); font-size: 2.9rem; line-height: 1; }
+#app.preset-canvas .cv-fam .k-av.has-photo { overflow: hidden; }
+#app.preset-canvas .cv-fam .k-av.has-photo i { visibility: hidden; }
+#app.preset-canvas .cv-fam .k-av-img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+#app.preset-canvas .cv-fam .k-av.has-photo::after { content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: inherit; pointer-events: none; }
+#app.preset-canvas .cv-fam .k-name { font-size: 2.1rem; font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#app.preset-canvas .cv-fam .k-stars {
+  flex: none; display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.2rem 0.9rem 0.2rem 0.6rem; border-radius: 99rem;
+  background: var(--k-star-bg); color: var(--k-star); font-family: var(--font-num); font-size: 1.7rem; font-weight: 700; line-height: 1.3;
+}
+#app.preset-canvas .cv-fam .k-stars b { font-weight: 700; font-variant-numeric: tabular-nums; }
+#app.preset-canvas .cv-fam .k-progress { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
+#app.preset-canvas .cv-fam .k-bar { flex: 1; height: 0.9rem; border-radius: 0.5rem; background: var(--k-track); overflow: hidden; }
+#app.preset-canvas .cv-fam .k-bar i { display: block; height: 100%; border-radius: inherit; background: var(--kc, var(--accent)); transition: width 300ms var(--ease); }
+#app.preset-canvas .cv-fam .k-frac { flex: none; font-family: var(--font-num); font-size: 1.5rem; font-weight: 600; color: var(--k-ink-2); font-variant-numeric: tabular-nums; }
+/* a routine (a button when the screen takes taps: at least 7.2rem tall, a finger's width on a 1080p TV) */
+#app.preset-canvas .cv-fam .k-chore {
+  display: flex; align-items: center; gap: 1rem; width: 100%; min-height: 5.2rem; margin: 0; padding: 0.7rem 1rem;
+  border: 0; border-radius: 1.4rem; background: color-mix(in srgb, var(--kc-soft) 45%, transparent);
+  color: var(--k-ink); font: inherit; text-align: left; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+#app.preset-canvas .cv-fam.k-touch .k-chore { min-height: 7.2rem; cursor: pointer; }
+#app.preset-canvas .cv-fam .k-chore:focus { outline: none; }
+#app.preset-canvas .cv-fam .k-em {
+  flex: none; display: grid; place-items: center; width: 3.8rem; height: 3.8rem; border-radius: 1rem; background: var(--k-raise);
+  font-family: var(--font-emoji); font-size: 2.2rem; line-height: 1;
+}
+#app.preset-canvas .cv-fam .k-tt { flex: 1; min-width: 0; font-size: 1.9rem; font-weight: 600; line-height: 1.15; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#app.preset-canvas .cv-fam .k-pts { flex: none; font-family: var(--font-num); font-size: 1.5rem; font-weight: 600; color: var(--k-ink-2); }
+#app.preset-canvas .cv-fam .k-check {
+  flex: none; display: grid; place-items: center; width: 3.2rem; height: 3.2rem; border-radius: 50%;
+  box-shadow: inset 0 0 0 0.3rem color-mix(in srgb, var(--k-ink) 30%, transparent);
+}
+#app.preset-canvas .cv-fam .k-check svg { width: 70%; height: 70%; }
+#app.preset-canvas .cv-fam .k-chore.is-done { background: transparent; }
+#app.preset-canvas .cv-fam .k-chore.is-done .k-tt { color: var(--k-ink-2); }
+#app.preset-canvas .cv-fam .k-chore.is-done .k-em { background: var(--k-fill); }
+#app.preset-canvas .cv-fam .k-chore.is-done .k-check { background: var(--kc, var(--accent)); box-shadow: none; color: var(--kc-on, #fff); }
+#app.preset-canvas .cv-fam.k-touch .k-chore:active { transform: scale(0.98); }
+:root:not(.lite) #app.preset-canvas .cv-fam .k-pop .k-check { animation: cv-k-pop 220ms var(--ease); }
+@keyframes cv-k-pop { from { transform: scale(0.85); } to { transform: scale(1); } }
+.lite #app.preset-canvas .cv-fam .k-bar i { transition: none; }
+
+/* Rutinas: a card per person (one person: the canvas card is the card) */
+#app.preset-canvas .cvf-cards { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--kr-n, 1), minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 1.2rem; }
+#app.preset-canvas .cvf-cards .k-card { display: flex; flex-direction: column; gap: 1rem; min-height: 0; padding: 1rem; overflow: hidden; border-radius: 1.8rem; background: var(--k-fill); }
+#app.preset-canvas .cvf-cards.is-one .k-card { padding: 0; background: none; }
+#app.preset-canvas .cvf-cards .k-meta {
+  flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.6rem 1.2rem;
+  padding: 1rem 1.2rem; border-radius: 1.6rem; background: var(--kc-soft);
+}
+#app.preset-canvas .cvf-cards .k-meta .k-av { grid-row: 1 / span 2; background: var(--k-raise); }
+#app.preset-canvas .cvf-cards .k-who { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; min-width: 0; }
+#app.preset-canvas .cvf-cards .k-meta .k-bar { background: color-mix(in srgb, var(--k-raise) 70%, transparent); }
+#app.preset-canvas .cvf-cards .k-meta .k-frac { color: var(--k-ink); }
+#app.preset-canvas .cvf-cards .k-banner { flex: none; padding: 0.8rem 1.2rem; border-radius: 1.4rem; background: var(--kc); color: var(--kc-on); font-size: 1.9rem; font-weight: 700; text-align: center; }
+#app.preset-canvas .cvf-cards .k-main { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 1rem; }
+#app.preset-canvas .cvf-cards .k-slots { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 1rem; overflow: hidden; }
+#app.preset-canvas .cvf-cards .k-slot { display: flex; flex-direction: column; gap: 0.6rem; }
+#app.preset-canvas .cvf-cards .k-slot-h { display: flex; align-items: center; gap: 0.6rem; font-size: 1.5rem; font-weight: 600; color: var(--k-ink-2); padding: 0 0.2rem; }
+#app.preset-canvas .cvf-cards .k-slot-em { font-family: var(--font-emoji); font-size: 1.7rem; }
+#app.preset-canvas .cvf-cards .k-slot.is-now .k-slot-h { color: var(--k-ink); }
+#app.preset-canvas .cvf-cards .k-now-dot { width: 0.8rem; height: 0.8rem; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0.35rem rgb(var(--accent-rgb) / 0.22); margin-left: 0.2rem; }
+#app.preset-canvas .cvf-cards .k-fold .k-slot-h { padding: 0.7rem 1rem; border-radius: 1.2rem; background: var(--k-fill); }
+#app.preset-canvas .cvf-cards .k-fold .k-list { display: none; }
+#app.preset-canvas .cvf-cards .k-slot:not(.k-fold) .k-fold-only { display: none; }
+#app.preset-canvas .cvf-cards .k-slot-ok { margin-left: auto; display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 50%; background: var(--kc); color: var(--kc-on); }
+#app.preset-canvas .cvf-cards .k-slot-ok svg { width: 72%; height: 72%; }
+#app.preset-canvas .cvf-cards .k-slot-n { margin-left: auto; min-width: 2.6rem; padding: 0 0.8rem; border-radius: 99rem; background: var(--kc-soft); color: var(--k-ink); text-align: center; font-family: var(--font-num); }
+#app.preset-canvas .cvf-cards .k-list { display: flex; flex-direction: column; gap: 0.6rem; }
+#app.preset-canvas .cvf-cards .k-more { font-size: 1.5rem; font-weight: 600; color: var(--k-ink-2); padding: 0 0.8rem; }
+#app.preset-canvas .cvf-cards .k-more:empty { display: none; }
+#app.preset-canvas .cvf-cards .k-all { display: none; }
+#app.preset-canvas .cvf-cards .k-squeeze .k-slots { display: none; }
+#app.preset-canvas .cvf-cards .k-squeeze .k-all { display: block; padding: 0.8rem 1rem; border-radius: 1.2rem; background: var(--k-fill); font-size: 1.7rem; font-weight: 600; text-align: center; }
+/* a row per person (everyone in a card too small for a card each), rewards */
+#app.preset-canvas .cv-fam .kf-row,
+#app.preset-canvas .cv-fam .kf-reward { display: flex; align-items: center; gap: 1.2rem; padding: 0.8rem 1rem; border-radius: 1.6rem; background: color-mix(in srgb, var(--kc-soft) 40%, transparent); }
+#app.preset-canvas .cv-fam .kf-row .k-av,
+#app.preset-canvas .cv-fam .kf-reward .k-av { width: 4.4rem; height: 4.4rem; background: var(--k-raise); }
+#app.preset-canvas .cv-fam .kf-row .k-av i,
+#app.preset-canvas .cv-fam .kf-reward .k-av i { font-size: 2.5rem; }
+#app.preset-canvas .cv-fam .kf-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+#app.preset-canvas .cv-fam .kf-row-top { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; }
+#app.preset-canvas .cv-fam .kf-row .k-name { font-size: 1.9rem; }
+#app.preset-canvas .cv-fam .kf-row .k-stars { font-size: 1.5rem; }
+#app.preset-canvas .cv-fam .kf-row .k-chore { min-height: 4.4rem; padding: 0.4rem 0.8rem; gap: 0.8rem; background: var(--k-raise); }
+#app.preset-canvas .cv-fam.k-touch .kf-row .k-chore { min-height: 7.2rem; }
+#app.preset-canvas .cv-fam .kf-row .k-em { width: 3.2rem; height: 3.2rem; font-size: 1.9rem; background: var(--k-fill); }
+#app.preset-canvas .cv-fam .kf-row .k-tt { font-size: 1.7rem; -webkit-line-clamp: 1; }
+#app.preset-canvas .cv-fam .kf-row .k-check { width: 2.8rem; height: 2.8rem; }
+#app.preset-canvas .cv-fam .kf-next.is-done { font-size: 1.6rem; font-weight: 700; color: var(--kc-ink); }
+#app.preset-canvas .cv-fam .kf-rw-t { font-size: 1.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.preset-canvas .cv-fam .kf-reward .k-frac { font-family: var(--font-ui); font-size: 1.5rem; }
+#app.preset-canvas .cv-fam .kf-reward.is-ready .k-frac { color: var(--kc-ink); }
+/* members: a face each */
+#app.preset-canvas .cvf-members { justify-content: center; }
+#app.preset-canvas .cvf-people { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 1.4rem 1rem; align-content: center; }
+#app.preset-canvas .cvf-person { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; min-width: 0; text-align: center; }
+#app.preset-canvas .cvf-person .k-av { width: 6.4rem; height: 6.4rem; }
+#app.preset-canvas .cvf-person .k-av i { font-size: 3.6rem; }
+#app.preset-canvas .cvf-person .k-name { max-width: 100%; font-size: 1.9rem; }
+#app.preset-canvas .cvf-person .k-progress { width: 100%; max-width: 12rem; }
+#app.preset-canvas .cvf-person .k-frac { display: none; }
+#app.preset-canvas .cvf-people.is-compact .k-progress { display: none; }
+#app.preset-canvas .cvf-people.is-compact .k-stars { font-size: 1.4rem; }
+#app.preset-canvas .cvf-people.is-tiny { grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); }
+#app.preset-canvas .cvf-people.is-tiny .k-name { display: none; }
+#app.preset-canvas .cvf-people.is-tiny .k-av { width: 5rem; height: 5rem; }
+#app.preset-canvas .cvf-people.is-tiny .k-av i { font-size: 2.8rem; }
+/* points: a leaderboard */
+#app.preset-canvas .cvf-points { justify-content: center; }
+#app.preset-canvas .cvf-rank { display: flex; align-items: center; gap: 1rem; padding: 0.5rem 1rem 0.5rem 0.6rem; border-radius: 99rem; background: color-mix(in srgb, var(--kc-soft) 40%, transparent); }
+#app.preset-canvas .cvf-place { flex: none; width: 3.2rem; text-align: center; font-family: var(--font-num); font-size: 2rem; font-weight: 700; color: var(--k-ink-2); }
+#app.preset-canvas .cvf-rank.is-first .cvf-place { color: var(--k-star); }
+#app.preset-canvas .cvf-rank .k-av { width: 4rem; height: 4rem; }
+#app.preset-canvas .cvf-rank .k-av i { font-size: 2.3rem; }
+#app.preset-canvas .cvf-rank .k-name { flex: 1; font-size: 1.9rem; }
+/* today's chores: a face and the routine */
+#app.preset-canvas .cvf-chore { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
+#app.preset-canvas .cvf-chore .k-av { width: 3.8rem; height: 3.8rem; }
+#app.preset-canvas .cvf-chore .k-av i { font-size: 2.1rem; }
+#app.preset-canvas .cvf-chore .k-chore { flex: 1; min-width: 0; min-height: 4.6rem; }
+#app.preset-canvas .cv-fam.is-narrow .cvf-chore .k-em { display: none; }
+#app.preset-canvas .cv-fam.is-narrow .cvf-chore { gap: 0.5rem; }
+/* whose chore it is, by name after its title (Tareas with several people), in the person's colour */
+#app.preset-canvas .cv-fam .k-chore .k-by { flex: none; margin-left: 0.2em; padding: 0.15em 0.6em; border-radius: 1em; font-size: 1.5rem; font-weight: 650; white-space: nowrap; color: var(--kc-shade, var(--fg-2)); background: color-mix(in srgb, var(--kc, currentColor) 16%, transparent); }
+/* a faces card with the stars on the same screen: the person's Rutinas card keeps the name and the progress only */
+#app.preset-canvas .cv-fam.cvf-no-stars .k-meta .k-stars { display: none; }
+/* meals of today */
+#app.preset-canvas .cvf-meals { justify-content: center; }
+#app.preset-canvas .cv-fam .kf-meal { display: grid; grid-template-columns: 3.8rem minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 1rem; align-items: center; }
+#app.preset-canvas .cv-fam .kf-meal-em { grid-row: 1 / 3; display: grid; place-items: center; width: 3.8rem; height: 3.8rem; border-radius: 1rem; background: var(--k-fill); font-family: var(--font-emoji); font-size: 2.1rem; }
+#app.preset-canvas .cv-fam .kf-meal-l { font-size: 1.4rem; font-weight: 600; color: var(--k-ink-2); }
+#app.preset-canvas .cv-fam .kf-meal-t { font-size: 1.9rem; font-weight: 500; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* meals of the week: a column per day (wide card) or a row per day (tall card) */
+#app.preset-canvas .cvf-week .km-grid { flex: 1; min-height: 0; display: grid; grid-auto-flow: column; grid-template-columns: 8.4rem; grid-auto-columns: minmax(0, 1fr); gap: 0.8rem; }
+#app.preset-canvas .cvf-week .km-col { display: grid; grid-template-rows: 4.6rem repeat(var(--km-rows, 3), minmax(0, 1fr)); gap: 0.6rem; min-height: 0; border-radius: 1.4rem; }
+#app.preset-canvas .cvf-week .km-grid.is-rows { grid-auto-flow: row; grid-template-columns: 100%; grid-template-rows: 3.6rem; grid-auto-rows: minmax(0, 1fr); }
+#app.preset-canvas .cvf-week .km-row { display: grid; grid-template-columns: 9rem repeat(var(--km-cols, 3), minmax(0, 1fr)); gap: 0.6rem; min-height: 0; border-radius: 1.4rem; }
+#app.preset-canvas .cvf-week .km-day { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; min-width: 0; }
+#app.preset-canvas .cvf-week .km-row .km-day { flex-direction: row; justify-content: flex-start; gap: 0.6rem; padding-left: 0.6rem; }
+#app.preset-canvas .cvf-week .km-wd { font-size: 1.5rem; font-weight: 600; color: var(--k-ink-2); white-space: nowrap; text-transform: capitalize; }
+#app.preset-canvas .cvf-week .km-dn { font-family: var(--font-num); font-size: 2.2rem; font-weight: 600; }
+#app.preset-canvas .cvf-week .km-today { display: none; }
+#app.preset-canvas .cvf-week .km-cell { display: flex; align-items: center; justify-content: center; min-height: 0; padding: 0.4rem 0.6rem; border-radius: 1.1rem; background: var(--k-fill); text-align: center; overflow: hidden; }
+#app.preset-canvas .cvf-week .km-cell span { font-size: 1.6rem; font-weight: 500; line-height: 1.15; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; hyphens: auto; }
+#app.preset-canvas .cvf-week .km-cell.is-empty { background: transparent; box-shadow: inset 0 0 0 0.15rem var(--k-fill); }
+#app.preset-canvas .cvf-week .km-cell.is-empty span { color: var(--k-ink-3); font-size: 2.6rem; font-weight: 700; line-height: 1; }
+#app.preset-canvas .cvf-week .km-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; font-size: 1.4rem; font-weight: 600; color: var(--k-ink-2); text-align: center; min-width: 0; }
+#app.preset-canvas .cvf-week .km-row .km-slot { flex-direction: row; gap: 0.5rem; }
+#app.preset-canvas .cvf-week .km-slot-em { font-family: var(--font-emoji); font-size: 2.2rem; line-height: 1; }
+#app.preset-canvas .cvf-week .km-col.is-today,
+#app.preset-canvas .cvf-week .km-row.is-today { background: rgb(var(--accent-rgb) / 0.14); box-shadow: 0 0 0 0.5rem rgb(var(--accent-rgb) / 0.14); }
+#app.preset-canvas .cvf-week .is-today .km-wd,
+#app.preset-canvas .cvf-week .is-today .km-dn { color: var(--k-accent-ink); }
+#app.preset-canvas .cvf-week .is-past .km-cell:not(.is-empty) span { color: var(--k-ink-2); }
+/* birthdays */
+#app.preset-canvas .cvf-birthdays { justify-content: center; }
+#app.preset-canvas .cvf-bd { display: grid; grid-template-columns: 3.4rem minmax(0, 1fr) auto; align-items: center; gap: 1rem; font-size: 2rem; }
+#app.preset-canvas .cvf-bd-em { font-family: var(--font-emoji); font-size: 2.4rem; text-align: center; }
+#app.preset-canvas .cvf-bd-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.preset-canvas .cvf-bd-when { font-size: 1.6rem; font-weight: 600; color: var(--k-ink-2); white-space: nowrap; }
+#app.preset-canvas .cvf-bd.is-today .cvf-bd-when { color: var(--k-accent-ink); }
+/* highlights: the pills of the other layouts, one under the other, or side by side in a wide card */
+#app.preset-canvas .cv-hl { justify-content: center; }
+#app.preset-canvas .cv-hl .highlights { margin: 0; align-items: flex-start; }
+#app.preset-canvas .cv-hl.is-row .highlights { flex-direction: row; flex-wrap: wrap; align-items: center; }
+#app.preset-canvas .cv-hl .hl-pill { display: inline-flex !important; min-width: 0; }
+#app.preset-canvas .cv-hl.is-row .hl-pill { flex: 0 1 auto; }
+/* light theme: the card is light, so the pills are a soft grey chip with dark ink and the deeper colour shade */
+.theme-light #app.preset-canvas .cv-card:not(.has-own) .cv-hl .hl-pill,
+#app.preset-canvas .cv-card.is-ink-dark .cv-hl .hl-pill {
+  background: rgb(0 0 0 / 0.05);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  color: #000;
+}
+.theme-light #app.preset-canvas .cv-card:not(.has-own) .cv-hl .hl-pill::before,
+#app.preset-canvas .cv-card.is-ink-dark .cv-hl .hl-pill::before { display: none; }
+.theme-light #app.preset-canvas .cv-card:not(.has-own) .cv-hl .hl-lead,
+#app.preset-canvas .cv-card.is-ink-dark .cv-hl .hl-lead { color: var(--deep, var(--tint)); }
+/* the announcement on screen (styles of widgets/alerts.ts: info, success, warning, urgent) */
+#app.preset-canvas .cvf-an { flex-direction: row; align-items: center; gap: 1.6rem; }
+#app.preset-canvas .cvf-an-em { flex: none; font-family: var(--font-emoji); font-size: 4.4rem; line-height: 1; }
+#app.preset-canvas .cvf-an-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+#app.preset-canvas .cvf-an-txt b { font-size: 2.6rem; font-weight: 700; line-height: 1.15; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#app.preset-canvas .cvf-an-txt span { font-size: 1.9rem; color: var(--k-ink-2); line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+#app.preset-canvas .cvf-an::before { content: ''; position: absolute; left: 0; top: 1.6rem; bottom: 1.6rem; width: 0.5rem; border-radius: 0.3rem; background: var(--accent); }
+#app.preset-canvas .cvf-an-success::before { background: #34c759; }
+#app.preset-canvas .cvf-an-warning::before { background: #ffb340; }
+#app.preset-canvas .cvf-an-urgent::before { background: #ff453a; }
+/* with an announcement card on screen the settled corner toast is left out (main.ts) */
+#alerts.an-docked .an-corner { display: none; }
+
+/* ------------------------------------------------------------------------------- HTML propio (canvas/html.ts) */
+/* The owner's card in a sandboxed frame that fills the card body: transparent (Marco draws the card around it), and
+   never a target for a tap or the focus. The next document loads underneath and takes the old one's place. */
+#app.preset-canvas .cv-html-box { position: relative; flex: 1; display: flex; min-width: 0; min-height: 0; }
+#app.preset-canvas .cv-html-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: transparent;
+  pointer-events: none;
+}
+#app.preset-canvas .cv-html-frame.is-loading { visibility: hidden; }
+#app.preset-canvas .cv-html-note { margin: auto; padding: 1.8rem 2.2rem; font-size: calc(1.8rem * var(--cv-scale, 1)); color: var(--fg-2); text-align: center; }
+
+/* ------------------------------------------------------------------------------- Sección (heading) */
+#app.preset-canvas .cv-heading { justify-content: flex-end; padding-bottom: 0.6rem; }
+#app.preset-canvas .cv-heading-row { display: flex; align-items: center; gap: 0.6em; min-width: 0; font-size: calc(2.6rem * clamp(0.7, var(--wk, 1), 1.6) * var(--cv-scale, 1)); font-weight: 700; letter-spacing: -0.01em; }
+#app.preset-canvas .cv-heading.has-line .cv-heading-row { padding-bottom: 0.35em; border-bottom: 0.12rem solid var(--m-sep, rgb(255 255 255 / 0.18)); }
+#app.preset-canvas .cv-heading.is-center .cv-heading-row { justify-content: center; text-align: center; }
+#app.preset-canvas .cv-heading-ico { flex: none; line-height: 1; }
+#app.preset-canvas .cv-heading-t { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a Sección without its own card on a light screen with no photo behind it: dark text, a dark line */
+.theme-light #app.preset-canvas.no-photo .cv-card.is-none .cv-heading { color: #000; text-shadow: none; --m-sep: rgb(60 60 67 / 0.2); }
+/* a clock's date above the time (canvas item datePos 'above'; below is the default) */
+#app.preset-canvas .cv-clock.cv-date-above .clock-wrap { flex-direction: column; }
+#app.preset-canvas .cv-clock.cv-date-above .date, #app.preset-canvas .cv-date-above > .cv-date { order: -1; }
+/* square corners (canvas radius 'sq') */
+#app.preset-canvas .cv-card.r-sq { border-radius: 0; }

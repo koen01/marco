@@ -31,7 +31,8 @@ export function authUrl(req, purpose, nonce) {
   if (purpose === 'connect') {
     params.set('scope', `openid email profile ${CAL_SCOPE}`);
     params.set('access_type', 'offline');
-    params.set('prompt', 'consent');
+    // the account chooser every time, so a second (or third) Google account can be linked too
+    params.set('prompt', 'consent select_account');
   } else {
     params.set('scope', 'openid email profile');
     params.set('prompt', 'select_account');

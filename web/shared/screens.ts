@@ -14,7 +14,7 @@ export const SCREEN_SPLIT_KEYS = {
   family: ['memberIds', 'touch', 'showQr'],
 } as const;
 /** Sections that live entirely in the screen profile. */
-export const SCREEN_ONLY_KEYS = ['screen', 'layout', 'background', 'message', 'alerts', 'privacy', 'widgets'] as const;
+export const SCREEN_ONLY_KEYS = ['screen', 'layout', 'background', 'message', 'alerts', 'privacy', 'widgets', 'canvas'] as const;
 
 type AnyObj = Record<string, any>;
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));

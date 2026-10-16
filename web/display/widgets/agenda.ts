@@ -1,7 +1,7 @@
 // Agenda list view (today / tomorrow / next days) with big emojis.
 // How far it looks ahead is calendar.agendaDays (agendaFill.ts): a number of days, or 'auto', which lays every
 // candidate day out in a hidden copy of the agenda, keeps the leading day blocks that fit whole and shows those.
-import type { AgendaDays } from '../../shared/types';
+import type { AgendaDays, DisplayConfig } from '../../shared/types';
 import { agendaHorizon, agendaKeep } from '../agendaFill';
 import { addDays, diffDays, relativeDayLabel, weekdayName, keyToUTC, monthName } from '../../shared/i18n';
 import { chipColors } from '../color';
@@ -16,14 +16,21 @@ export class Agenda {
   /** Last 'auto' measurement: what was laid out (the day blocks, the box, the look) and how many blocks fit. */
   private fill: { sig: string; keep: number } | null = null;
 
-  /** `days`: a fixed number of days (the side agenda), or omitted to follow calendar.agendaDays. */
-  constructor(private root: HTMLElement, private opts: { days?: number; compact?: boolean; maxPerDay?: number }) {
+  /** The settings this agenda reads (the screen's, or a canvas item's merged over them). */
+  private readonly cfg: () => DisplayConfig;
+
+  /**
+   * `days`: a fixed number of days (the side agenda), or omitted to follow calendar.agendaDays.
+   * `cfg`: where the settings come from (default: the screen's, ctx.cfg); every read goes through it.
+   */
+  constructor(private root: HTMLElement, private opts: { days?: number; compact?: boolean; maxPerDay?: number; cfg?: () => DisplayConfig }) {
+    this.cfg = opts.cfg ?? (() => ctx.cfg);
     root.classList.add('agenda');
     if (opts.compact) root.classList.add('compact');
   }
 
   render(events: NEvent[], tick: Tick): void {
-    const setting: AgendaDays | number = this.opts.days ?? ctx.cfg.calendar.agendaDays ?? 'auto';
+    const setting: AgendaDays | number = this.opts.days ?? this.cfg().calendar.agendaDays ?? 'auto';
     const { specs, offsets } = this.days(events, tick, agendaHorizon(setting));
     let shown = specs;
     if (setting === 'auto' && specs.length) shown = specs.slice(0, this.autoKeep(specs, offsets));
@@ -74,7 +81,8 @@ export class Agenda {
 
   /** The day blocks of the next `horizon` days (Today and Tomorrow always, later days only with events). */
   private days(events: NEvent[], tick: Tick, horizon: number): { specs: Spec[]; offsets: number[] } {
-    const { cfg, lang, tz, t } = ctx;
+    const cfg = this.cfg();
+    const { lang, tz, t } = ctx;
     const c = cfg.calendar;
     const today = tick.dayKey;
     const nowMs = tick.now.getTime();

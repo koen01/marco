@@ -12,7 +12,8 @@ export const FEATURE_KEYS = Object.freeze([
   'openDisplayAccess', 'insecureTls', 'googleCalendar', 'googleLogin', 'passwordLogin', 'apiTokens',
   'webhooks', 'backups', 'importExport', 'includeSecrets', 'activity', 'setupWizard', 'status', 'accountMenu',
   'microsoftCalendar', 'updates', 'feedback', 'privacy', 'doorbell', 'doorbellLive', 'carousels', 'immich',
-  'family', 'widgets', 'webWidgets', 'priceWidgets', 'familyPhotos', 'twoFactor', 'accountSettings',
+  'family', 'widgets', 'webWidgets', 'priceWidgets', 'familyPhotos', 'twoFactor', 'accountSettings', 'screenBuilder',
+  'valueHooks', 'tokenScopes', 'stockQuotes',
 ]);
 
 /** Feature flags of a self-hosted server: all on (`updates` too: the update banner and settings), Google and
@@ -26,7 +27,11 @@ export const FEATURE_KEYS = Object.freeze([
  *  `priceWidgets` the electricity price card (server/prices.js). `familyPhotos`: profile photos of the family members
  *  (POST /api/admin/family/photos, GET /media/avatars/<id>; server/familyPhotos.js). `twoFactor`: two-step sign-in
  *  with an authenticator app for the admin (server/twofactor.js; Marco Cloud has its own on the account page).
- *  `accountSettings` (always off here): the account settings of a Marco Cloud account on the admin's account page. */
+ *  `accountSettings` (always off here): the account settings of a Marco Cloud account on the admin's account page.
+ *  `screenBuilder`: Personalizado, the screen builder (layout 'canvas', server/core/canvasCore.js). `valueHooks`:
+ *  POST /api/hooks/values and the Valor card (server/values.js); `tokenScopes`: what each API token may do
+ *  (core/valuesCore.js TOKEN_SCOPES); `stockQuotes`: the Bolsa card can get quotes (here with the owner's own Finnhub
+ *  key, saved from the card). */
 export function selfHostedFeatures() {
   const google = googleConfigured();
   const out = {};

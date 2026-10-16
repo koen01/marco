@@ -86,7 +86,10 @@ The stored config has **global** sections shared by every screen and a list of *
   "homeassistant": { "enabled": false, "url": "http://homeassistant.local:8123",    // token in secrets.json
                   "doorbell": { "camera": "", "seconds": 60, "screenIds": [], "sound": true } },
                   // doorbell: camera.* entity ('' = no picture), seconds 10..300, screenIds ([] = all; when every chosen
-                  // screen is deleted it falls back to the default screen, never to all), door chime
+                  // screen is deleted it falls back to the default screen, never to all), door chime.
+                  // cameraLanOnly: false (stored only when off) lets Cámara cards answer displays outside the home network.
+                  // Camera pictures for the doorbell and the Cámara cards come from server/haCamera.js (one shared cache
+                  // and one live stream per camera)
   "immich":     { "enabled": false, "url": "", "insecureTls": false },  // API key in secrets.json; url without /api
   "auth":       { "allowedGoogleEmails": [], "passwordLoginEnabled": true },
   "security":   { "displayAccess": "private" },     // "open" = legacy LAN mode (installs upgraded from 0.2)
@@ -297,6 +300,24 @@ flagged by a local event or a style rule (nearest occurrence per title), sorted 
   permissions) and are never framed from the display's own origin; the server answers any framed request other than
   the admin preview with a sandboxed `403` (`server/app.js frameGuard`), so a page that sends its frame back to the
   server gets nothing. Night dimming, alerts and the doorbell cover widgets; nothing shows while private.
+- Custom HTML cards (Personalizado kind `html`, self-hosted only; `web/display/widgets/canvas/html.ts`): the owner's
+  HTML and CSS with `{{placeholders}}` filled from the values the card binds (Home Assistant states by alias, the
+  time, the date, the weather, the next event). `server/core/cardTemplate.js` (the same file in the admin's editor,
+  the validation and the display) reads the HTML with a small tokenizer and writes it out again from what it read:
+  only an allowlist of elements and attributes, every value escaped, placeholders only in text and in `class`,
+  `title`, `data-*` and (behind `| num`, `| pct` or `| clamp`) `style`. Anything else is a validation error that
+  names it. The display checks the card again, and the filled HTML once more, before it builds the frame:
+  `<iframe sandbox="" srcdoc>` with a meta CSP `default-src 'none'; style-src 'unsafe-inline'; img-src data:;
+  font-src 'none'`, `pointer-events: none`, `tabindex=-1`, no referrer and no permissions. The theme comes in as CSS
+  variables (`--accent`, `--ink`, `--ink-2`, `--sep`, `--fill`, `--radius`, `--font`, `--size`); Marco draws the
+  card around the transparent frame. The document is rebuilt only when what it shows changes, at most every 2 s
+  (30 s in lite or on a slow device; a value that arrives, a new look or a new minute shows at once), and the new
+  frame replaces the old one once loaded. At most 3 per screen; Marco Cloud refuses the kind.
+- The display page (`/`, `/index.html`, `/pair`, `/d/<key>`) is sent with
+  `Content-Security-Policy: script-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none';
+  form-action 'none'; frame-ancestors 'self'` (`server/app.js displayCsp`). While some screen has a custom HTML card
+  it adds `frame-src 'self'` plus the origins of the saved web widgets (worked out once per saved config), so no
+  frame of the page can be sent anywhere else. Without one, frames stay open and web widgets behave as before.
 - Identity: `clientId` from `?client=`, else `localStorage`, else generated. `deploy/kiosk.sh` appends
   `client=<hostname>` because the kiosk runs incognito. If the server version changes, the display reloads once.
 - Access (`web/display/identity.ts`): the credential is the key in the path (`/d/<key>`), else a paired-device token
@@ -430,6 +451,17 @@ uses only its own days.
 - **Cloud**: Marco Cloud has no Immich (`features.immich` false). `validateConfig(c, { immichAvailable: false })`
   refuses a screen with the Immich source.
 - Changing the server URL drops the lists and the image cache.
+
+## Data cards
+
+Cripto, Deportes and Bolsa (Personalizado kinds `market`, `sports`, `stocks`) show numbers from CoinGecko, ESPN's
+public site API and Finnhub. `server/core/dataCore.js` holds everything that does not touch the network (the allowed
+hosts, the request paths, the readers of each answer, the refresh policy, the shared cache with its per-host gate and
+the projection a screen gets), so Marco Cloud runs the same code with its own `call`. `server/dataFeeds.js` gives it a
+fetch that only reaches those hosts, refuses redirects, caps the size and times out. Screens ask
+`GET /api/display/data` every minute and draw the cards with textContent and hand-written SVG
+(`web/display/widgets/canvas/data.ts`); crests come through `GET /api/display/data/crest/:token`. The demo works its
+numbers out from `server/core/dataFake.js` with the same code. Details and limits: docs/API.md, Data cards.
 
 ## Display access
 

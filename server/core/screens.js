@@ -5,6 +5,7 @@ import { SCREEN_SPLIT_KEYS, SCREEN_ONLY_KEYS, LOCAL_SOURCE_ID, BIRTHDAYS_SOURCE_
 import { displayPrivacy } from './privacy.js';
 import { showsFamilyQr } from './familyCore.js';
 import { carouselBlock } from './carousels.js';
+import { canvasWidgetIds, projectCanvas } from './canvasCore.js';
 
 /** Default screen profile (cfg.defaultScreen, falling back to the first one). */
 export function defaultScreen(cfg) {
@@ -106,7 +107,8 @@ export const widgetVersion = (w) => shortHash(JSON.stringify(w.type === 'prices'
 /**
  * Widgets a screen shows, in display form. `widgetSrc(w)` = what the display loads: the URL itself on a server whose
  * TVs load widgets directly (default), or a route of this server (Marco Cloud). None while private.
- * The 'widget' layout's widget comes first, with place 'full'; then the screen's placements in order.
+ * The 'widget' layout's widget comes first, with place 'full'; then the screen's placements in order; then the widgets
+ * a Personalizado screen shows ('widget' items), with place 'canvas'.
  */
 export function displayWidgets(cfg, screen, { isPrivate = false, widgetSrc = null } = {}) {
   if (isPrivate) return [];
@@ -128,6 +130,10 @@ export function displayWidgets(cfg, screen, { isPrivate = false, widgetSrc = nul
     const w = defs.get(p.widgetId);
     if (w) out.push(one(w, p.place, p.corner, p.size));
   }
+  for (const id of canvasWidgetIds(screen, { tz: cfg.datetime?.timezone || 'UTC' })) {
+    const w = defs.get(id);
+    if (w && !out.some((o) => o.id === id && o.place === 'canvas')) out.push(one(w, 'canvas', 'br', 'm'));
+  }
   return out;
 }
 
@@ -140,8 +146,9 @@ export function displayWidgets(cfg, screen, { isPrivate = false, widgetSrc = nul
  * which carousel (`target`, `carousel`) so the display can rotate through its screens.
  * `familyQr` = the family page URL (family.js familyQrUrl), or null without a family link.
  * `widgetSrc` = how the display loads widgets (displayWidgets): null = the URL itself.
+ * `canvasKinds` / `haControls` = what a Personalizado screen may show on this server (core/canvasCore.js projectCanvas).
  */
-export function displayConfig(cfg, screen, { privacy = null, carousel = null, familyQr = null, widgetSrc = null } = {}) {
+export function displayConfig(cfg, screen, { privacy = null, carousel = null, familyQr = null, widgetSrc = null, canvasKinds, haControls } = {}) {
   const f = flatView(cfg, screen);
   const priv = displayPrivacy(screen, privacy?.status, privacy?.next ?? null);
   const background = priv.active && screen.privacy?.hidePhotos && f.background.source !== 'stock' ? { ...f.background, source: 'stock' } : f.background;
@@ -166,6 +173,11 @@ export function displayConfig(cfg, screen, { privacy = null, carousel = null, fa
     privacy: priv,
     family: displayFamilyBlock(cfg, screen, priv.active, familyQr),
     widgets: displayWidgets(cfg, screen, { isPrivate: priv.active, widgetSrc }),
+    // the Personalizado layout's widgets (null on every other layout)
+    canvas: projectCanvas(screen, {
+      isPrivate: priv.active, canvasKinds, haControls, tz: cfg.datetime?.timezone || 'UTC', haOff: !cfg.homeassistant?.enabled,
+      members: (cfg.family?.members ?? []).map((m) => ({ id: m.id, calendarId: m.calendarId ?? null })),
+    }),
     // what the display is bound to: this screen, or a carousel that shows it among others
     target: carousel
       ? { id: carousel.id, kind: 'carousel', slug: carousel.slug, name: carousel.name }

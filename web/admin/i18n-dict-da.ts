@@ -4,11 +4,15 @@
 
 import { DA_TWOFA } from './i18n-dict-2fa';
 import { DA_ACCOUNT } from './i18n-dict-account';
+import { DA_BUILDER, DA_SINGULAR_BUILDER } from './i18n-dict-builder';
+import { DA_TILE } from './i18n-dict-tile';
 
 /** Every admin row but the Familia ones. */
 export const DA: Record<string, string> = {
   ...DA_TWOFA,
   ...DA_ACCOUNT,
+  ...DA_BUILDER,
+  ...DA_TILE,
   '(ninguno)': '(ingen)',
   'Estás usando la contraseña inicial. Cámbiala: hasta entonces solo se acepta desde tu red local.': 'Du bruger den første adgangskode. Skift den: indtil da godtages den kun fra dit lokale netværk.',
   'Sesiones': 'Sessioner',
@@ -2123,6 +2127,7 @@ export const DA: Record<string, string> = {
 
 /** Singular forms of the count strings (i18n-plural.ts), used by t() when vars.n === 1. */
 export const DA_SINGULAR: Record<string, string> = {
+  ...DA_SINGULAR_BUILDER,
   'Funciona: {n} eventos en los próximos meses': 'Virker: 1 begivenhed de kommende måneder',
   'Timbre enviado a {n} pantallas': 'Dørklokken er sendt til 1 skærm',
   '{n} fotos': '1 billede',

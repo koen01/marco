@@ -11,6 +11,8 @@ interface ToastItem {
   kind: ToastKind;
   text: string;
   leaving?: boolean;
+  /** a button in the toast (e.g. Deshacer) */
+  action?: { label: string; run: () => void };
 }
 
 let toasts: ToastItem[] = [];
@@ -18,9 +20,9 @@ let seq = 0;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
-export function toast(text: string, kind: ToastKind = 'ok', ms = kind === 'error' ? 6000 : 3200) {
+export function toast(text: string, kind: ToastKind = 'ok', ms = kind === 'error' ? 6000 : 3200, action?: ToastItem['action']) {
   const id = ++seq;
-  toasts = [...toasts.slice(-3), { id, kind, text }];
+  toasts = [...toasts.slice(-3), { id, kind, text, action }];
   emit();
   setTimeout(() => dismiss(id), ms);
 }
@@ -49,6 +51,19 @@ export function ToastHost() {
             <Icon name={x.kind === 'ok' ? 'check' : x.kind === 'error' ? 'alert' : 'info'} size={16} />
           </span>
           <span>{x.text}</span>
+          {x.action && (
+            <button
+              type="button"
+              class="toast__action"
+              onClick={(e) => {
+                e.stopPropagation();
+                x.action!.run();
+                dismiss(x.id);
+              }}
+            >
+              {x.action.label}
+            </button>
+          )}
         </div>
       ))}
     </div>

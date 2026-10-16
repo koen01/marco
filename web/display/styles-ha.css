@@ -1,0 +1,597 @@
+/* Home Assistant cards on Personalizado screens (widgets/canvas/ha.ts, chart.ts). State colours are tokens, with
+   light-theme and dark-ink variants, in the manner of the price card. */
+#app.preset-canvas {
+  --ha-on: #ffc94d;
+  --ha-heat: #ff9f43;
+  --ha-cool: #5ac8fa;
+  --ha-alert: #ff6b6b;
+  --ha-ok: #4cd964;
+  --ha-warn: #ffcc00;
+  --ha-off: var(--fg-3, rgb(255 255 255 / 0.45));
+  --ha-chip: rgb(255 255 255 / 0.1);
+}
+.theme-light #app.preset-canvas, #app.preset-canvas .cv-card.is-ink-dark {
+  --ha-on: #d99000;
+  --ha-heat: #e0701a;
+  --ha-cool: #0a84c6;
+  --ha-alert: #d93025;
+  --ha-ok: #1f9d3a;
+  --ha-warn: #b58900;
+  --ha-chip: rgb(0 0 0 / 0.07);
+}
+
+#app.preset-canvas .cv-ha { gap: 0.6rem; font-size: calc(1.6rem * var(--cv-scale, 1)); }
+/* tiles, rooms and players grow with their card, up to one and a half times */
+#app.preset-canvas .cv-ha-tile-card, #app.preset-canvas .cv-ha-room, #app.preset-canvas .cv-ha-media { font-size: calc(1.6rem * clamp(0.45, var(--wk, 1), calc(1.5 * var(--cv-scale, 1)))); }
+#app.preset-canvas .cv-ha-note { margin: auto; text-align: center; color: var(--fg-2); font-size: calc(1.6rem * var(--cv-scale, 1)); font-weight: 600; max-width: 30rem; }
+#app.preset-canvas .cv-ha-ico { flex: none; display: inline-flex; width: 2.6em; height: 2.6em; padding: 0.55em; box-sizing: border-box; border-radius: 50%; background: var(--ha-chip); color: var(--fg-2); }
+#app.preset-canvas .cv-ha-name, #app.preset-canvas .cv-ha-title, #app.preset-canvas .cv-ha-artist, #app.preset-canvas .cv-ha-state, #app.preset-canvas .cv-ha-ago {
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#app.preset-canvas .cv-ha-name { font-weight: 600; }
+#app.preset-canvas .cv-ha-state { color: var(--fg-2); }
+#app.preset-canvas .cv-ha-ago { color: var(--fg-3); font-size: 0.82em; }
+#app.preset-canvas .tone-on > .cv-ha-ico, #app.preset-canvas .tone-on.cv-ha-row .cv-ha-ico { color: #1c1c1e; background: var(--ha-on); }
+#app.preset-canvas .tone-heat > .cv-ha-ico, #app.preset-canvas .tone-heat.cv-ha-row .cv-ha-ico { color: #fff; background: var(--ha-heat); }
+#app.preset-canvas .tone-cool > .cv-ha-ico, #app.preset-canvas .tone-cool.cv-ha-row .cv-ha-ico { color: #fff; background: var(--ha-cool); }
+#app.preset-canvas .tone-alert > .cv-ha-ico, #app.preset-canvas .tone-alert.cv-ha-row .cv-ha-ico { color: #fff; background: var(--ha-alert); }
+#app.preset-canvas .tone-open > .cv-ha-ico, #app.preset-canvas .tone-open.cv-ha-row .cv-ha-ico { color: #fff; background: var(--ha-cool); }
+#app.preset-canvas .tone-alert .cv-ha-state { color: var(--ha-alert); font-weight: 600; }
+#app.preset-canvas .tone-na { opacity: 0.55; }
+/* the server lost Home Assistant: a small dot in the corner, the last states stay */
+#app.preset-canvas .cv-ha-down { position: absolute; top: 1rem; right: 1rem; width: 0.9rem; height: 0.9rem; border-radius: 50%; background: var(--ha-alert); box-shadow: 0 0 0 0.25rem rgb(0 0 0 / 0.25); }
+#app.preset-canvas .cv-ha.is-ha-down > :not(.cv-ha-down) { opacity: 0.7; }
+
+/* ---- tile (Entidad, widgets/canvas/haTile.ts): the icon in a soft circle of the state colour (a lit light in its own
+   colour, grey when off), the name, the state once; the rows under it. --tile-c: the state colour, --tile-ink: the
+   icon's (darker on light glass) */
+#app.preset-canvas .cv-ha { --tile-c: var(--ha-off); --tile-ink: var(--tile-c); }
+#app.preset-canvas .cv-ha[data-tone='on'] { --tile-c: var(--ha-on); }
+#app.preset-canvas .cv-ha[data-tone='heat'] { --tile-c: var(--ha-heat); }
+#app.preset-canvas .cv-ha[data-tone='cool'] { --tile-c: var(--ha-cool); }
+#app.preset-canvas .cv-ha[data-tone='alert'] { --tile-c: var(--ha-alert); }
+#app.preset-canvas .cv-ha[data-tone='open'] { --tile-c: var(--ha-cool); }
+/* a card given its own accent shows "on" in that colour instead of the amber (a switch, motion) */
+#app.preset-canvas .cv-card[style*="--accent:"] .cv-ha[data-tone='on'] { --tile-c: var(--accent); }
+.theme-light #app.preset-canvas .cv-ha, #app.preset-canvas .cv-card.is-ink-dark .cv-ha { --tile-ink: color-mix(in srgb, var(--tile-c) 72%, #000); }
+/* --cv-grow: a box larger than its named size grows the type a little (haTile.ts growToFill) */
+#app.preset-canvas .cv-ha.cv-ha-tile-card { justify-content: center; font-size: calc(1.6rem * clamp(0.45, var(--wk, 1), calc(1.5 * var(--cv-scale, 1))) * var(--cv-grow, 1)); }
+#app.preset-canvas .cv-ha-tile { display: flex; align-items: center; gap: 0.75em; min-width: 0; }
+#app.preset-canvas .cv-ha-tile .cv-ha-ico { width: 2.7em; height: 2.7em; padding: 0.58em; transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease; }
+#app.preset-canvas .cv-ha-tile:not(.tone-off):not(.tone-na) > .cv-ha-ico { background: color-mix(in srgb, var(--tile-c) 24%, transparent); color: var(--tile-ink); }
+#app.preset-canvas .cv-ha-tile-card.is-lit .cv-ha-tile > .cv-ha-ico { background: color-mix(in srgb, var(--tile-c) 30%, transparent); box-shadow: 0 0 1.4em -0.1em color-mix(in srgb, var(--tile-c) 50%, transparent); }
+/* on light glass a pale light colour would not read: the bulb glows in it, the icon dark */
+.theme-light #app.preset-canvas .cv-ha-tile-card.is-lit .cv-ha-tile > .cv-ha-ico, #app.preset-canvas .cv-card.is-ink-dark .cv-ha-tile-card.is-lit .cv-ha-tile > .cv-ha-ico { background: color-mix(in srgb, var(--tile-c) 85%, transparent); color: #1c1c1e; }
+/* a lit light: a faint glow of its colour in the corner of the card */
+#app.preset-canvas .cv-ha-tile-card.is-lit:has(> .cv-ha-tile) { background: radial-gradient(circle at 0 0, color-mix(in srgb, var(--tile-c) 16%, transparent), transparent 70%); }
+#app.preset-canvas .cv-ha-txt { display: flex; flex-direction: column; min-width: 0; gap: 0.15rem; }
+#app.preset-canvas .cv-ha-tile .cv-ha-txt { flex: 1; gap: 0.1em; }
+#app.preset-canvas .cv-ha-tile .cv-ha-name { font-size: 1.1em; line-height: 1.2; }
+#app.preset-canvas .cv-ha-tile .cv-ha-state { font-size: 0.98em; line-height: 1.25; font-variant-numeric: tabular-nums; }
+#app.preset-canvas .cv-ha-tile .cv-ha-ago { font-size: 0.8em; }
+/* the mini: the icon on top, the name and the state at the bottom */
+#app.preset-canvas .cv-ha-tile-card[data-size='xs'] { justify-content: stretch; }
+#app.preset-canvas .cv-ha-tile-card[data-size='xs'] .cv-ha-tile { flex: 1; min-height: 0; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 0.5em; }
+#app.preset-canvas .cv-ha-tile-card[data-size='xs'] .cv-ha-ico { width: 2.9em; height: 2.9em; padding: 0.62em; }
+#app.preset-canvas .cv-ha-tile-card[data-size='xs'] .cv-ha-txt { flex: none; width: 100%; }
+/* the line: the icon, the name and the state in one row */
+#app.preset-canvas .cv-ha-tile-card[data-size='row'] .cv-ha-tile { gap: 0.6em; }
+#app.preset-canvas .cv-ha-tile-card[data-size='row'] .cv-ha-ico { width: 2.2em; height: 2.2em; padding: 0.48em; }
+#app.preset-canvas .cv-ha-tile-card[data-size='row'] .cv-ha-txt { flex-direction: row; align-items: baseline; gap: 0.8em; }
+#app.preset-canvas .cv-ha-tile-card[data-size='row'] .cv-ha-name { flex: 1 1 0; font-size: 1.05em; }
+/* the state is what a line is for: it keeps its width, the name gives way */
+#app.preset-canvas .cv-ha-tile-card[data-size='row'] .cv-ha-state { flex: 0 0 auto; max-width: 62%; text-align: right; }
+/* a narrow line (haTile.ts stackLine): the name over the state, so the name is more than a letter or two */
+#app.preset-canvas .cv-ha-tile-card[data-size='row'].is-stack .cv-ha-txt { flex-direction: column; align-items: stretch; gap: 0; }
+#app.preset-canvas .cv-ha-tile-card[data-size='row'].is-stack .cv-ha-name { flex: none; }
+#app.preset-canvas .cv-ha-tile-card[data-size='row'].is-stack .cv-ha-state { max-width: 100%; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- sensor: name, the value in big type, the curve behind it */
+#app.preset-canvas .cv-ha-sensor { justify-content: space-between; gap: 0.2rem; }
+#app.preset-canvas .cv-ha-head { position: relative; z-index: 1; display: flex; align-items: center; gap: 0.8rem; min-width: 0; font-size: calc(1.5rem * clamp(0.45, var(--wk, 1), calc(1.4 * var(--cv-scale, 1)))); color: var(--fg-2); }
+#app.preset-canvas .cv-ha-head .cv-ha-ico { width: 2.2em; height: 2.2em; padding: 0.45em; }
+#app.preset-canvas .cv-ha-big { position: relative; z-index: 1; display: inline-flex; align-items: baseline; gap: 0.5rem; align-self: flex-start; white-space: nowrap; }
+#app.preset-canvas .cv-ha-big .v { font-family: var(--font-num); font-size: calc(5.6rem * var(--wk, 1)); font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+#app.preset-canvas .cv-ha-big .v.is-text { font-family: inherit; font-size: calc(3.4rem * var(--wk, 1)); letter-spacing: 0; }
+#app.preset-canvas .cv-ha-big .u { font-size: calc(2.2rem * var(--wk, 1)); color: var(--fg-2); }
+#app.preset-canvas .cv-ha-big.lv-ok .v { color: var(--ha-ok); }
+#app.preset-canvas .cv-ha-big.lv-warn .v { color: var(--ha-warn); }
+#app.preset-canvas .cv-ha-big.lv-err .v { color: var(--ha-alert); }
+#app.preset-canvas .cv-ha-big.tone-alert .v { color: var(--ha-alert); }
+#app.preset-canvas .cv-ha-sensor > .cv-ha-ago { position: relative; z-index: 1; font-size: calc(1.3rem * clamp(0.8, var(--wk, 1), calc(1.3 * var(--cv-scale, 1)))); }
+#app.preset-canvas .cv-ha-sensor[data-size='xs'] > .cv-ha-ago { display: none; }
+/* today's curve (the shared style of styles-data.css .cv-curve): behind the value over the lower part of the card, or in
+   a band of its own under it */
+#app.preset-canvas .cv-ha-sensor > .cv-ha-spark { top: auto; height: 55%; }
+#app.preset-canvas .cv-ha-sensor > .cv-ha-band { flex: 1 1 0; min-height: 0; margin: 0.4rem -0.2rem 0; }
+#app.preset-canvas .cv-ha-minmax { position: relative; z-index: 1; display: flex; gap: 1.2rem; font-size: 1.25rem; color: var(--fg-3); font-variant-numeric: tabular-nums; }
+#app.preset-canvas .cv-ha-sensor .cv-ha-minmax { position: absolute; right: 2.2rem; bottom: 1.4rem; }
+#app.preset-canvas .cv-ha-sensor[data-size='xs'] .cv-ha-minmax { display: none; }
+
+/* ---- room: a title and up to six rows */
+#app.preset-canvas .cv-ha-room { gap: 0.4rem; }
+#app.preset-canvas .cv-ha-room-title { font-size: 1.2em; font-weight: 700; margin-bottom: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.preset-canvas .cv-ha-rows { display: flex; flex-direction: column; gap: 0.2rem; min-height: 0; }
+/* a room card taller than its rows: the rows get more air (up to about twice their height), not a band of empty space under them */
+#app.preset-canvas .cv-ha-room > .cv-ha-rows { flex: 1 1 auto; }
+#app.preset-canvas .cv-ha-room > .cv-ha-rows > .cv-ha-row { flex: 1 1 auto; max-height: 4.8em; }
+#app.preset-canvas .cv-ha-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 1rem; padding: 0.55rem 0; border-bottom: 1px solid var(--m-sep, rgb(255 255 255 / 0.1)); }
+#app.preset-canvas .cv-ha-row:last-child { border-bottom: 0; }
+#app.preset-canvas .cv-ha-row .cv-ha-ico { width: 2.4em; height: 2.4em; padding: 0.5em; }
+#app.preset-canvas .cv-ha-row .cv-ha-name { font-weight: 500; }
+#app.preset-canvas .cv-ha-row .cv-ha-state { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- media: art, title, artist, volume */
+#app.preset-canvas .cv-ha-media { justify-content: center; }
+#app.preset-canvas .cv-ha-player { display: flex; align-items: center; gap: 1.4rem; min-width: 0; height: 100%; container-type: size; }
+/* the art always square: as high as the card, never more than about half its width (a box of its own) */
+#app.preset-canvas .cv-ha-art { flex: none; width: min(100cqh, 16rem, 55cqw); height: min(100cqh, 16rem, 55cqw); border-radius: 1rem; background: var(--ha-chip) center / cover no-repeat; display: flex; align-items: center; justify-content: center; color: var(--fg-3); }
+#app.preset-canvas .cv-ha-art-ico { width: 45%; height: 45%; }
+#app.preset-canvas .cv-ha-player .cv-ha-txt { flex: 1; }
+#app.preset-canvas .cv-ha-title { font-size: 1.25em; font-weight: 700; }
+#app.preset-canvas .cv-ha-artist { color: var(--fg-2); }
+#app.preset-canvas .cv-ha-player .cv-ha-state { font-size: 0.85em; color: var(--fg-3); }
+#app.preset-canvas .cv-ha-vol { position: relative; display: block; height: 0.45rem; margin-top: 0.6rem; border-radius: 1rem; background: var(--ha-chip); overflow: hidden; }
+#app.preset-canvas .cv-ha-vol i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 1rem; background: var(--fg-2); }
+#app.preset-canvas .cv-ha-player.tone-on .cv-ha-vol i { background: var(--accent, #4f8cff); }
+
+/* ---- chart */
+#app.preset-canvas .cv-ha-chart { gap: 0.3rem; }
+#app.preset-canvas .cv-ha-chart-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.4rem 1.2rem; }
+#app.preset-canvas .cv-ha-chart-period { font-size: 0.85em; color: var(--fg-3); font-weight: 600; }
+#app.preset-canvas .cv-ha-legend { display: flex; flex-wrap: wrap; gap: 0.3rem 1.4rem; min-width: 0; }
+#app.preset-canvas .cv-ha-leg { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+#app.preset-canvas .cv-ha-leg .sw { width: 0.9rem; height: 0.9rem; border-radius: 50%; }
+#app.preset-canvas .cv-ha-leg .l { color: var(--fg-2); }
+#app.preset-canvas .cv-ha-leg .now { font-variant-numeric: tabular-nums; }
+#app.preset-canvas .cv-ha-chart-svg { display: block; flex: none; overflow: visible; }
+#app.preset-canvas .cv-ha-chart-svg .grid { stroke: var(--m-sep, rgb(255 255 255 / 0.12)); stroke-width: 1; }
+#app.preset-canvas .cv-ha-chart-svg .ax { fill: var(--fg-3); font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+/* the lines and their fades in the shared style (styles-data.css .cv-curve), each series in its group's colour */
+#app.preset-canvas .cv-ha-chart-svg .bar { opacity: 0.85; }
+#app.preset-canvas .cv-ha-chart.is-bg .cv-ha-chart-svg .bar { opacity: 1; }
+#app.preset-canvas .cv-ha-chart-svg .now { fill: currentColor; }
+/* "De fondo": the chart fills the card under the heading, edge to edge (its top set in chart.ts) */
+#app.preset-canvas .cv-ha-chart-bg > .cv-ha-chart-svg { position: absolute; left: 0; bottom: 0; }
+#app.preset-canvas .cv-ha-chart .cv-ha-minmax { justify-content: flex-end; }
+#app.preset-canvas .cv-ha-chart .cv-ha-minmax { flex-wrap: wrap; row-gap: 0.2rem; }
+#app.preset-canvas .cv-ha-mm { display: inline-flex; align-items: center; gap: 1.2rem; white-space: nowrap; }
+#app.preset-canvas .cv-ha-mm .sw { width: 0.8rem; height: 0.8rem; border-radius: 50%; margin-right: -0.6rem; }
+
+/* ---- controls (widgets/ha/haui.ts ctlButton, ctlSlider, ctlChips, ring; taps in widgets/canvas/touch.ts). Touch
+   targets are at least 4.8rem; no hover states (a TV), a short press feedback instead. */
+#app.preset-canvas .cv-ctl {
+  appearance: none; border: 0; margin: 0; font: inherit; color: inherit; cursor: inherit;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4em;
+  min-height: 4.8rem; min-width: 4.8rem; padding: 0 1.4rem; box-sizing: border-box;
+  border-radius: 999px; background: var(--ha-chip); font-weight: 600; white-space: nowrap;
+  transition: transform 0.12s ease, background-color 0.2s ease;
+}
+#app.preset-canvas .cv-ctl svg { width: 2.4rem; height: 2.4rem; }
+#app.preset-canvas .cv-ctl.is-ro { min-height: 0; min-width: 0; padding: 0.4rem 1rem; }
+#app.preset-canvas button.cv-ctl:active, #app.preset-canvas .is-tap:active { transform: scale(0.95); }
+#app.preset-canvas .cv-ctl.is-on { background: var(--ha-on); color: #1c1c1e; }
+#app.preset-canvas .cv-ctl.is-armed, #app.preset-canvas .is-tap.is-armed { box-shadow: 0 0 0 0.3rem var(--ha-warn); }
+/* held down on an item that needs two taps: the ring fills in while the 0.7 s pass (touch.ts) */
+#app.preset-canvas .cv-ctl.is-holding, #app.preset-canvas .is-tap.is-holding { box-shadow: 0 0 0 0.3rem var(--ha-warn); animation: cv-ha-hold 0.7s linear; }
+@keyframes cv-ha-hold { from { box-shadow: 0 0 0 0 var(--ha-warn); } to { box-shadow: 0 0 0 0.3rem var(--ha-warn); } }
+#app.preset-canvas .is-tap { cursor: inherit; -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; transition: transform 0.12s ease; }
+/* something sent and not confirmed yet: a soft pulse */
+#app.preset-canvas .cv-ha.is-pending > :not(.cv-ha-toast) { animation: cv-ha-pulse 1.2s ease-in-out infinite; }
+@keyframes cv-ha-pulse { 50% { opacity: 0.72; } }
+html.lite #app.preset-canvas .cv-ha.is-pending > *, #app.preset-canvas.low-power .cv-ha.is-pending > * { animation: none; opacity: 0.8; }
+/* a short message on the card */
+#app.preset-canvas .cv-ha-toast {
+  position: absolute; left: 50%; top: 0.8rem; transform: translateX(-50%); z-index: 3; max-width: calc(100% - 2rem);
+  padding: 0.6rem 1.2rem; border-radius: 999px; background: rgb(28 28 30 / 0.92); color: #fff; font-size: 1.4rem; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+}
+#app.preset-canvas .cv-ha-toast.is-ask { background: var(--ha-warn); color: #1c1c1e; }
+#app.preset-canvas .cv-ha-toast.is-ok { background: var(--ha-ok); color: #fff; }
+
+/* a slider: a wide track, the fill shows the value, the number on it */
+#app.preset-canvas .cv-slider {
+  position: relative; flex: none; height: 4.8rem; border-radius: 1.4rem; background: var(--ha-chip); overflow: hidden;
+  touch-action: none; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+#app.preset-canvas .cv-slider.is-ro { height: 1rem; border-radius: 1rem; }
+#app.preset-canvas .cv-slider > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ha-on); border-radius: inherit; transition: width 0.15s ease; }
+#app.preset-canvas .cv-slider.is-ro > i { background: var(--fg-2); }
+#app.preset-canvas .cv-slider > i { overflow: hidden; }
+#app.preset-canvas .cv-slider-t { position: absolute; left: 1.4rem; top: 50%; transform: translateY(-50%); font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--fg); mix-blend-mode: normal; }
+/* the copy inside the fill, dark on the bright fill */
+#app.preset-canvas .cv-slider-t.is-on { color: #1c1c1e; }
+#app.preset-canvas .cv-slider.is-ro .cv-slider-t { display: none; }
+#app.preset-canvas .cv-chips { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+#app.preset-canvas .cv-chip { min-height: 4.8rem; padding: 0 1.2rem; font-size: 0.85em; }
+#app.preset-canvas .cv-chip.is-ro { min-height: 0; padding: 0.35rem 0.9rem; opacity: 0.75; }
+#app.preset-canvas .cv-chip.is-ro.is-on { opacity: 1; }
+#app.preset-canvas .cv-ha-ct .cv-chip::before { content: ''; width: 1rem; height: 1rem; border-radius: 50%; background: var(--chip-dot, #fff); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.25); }
+#app.preset-canvas .cv-chip.mode-heat.is-on { background: var(--ha-heat); color: #fff; }
+#app.preset-canvas .cv-chip.mode-cool.is-on { background: var(--ha-cool); color: #fff; }
+#app.preset-canvas .cv-chip.mode-off.is-on { background: var(--fg-2); color: var(--bg, #1c1c1e); }
+
+/* ---- light, switch, cover: the icon and the name on top, the controls below */
+#app.preset-canvas .cv-ha-ctl-card { justify-content: space-between; font-size: calc(1.6rem * clamp(0.45, var(--wk, 1), calc(1.5 * var(--cv-scale, 1))) * var(--cv-grow, 1)); }
+#app.preset-canvas .cv-ha-light-top { display: flex; align-items: center; gap: 1.2rem; min-width: 0; }
+#app.preset-canvas .cv-ha-light-top .cv-ha-name { font-size: 1.1em; }
+#app.preset-canvas .cv-ha-bulb { flex: none; display: inline-flex; width: 3.2em; height: 3.2em; padding: 0.6em; box-sizing: border-box; border-radius: 50%; background: var(--ha-chip); color: var(--fg-2); transition: background-color 0.3s ease, box-shadow 0.3s ease; }
+#app.preset-canvas .cv-ha-bulb.is-on { color: #1c1c1e; background: rgb(var(--glow)); box-shadow: 0 0 2.4rem 0.4rem rgb(var(--glow) / calc(0.55 * var(--glow-a, 1))); }
+#app.preset-canvas .cv-ha-ctls { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
+#app.preset-canvas .cv-ha-ctls .cv-slider { flex: 1; min-width: 0; }
+#app.preset-canvas .cv-ha-ctls .cv-ha-pill { flex: none; margin-left: auto; }
+/* the Mini too: the icon on the name's row, never on a row of its own */
+#app.preset-canvas .cv-ha-ctl-card[data-size='xs'] .cv-ha-light-top { gap: 0.7rem; }
+#app.preset-canvas .cv-ha-ctl-card[data-size='xs'] .cv-ha-light-top > .cv-ha-ico, #app.preset-canvas .cv-ha-ctl-card[data-size='xs'] .cv-ha-light-top > .cv-ha-bulb { width: 2.5em; height: 2.5em; padding: 0.55em; }
+#app.preset-canvas .cv-ha-ctl-card[data-size='xs'] .cv-ha-txt { flex: 1; min-width: 0; }
+#app.preset-canvas .cv-ha-ctl-card[data-size='xs'] .cv-ha-ctls .cv-ha-pill { margin-left: 0; width: 100%; }
+#app.preset-canvas .cv-ha-pill.is-ro { padding: 0.35rem 1rem; }
+#app.preset-canvas .cv-ha-ct { margin-top: 0.4rem; }
+#app.preset-canvas .cv-ha-ct.is-tight { gap: 0.4rem; }
+#app.preset-canvas .cv-ha-ct.is-tight .cv-chip { padding: 0 0.7rem; gap: 0.4rem; }
+#app.preset-canvas .cv-ha-light[data-size='m'] .cv-ha-bulb { width: 4.2em; height: 4.2em; padding: 0.8em; }
+#app.preset-canvas .cv-ha-light[data-size='m'] .cv-ha-light-top .cv-ha-name { font-size: 1.35em; }
+#app.preset-canvas .cv-ha-cover .cv-ha-pos { width: 100%; }
+#app.preset-canvas .cv-ha-posbar { margin: 0.4rem 0; }
+#app.preset-canvas .cv-ha-coverbtns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
+#app.preset-canvas .cv-ha-coverbtns .cv-ctl { min-width: 0; padding: 0; border-radius: 1.4rem; }
+#app.preset-canvas .cv-ha-coverbtns .cv-ctl.is-on { background: var(--ha-on); }
+/* the cover card: whole buttons that grow with the card (never under a comfortable touch size) */
+#app.preset-canvas .cv-ha-cover .cv-ha-coverbtns { flex: none; margin-top: 0.6rem; }
+#app.preset-canvas .cv-ha-cover .cv-ha-coverbtns .cv-ctl { min-height: max(4.8rem, 2.6em); }
+#app.preset-canvas .cv-ha-cover .cv-ha-coverbtns .cv-ctl svg { width: max(2.4rem, 1.5em); height: max(2.4rem, 1.5em); }
+#app.preset-canvas .cv-ha-cover .cv-ha-pos { margin-top: 0.6rem; height: max(4.8rem, 2.4em); }
+/* medium and up: the shutter and the buttons beside it fill the card under the header */
+#app.preset-canvas .cv-ha-cover[data-size='m'] { justify-content: flex-start; }
+#app.preset-canvas .cv-ha-cvbody { flex: 1 1 auto; min-height: 0; display: flex; gap: 0.8rem; margin-top: 0.8rem; }
+#app.preset-canvas .cv-ha-cvbody > .cv-ha-coverbtns { flex: 1 1 0; min-width: 0; margin: 0; grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(0, 1fr); }
+#app.preset-canvas .cv-ha-cvbody > .cv-ha-coverbtns .cv-ctl { min-height: 4.8rem; height: 100%; }
+#app.preset-canvas .cv-ha-shutter {
+  position: relative; flex: 1 1 0; min-width: 0; min-height: 4.8rem; border-radius: 1.4rem; overflow: hidden;
+  background: var(--ha-chip);
+  touch-action: none; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+#app.preset-canvas .cv-ha-slats {
+  position: absolute; left: 0; right: 0; top: 0; min-height: 0.5rem; transition: height 0.2s ease;
+  background: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--fg) 22%, transparent) 0 1.1rem, color-mix(in srgb, var(--fg) 8%, transparent) 1.1rem 1.3rem);
+  box-shadow: inset 0 -0.4rem 0 color-mix(in srgb, var(--fg) 50%, transparent);
+}
+#app.preset-canvas .cv-ha-sky { position: absolute; left: 0; right: 0; bottom: 0; transition: height 0.2s ease; background: linear-gradient(to bottom, color-mix(in srgb, var(--ha-on) 42%, transparent), color-mix(in srgb, var(--ha-on) 18%, transparent)); }
+#app.preset-canvas .cv-ha-shutter-t { position: absolute; left: 0; right: 0; bottom: 0.6em; text-align: center; font-weight: 700; font-size: 1.15em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#app.preset-canvas .cv-ha-shutter.is-ro { flex: 0 1 40%; margin: 0 auto; }
+#app.preset-canvas .cv-ha-cvbody > .cv-ha-shutter.is-ro:only-child { flex: 0 1 50%; }
+/* an Entidad card of a cover (or a valve): the position over the buttons, both a comfortable size that grows with the card */
+#app.preset-canvas .cv-ha-tile-card .cv-ha-feat.feat-position { order: -1; }
+#app.preset-canvas .cv-ha-tile-card .feat-cover .cv-ctl { min-height: 4.8rem; }
+/* the line of a cover: small up and down at its end */
+#app.preset-canvas .cv-ha-coverbtns.is-line { flex: none; display: flex; gap: 0.5rem; margin-left: auto; }
+#app.preset-canvas .cv-ha-coverbtns.is-line .cv-ctl { min-height: 0; min-width: 0; width: 2.4em; height: 2.4em; border-radius: 0.8em; }
+#app.preset-canvas .cv-ha-coverbtns.is-line .cv-ctl svg { width: 1.4em; height: 1.4em; }
+
+/* ---- climate: the ring dial with the temperature inside, −/+ beside it, the modes below */
+#app.preset-canvas .cv-ha-climate { gap: 0.5rem; }
+#app.preset-canvas .cv-ha-dial { position: relative; flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; container-type: size; }
+#app.preset-canvas .cv-ring { height: 100%; width: auto; max-width: calc(100% - 12rem); aspect-ratio: 1; overflow: visible; }
+#app.preset-canvas .cv-ring-track { fill: none; stroke: var(--ha-chip); stroke-width: 7; stroke-linecap: round; }
+#app.preset-canvas .cv-ring-arc { fill: none; stroke: var(--ha-on); stroke-width: 7; stroke-linecap: round; transition: d 0.2s ease; }
+#app.preset-canvas .tone-heat .cv-ring-arc { stroke: var(--ha-heat); }
+#app.preset-canvas .tone-cool .cv-ring-arc { stroke: var(--ha-cool); }
+#app.preset-canvas .tone-off .cv-ring-arc { stroke: var(--fg-3); }
+#app.preset-canvas .cv-ring-cur { fill: var(--fg, #fff); stroke: rgb(0 0 0 / 0.35); stroke-width: 1; }
+#app.preset-canvas .cv-ha-dial-mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; pointer-events: none; text-align: center; }
+/* sized by the ring (the dial's smaller side), so the number always sits inside it */
+#app.preset-canvas .cv-ha-cur { font-family: var(--font-num); font-size: calc(4.6rem * var(--wk, 1)); font-size: min(25cqh, calc((100cqw - 12rem) * 0.25)); font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+#app.preset-canvas .cv-ha-target { font-size: 1.05em; font-size: max(1.4rem, min(9cqh, calc((100cqw - 12rem) * 0.09))); font-weight: 700; color: var(--fg-2); font-variant-numeric: tabular-nums; }
+#app.preset-canvas .tone-heat .cv-ha-target { color: var(--ha-heat); }
+#app.preset-canvas .tone-cool .cv-ha-target { color: var(--ha-cool); }
+#app.preset-canvas .cv-ha-action { font-size: 0.8em; font-size: max(1.2rem, min(6.5cqh, calc((100cqw - 12rem) * 0.065))); color: var(--fg-3); }
+#app.preset-canvas .cv-ha-step { position: absolute; top: 50%; transform: translateY(-50%); width: 5.6rem; height: 5.6rem; padding: 0; }
+#app.preset-canvas .cv-ha-step:active { transform: translateY(-50%) scale(0.92); }
+#app.preset-canvas .cv-ha-dial-l { left: 0; }
+#app.preset-canvas .cv-ha-dial-r { right: 0; }
+#app.preset-canvas .cv-ha-modes, #app.preset-canvas .cv-ha-fans { justify-content: center; }
+#app.preset-canvas .cv-ha-climate-extra { display: flex; justify-content: center; gap: 1.2rem; color: var(--fg-2); font-size: 0.85em; }
+
+/* ---- scenes: a grid of buttons */
+#app.preset-canvas .cv-ha-scenecard { justify-content: center; }
+#app.preset-canvas .cv-ha-scenes { display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); gap: 0.8rem; height: 100%; }
+#app.preset-canvas .cv-ha-scene { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem; min-width: 0; min-height: 4.8rem; padding: 0.6rem 0.8rem; border-radius: 1.4rem; background: var(--ha-chip); text-align: center; font-size: calc(1.5rem * clamp(0.45, var(--wk, 1), calc(2.2 * var(--cv-scale, 1)))); }
+/* (a few buttons in a big box: the type may grow further than other cards', so a button is not a large empty slab) */
+#app.preset-canvas .cv-ha-scene .cv-ha-name { max-width: 100%; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; }
+#app.preset-canvas .cv-ha-scenecard[data-size='xs'] .cv-ha-scene, #app.preset-canvas .cv-ha-scenecard[data-size='s'] .cv-ha-scene { flex-direction: row; justify-content: flex-start; text-align: left; }
+#app.preset-canvas .cv-ha-scene .cv-ha-ico { width: 2.2em; height: 2.2em; padding: 0.45em; background: transparent; }
+#app.preset-canvas .cv-ha-emoji { flex: none; font-size: 1.6em; line-height: 1; }
+
+/* ---- a room row's switch, and the media player's transport */
+#app.preset-canvas .cv-ha-switch { position: relative; flex: none; width: 4.4rem; height: 2.6rem; border-radius: 999px; background: var(--ha-chip); }
+#app.preset-canvas .cv-ha-switch i { position: absolute; top: 0.3rem; left: 0.3rem; width: 2rem; height: 2rem; border-radius: 50%; background: var(--fg-2); transition: transform 0.2s ease; }
+#app.preset-canvas .cv-ha-switch.is-on { background: var(--ha-on); }
+#app.preset-canvas .cv-ha-switch.is-on i { transform: translateX(1.8rem); background: #fff; }
+#app.preset-canvas .cv-ha-row.is-tap { min-height: 4.8rem; padding-top: 0.2rem; padding-bottom: 0.2rem; }
+#app.preset-canvas .cv-ha-transport { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.4rem; }
+#app.preset-canvas .cv-ha-tr { padding: 0; }
+#app.preset-canvas .cv-ha-tr.is-main { background: var(--fg, #fff); color: var(--bg, #1c1c1e); }
+#app.preset-canvas .cv-ha-volume { margin-top: 0.6rem; }
+
+/* Cámara (widgets/canvas/camera.ts): the picture fills the card; two images swap so a new picture never flickers */
+#app.preset-canvas .cv-ha-cam { padding: 0; gap: 0; background: rgb(0 0 0 / 0.55); }
+#app.preset-canvas .cv-cam-stage { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
+#app.preset-canvas .cv-cam-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
+#app.preset-canvas .cv-cam-stage.contain .cv-cam-img { object-fit: contain; }
+#app.preset-canvas .cv-cam-img.on { opacity: 1; }
+#app.preset-canvas .cv-cam-label, #app.preset-canvas .cv-cam-live {
+  position: absolute; z-index: 1; max-width: calc(100% - 3.2rem); padding: 0.45rem 1.1rem; border-radius: 99rem;
+  background: rgb(0 0 0 / 0.55); color: #fff; font-size: calc(1.5rem * var(--cv-scale, 1)); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#app.preset-canvas .cv-cam-label { left: 1.2rem; bottom: 1.2rem; }
+#app.preset-canvas .cv-cam-live { top: 1.2rem; left: 1.2rem; display: flex; align-items: center; gap: 0.6rem; }
+#app.preset-canvas .cv-cam-live::before { content: ''; width: 0.8rem; height: 0.8rem; border-radius: 50%; background: var(--ha-alert); }
+#app.preset-canvas .cv-cam-label[hidden], #app.preset-canvas .cv-cam-live[hidden], #app.preset-canvas .cv-cam-msg[hidden] { display: none; }
+#app.preset-canvas .cv-cam-msg {
+  position: absolute; z-index: 1; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: calc(100% - 3.2rem);
+  padding: 0.7rem 1.4rem; border-radius: 1.2rem; text-align: center; color: #fff; background: rgb(0 0 0 / 0.5);
+  font-size: calc(1.6rem * var(--cv-scale, 1)); font-weight: 600;
+}
+#app.preset-canvas .cv-ha-cam:not(.has-frame) { background: none; }
+#app.preset-canvas .cv-ha-cam:not(.has-frame) .cv-cam-msg { background: none; color: var(--fg-2); }
+#app.preset-canvas .cv-ha-cam.is-nosig .cv-cam-img { filter: grayscale(1); opacity: 0.35; }
+#app.preset-canvas .cv-ha-cam.is-nosig .cv-cam-img:not(.on) { opacity: 0; }
+#app.preset-canvas .cv-ha-cam.is-gated .cv-cam-stage { opacity: 0.4; }
+
+/* ---- Entidad card rows (widgets/canvas/haTile.ts): one under a small or wide card, two under a medium one */
+#app.preset-canvas .cv-ha-tile-card.has-feats { justify-content: space-between; gap: 0.8rem; }
+#app.preset-canvas .cv-ha-feats { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+#app.preset-canvas .cv-ha-feat { display: flex; align-items: center; gap: 0.6rem; min-width: 0; font-size: 1.5rem; }
+#app.preset-canvas .cv-ha-feat > .cv-slider, #app.preset-canvas .cv-ha-feat > .cv-ha-coverbtns, #app.preset-canvas .cv-ha-feat > .cv-ha-featbar { flex: 1; min-width: 0; }
+#app.preset-canvas .cv-ha-feat > .cv-chips { flex-wrap: nowrap; overflow: hidden; min-width: 0; }
+#app.preset-canvas .cv-ha-feat .cv-chip { flex: none; }
+/* a lit light: the brightness in its own colour; off, the slider says what it is for */
+#app.preset-canvas .cv-ha-tile-card.is-lit .cv-ha-bri > i { background: var(--tile-c); }
+#app.preset-canvas .cv-ha-tile-card .cv-ha-bri[aria-valuenow='0'] .cv-slider-t { color: var(--fg-3); font-weight: 600; }
+/* the on/off switch: a wide track, the knob with the power sign on the left (off) or the right (on) */
+#app.preset-canvas .cv-ha-toggle { position: relative; flex: 1; min-width: 0; height: 4.8rem; padding: 0; border-radius: 1.4rem; background: var(--ha-chip); transition: background-color 0.25s ease; }
+#app.preset-canvas .cv-ha-toggle.is-on { background: color-mix(in srgb, var(--tile-c) 85%, transparent); }
+#app.preset-canvas .cv-ha-knob { position: absolute; top: 0.5rem; bottom: 0.5rem; left: 0.5rem; width: 42%; max-width: 9rem; display: flex; align-items: center; justify-content: center; border-radius: 1rem; background: var(--fg-2); color: var(--bg, #1c1c1e); font-style: normal; transition: left 0.25s ease, transform 0.25s ease; }
+#app.preset-canvas .cv-ha-toggle.is-on .cv-ha-knob { left: calc(100% - 0.5rem); transform: translateX(-100%); background: #fff; color: #1c1c1e; }
+#app.preset-canvas .cv-ha-knob svg { width: 2.2rem; height: 2.2rem; }
+#app.preset-canvas .cv-ha-toggle.is-ro { height: 3.2rem; min-height: 0; padding: 0; opacity: 0.85; }
+#app.preset-canvas .cv-ha-toggle.is-ro .cv-ha-knob { top: 0.4rem; bottom: 0.4rem; left: 0.4rem; border-radius: 0.8rem; }
+#app.preset-canvas .cv-ha-toggle.is-ro.is-on .cv-ha-knob { left: calc(100% - 0.4rem); }
+#app.preset-canvas .cv-ha-toggle.is-ro .cv-ha-knob svg { width: 1.6rem; height: 1.6rem; }
+#app.preset-canvas .cv-ha-coverbtns.is-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#app.preset-canvas .cv-ha-coverbtns[style*='--n'] { grid-template-columns: repeat(var(--n), minmax(0, 1fr)); }
+#app.preset-canvas .cv-ha-featbar { margin: 0.6rem 0; height: 0.8rem; }
+#app.preset-canvas .cv-ha-featbar i { background: var(--ha-on); }
+#app.preset-canvas .cv-ha-featbar.is-gauge i { background: var(--accent, #4f8cff); }
+#app.preset-canvas .cv-ha-featnote { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg-2); font-weight: 600; }
+#app.preset-canvas .cv-ha-featnote.is-new { color: var(--ha-alert); }
+#app.preset-canvas .cv-ha-stepper { display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0; }
+#app.preset-canvas .cv-ha-stepper .cv-ctl { padding: 0; flex: none; }
+#app.preset-canvas .cv-ha-sval { flex: 1; min-width: 0; text-align: center; font-family: var(--font-num); font-size: 1.25em; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#app.preset-canvas .feat-target .cv-ha-stepper + .cv-ha-stepper { margin-left: 0.6rem; }
+#app.preset-canvas .tone-heat ~ .cv-ha-feats .cv-ha-sval { color: var(--ha-heat); }
+#app.preset-canvas .tone-cool ~ .cv-ha-feats .cv-ha-sval { color: var(--ha-cool); }
+
+/* ---- Indicador (ha.gauge): the value, a bar from the minimum to the maximum with its colour bands */
+#app.preset-canvas .cv-ha-gaugebar { position: relative; z-index: 1; display: block; width: 100%; height: 1.4rem; margin-top: 0.4rem; overflow: visible; }
+#app.preset-canvas .cv-ha-gaugebar .track { fill: var(--ha-chip); }
+#app.preset-canvas .cv-ha-gaugebar .band { opacity: 0.28; }
+#app.preset-canvas .cv-ha-gaugebar .band.lv-ok, #app.preset-canvas .cv-ha-gaugebar .fill.lv-ok { fill: var(--ha-ok); }
+#app.preset-canvas .cv-ha-gaugebar .band.lv-warn, #app.preset-canvas .cv-ha-gaugebar .fill.lv-warn { fill: var(--ha-warn); }
+#app.preset-canvas .cv-ha-gaugebar .band.lv-err, #app.preset-canvas .cv-ha-gaugebar .fill.lv-err { fill: var(--ha-alert); }
+#app.preset-canvas .cv-ha-gaugebar .fill { fill: var(--accent, #4f8cff); }
+#app.preset-canvas .cv-ha-gaugeends { display: flex; justify-content: space-between; font-size: 1.2rem; color: var(--fg-3); font-variant-numeric: tabular-nums; }
+#app.preset-canvas .cv-ha-gauge[data-size='xs'] .cv-ha-gaugeends { display: none; }
+#app.preset-canvas .cv-ha-stat > .cv-ha-ago { font-weight: 600; }
+/* Home Assistant is not set up (HaSnapshot.off, canvas.haOff): a calm note with the house icon, never an error */
+#app.preset-canvas .cv-ha-off { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 0.5em; text-align: center; max-width: 32rem; padding: 0.4em; }
+#app.preset-canvas .cv-ha-off .cv-ha-ico { width: 2.8em; height: 2.8em; }
+#app.preset-canvas .cv-ha-off__t { font-weight: 600; color: var(--fg-2); }
+#app.preset-canvas .cv-ha-off__h { font-size: 0.82em; color: var(--fg-3); line-height: 1.3; }
+#app.preset-canvas .cv-ha[data-size='xs'] .cv-ha-off__h { display: none; }
+
+/* ---- fitting (widgets/canvas/ha.ts squeeze): what goes first when a card is short, then the state line; the owner's
+   "Mostrar nombre" and "Mostrar estado" */
+#app.preset-canvas .cv-ha[data-squeeze] .cv-sec1, #app.preset-canvas .cv-ha[data-squeeze='2'] .cv-sec2,
+#app.preset-canvas .cv-ha[data-squeeze='3'] .cv-sec2, #app.preset-canvas .cv-ha[data-squeeze='3'] .cv-sec3 { display: none !important; }
+#app.preset-canvas .cv-ha.no-name .cv-ha-head > .cv-ha-name, #app.preset-canvas .cv-ha.no-name .cv-ha-txt > .cv-ha-name { display: none; }
+#app.preset-canvas .cv-ha.no-state .cv-ha-txt > .cv-ha-state, #app.preset-canvas .cv-ha.no-state .cv-ha-cl-main > .cv-ha-state { display: none; }
+
+/* the switch beside a slider, or across the card alone */
+#app.preset-canvas .cv-ha-ctls .cv-ha-toggle { flex: 1 1 auto; }
+#app.preset-canvas .cv-ha-ctls .cv-slider + .cv-ha-toggle { flex: 0 0 11rem; }
+#app.preset-canvas .cv-ha-ctls .cv-ha-toggle .cv-ha-knob { max-width: 5.6rem; }
+
+/* ---- climate, small and wide: the target in big type between − and +, the state under it, on and off in the corner */
+#app.preset-canvas .cv-ha-climate .cv-ha-head { font-size: 1em; color: var(--fg); }
+#app.preset-canvas .cv-ha-climate .cv-ha-head .cv-ha-name { flex: 1; min-width: 0; font-weight: 600; }
+#app.preset-canvas .cv-ha-climate[data-tone='heat'] .cv-ha-head > .cv-ha-ico, #app.preset-canvas .cv-ha-climate[data-tone='cool'] .cv-ha-head > .cv-ha-ico,
+#app.preset-canvas .cv-ha-climate[data-tone='on'] .cv-ha-head > .cv-ha-ico { background: color-mix(in srgb, var(--tile-c) 24%, transparent); color: var(--tile-ink); }
+#app.preset-canvas .cv-ha-power { flex: none; padding: 0; border-radius: 50%; }
+#app.preset-canvas .cv-ha-power.is-on { background: color-mix(in srgb, var(--tile-c) 26%, transparent); color: var(--tile-ink); }
+#app.preset-canvas .cv-ha-cl-main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 0.2em; min-width: 0; }
+#app.preset-canvas .cv-ha-cl-mid { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; min-width: 0; }
+#app.preset-canvas .cv-ha-cl-mid .cv-ha-step { position: static; transform: none; flex: none; width: 4.8rem; height: 4.8rem; }
+#app.preset-canvas .cv-ha-cl-mid .cv-ha-step:active { transform: scale(0.92); }
+#app.preset-canvas .cv-ha-cl-big { flex: 1; min-width: 0; text-align: center; font-family: var(--font-num); font-size: 2.9em; font-weight: 600; line-height: 1.05; letter-spacing: -0.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#app.preset-canvas .cv-ha-cl-mid > .cv-ha-cl-big:only-child { text-align: left; }
+#app.preset-canvas .cv-ha-climate[data-tone='heat'] .cv-ha-cl-big { color: var(--ha-heat); }
+#app.preset-canvas .cv-ha-climate[data-tone='cool'] .cv-ha-cl-big { color: var(--ha-cool); }
+#app.preset-canvas .cv-ha-cl-main > .cv-ha-state { text-align: center; color: var(--fg-2); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.preset-canvas .cv-ha-cl-mid:has(> .cv-ha-cl-big:only-child) + .cv-ha-state { text-align: left; }
+/* the wide card: the temperature on the left, the modes on the right */
+#app.preset-canvas .cv-ha-climate.has-side .cv-ha-cl-main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 1.6rem; align-content: center; }
+#app.preset-canvas .cv-ha-climate.has-side .cv-ha-cl-mid { grid-column: 1; grid-row: 1; }
+#app.preset-canvas .cv-ha-climate.has-side .cv-ha-cl-main > .cv-ha-state { grid-column: 1; grid-row: 2; }
+#app.preset-canvas .cv-ha-climate.has-side .cv-ha-modes { grid-column: 2; grid-row: 1 / span 2; align-self: center; justify-content: flex-start; }
+/* a tall narrow box of its own: the modes under the temperature, wrapping onto a second line when they need it */
+#app.preset-canvas .cv-ha-climate.has-under .cv-ha-cl-main { gap: 0.6em; }
+#app.preset-canvas .cv-ha-climate.has-under .cv-ha-cl-mid { flex-wrap: wrap; justify-content: center; column-gap: 1.2rem; row-gap: 0.5em; }
+#app.preset-canvas .cv-ha-climate.has-under .cv-ha-cl-big { flex: 1 0 100%; order: -1; }
+#app.preset-canvas .cv-ha-climate.has-under .cv-ha-modes { flex-wrap: wrap; justify-content: center; gap: 0.4rem; margin-top: 0.4em; overflow: visible; }
+#app.preset-canvas .cv-ha-climate.has-under .cv-ha-modes .cv-chip { padding: 0 0.8rem; }
+/* the modes: one row, sliding sideways when there are more than fit */
+#app.preset-canvas .cv-ha-climate .cv-ha-modes, #app.preset-canvas .cv-ha-climate .cv-ha-fans { flex-wrap: nowrap; flex: none; overflow-x: auto; scrollbar-width: none; min-width: 0; justify-content: safe center; }
+#app.preset-canvas .cv-ha-climate .cv-ha-modes::-webkit-scrollbar, #app.preset-canvas .cv-ha-climate .cv-ha-fans::-webkit-scrollbar { display: none; }
+#app.preset-canvas .cv-ha-climate .cv-ha-modes .cv-chip, #app.preset-canvas .cv-ha-climate .cv-ha-fans .cv-chip { flex: none; }
+#app.preset-canvas .cv-ha-climate .cv-ha-dial { min-height: 6rem; }
+#app.preset-canvas .cv-ha-climate .cv-ha-climate-extra { flex: none; }
+
+/* ---- sensor: the value and today's lowest and highest beside it */
+#app.preset-canvas .cv-ha-sfoot { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: space-between; gap: 1.2rem; min-width: 0; }
+#app.preset-canvas .cv-ha-sensor .cv-ha-sfoot .cv-ha-minmax { position: static; flex: none; flex-direction: column; align-items: flex-end; gap: 0.1rem; padding-bottom: 0.3rem; text-shadow: 0 1px 2px rgb(0 0 0 / 0.25); }
+#app.preset-canvas .cv-ha-sensor .cv-ha-head .cv-ha-name { flex: 1; }
+/* on a light card dark figures need no shadow (it only blurs them) */
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)) .cv-ha-sensor .cv-ha-sfoot .cv-ha-minmax,
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none .cv-ha-sensor .cv-ha-sfoot .cv-ha-minmax { text-shadow: none; }
+
+/* ---- room: two columns of rows when one does not hold them */
+#app.preset-canvas .cv-ha-room.is-2col .cv-ha-rows { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 2rem; }
+#app.preset-canvas .cv-ha-room.is-2col .cv-ha-row:nth-last-child(2):nth-child(odd) { border-bottom: 0; }
+
+/* ---- media: the controls and the volume side by side on the wide card; the small card plays and pauses only */
+#app.preset-canvas .cv-ha-mctl { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; margin-top: 0.4rem; }
+#app.preset-canvas .cv-ha-mctl .cv-ha-transport { margin-top: 0; }
+#app.preset-canvas .cv-ha-mctl .cv-ha-volume { margin-top: 0; }
+#app.preset-canvas .cv-ha-media[data-size='w'] .cv-ha-mctl { flex-direction: row; align-items: center; gap: 1rem; }
+#app.preset-canvas .cv-ha-media[data-size='w'] .cv-ha-mctl .cv-ha-volume { flex: 1; min-width: 6rem; }
+#app.preset-canvas .cv-ha-media[data-size='s'] .cv-ha-art { width: min(100cqh, 42cqw); height: min(100cqh, 42cqw); }
+#app.preset-canvas .cv-ha-media[data-size='w'] .cv-ha-art { width: min(100cqh, 55cqw); height: min(100cqh, 55cqw); }
+/* a box as high as it is wide or higher: the art on top, the words and the buttons under it */
+#app.preset-canvas .cv-ha-media.is-stack .cv-ha-player { flex-direction: column; justify-content: center; gap: 1rem; }
+#app.preset-canvas .cv-ha-media.is-stack .cv-ha-art { width: min(52cqh, 100cqw); height: min(52cqh, 100cqw); }
+#app.preset-canvas .cv-ha-media.is-stack .cv-ha-player .cv-ha-txt { flex: none; width: 100%; align-items: center; text-align: center; }
+#app.preset-canvas .cv-ha-media.is-stack .cv-ha-player .cv-ha-txt > * { max-width: 100%; }
+#app.preset-canvas .cv-ha-media.is-stack .cv-ha-mctl { align-items: center; width: 100%; }
+#app.preset-canvas .cv-ha-media .cv-ha-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.preset-canvas .cv-ha-player .cv-ha-txt { justify-content: center; }
+#app.preset-canvas .cv-ha-light[data-tone='on'] .cv-ha-bri > i { background: var(--tile-c); }
+
+/* an active binary sensor: a soft ring that grows out of its icon now and then */
+#app.preset-canvas .cv-ha-tile.is-pulse > .cv-ha-ico { animation: cv-ha-breathe 2.8s ease-out infinite; }
+@keyframes cv-ha-breathe {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tile-c) 45%, transparent); }
+  70%, 100% { box-shadow: 0 0 0 0.7em color-mix(in srgb, var(--tile-c) 0%, transparent); }
+}
+html.lite #app.preset-canvas .cv-ha-tile.is-pulse > .cv-ha-ico, #app.preset-canvas.low-power .cv-ha-tile.is-pulse > .cv-ha-ico { animation: none; }
+.theme-light #app.preset-canvas .cv-ha-tile.is-pulse > .cv-ha-ico, #app.preset-canvas .cv-card.is-ink-dark .cv-ha-tile.is-pulse > .cv-ha-ico { background: color-mix(in srgb, var(--tile-c) 34%, transparent); }
+
+/* ---- a light's colours: two whites and six colours, the one it has now ringed */
+#app.preset-canvas .cv-ha-swatches { display: flex; flex-wrap: nowrap; gap: 0.6rem; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+#app.preset-canvas .cv-ha-swatches::-webkit-scrollbar { display: none; }
+#app.preset-canvas .cv-ha-feat > .cv-ha-swatches { flex: 1; }
+#app.preset-canvas .cv-ha .cv-swatch { flex: none; width: 4.8rem; padding: 0; border-radius: 50%; background: var(--sw); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18); }
+#app.preset-canvas .cv-ha .cv-swatch.is-ro { width: 2.6rem; height: 2.6rem; min-height: 0; }
+#app.preset-canvas .cv-ha .cv-swatch.is-on { background: var(--sw); box-shadow: inset 0 0 0 0.35rem rgb(255 255 255 / 0.9), 0 0 0 0.2rem var(--sw); }
+#app.preset-canvas .cv-ha .cv-swatch.is-armed { box-shadow: 0 0 0 0.3rem var(--ha-warn); }
+/* a light that is off: its colours look dimmed (a tap still turns it on in that colour) */
+#app.preset-canvas .cv-ha-light:is([data-tone='off'], [data-tone='na']) .cv-swatch,
+#app.preset-canvas .cv-ha-light:is([data-tone='off'], [data-tone='na']) .cv-ha-ct .cv-chip { opacity: 0.42; filter: saturate(0.55); transition: opacity 0.3s ease, filter 0.3s ease; }
+/* a box much wider than its named size: the rows go beside the header, not under it (no empty half) */
+#app.preset-canvas .cv-ha.cv-ha-tile-card.is-side.has-feats { flex-direction: row; align-items: center; justify-content: flex-start; gap: 2.4rem; }
+#app.preset-canvas .cv-ha.cv-ha-tile-card.is-side.has-feats > .cv-ha-tile { flex: 0 1 auto; min-width: 0; max-width: 48%; }
+#app.preset-canvas .cv-ha.cv-ha-tile-card.is-side.has-feats > .cv-ha-feats { flex: 1 1 0; min-width: 0; }
+/* the light card, square and medium: a bigger bulb */
+#app.preset-canvas .cv-ha-light[data-size='m'] .cv-ha-tile .cv-ha-ico, #app.preset-canvas .cv-ha-light[data-size='sq'] .cv-ha-tile .cv-ha-ico { width: 3.3em; height: 3.3em; padding: 0.7em; }
+/* the tall light card: the brightness as a ring around a big bulb that switches it */
+#app.preset-canvas .cv-ha-light[data-size='t'] { justify-content: space-between; gap: 0.6rem; }
+#app.preset-canvas .cv-ha-lring .cv-ha-dial-mid { pointer-events: none; }
+#app.preset-canvas .cv-ha-lring .cv-ha-bulb { pointer-events: auto; width: min(38cqh, calc((100cqw - 12rem) * 0.38)); height: min(38cqh, calc((100cqw - 12rem) * 0.38)); padding: 0; }
+#app.preset-canvas .cv-ha-lring .cv-ha-bulb svg { width: 60%; height: 60%; margin: auto; }
+#app.preset-canvas .cv-ha-lring .cv-ring-arc { stroke: var(--tile-c, var(--ha-on)); }
+#app.preset-canvas .cv-ha-light[data-size='t'] .cv-ha-txt .cv-ha-name { font-size: 1.15em; }
+#app.preset-canvas .cv-ha-light[data-size='t'] > .cv-ha-swatches, #app.preset-canvas .cv-ha-light[data-size='t'] > .cv-ha-ct { justify-content: safe center; flex: none; }
+/* the medium light card: the big bulb on the left, the name, the brightness and the colours on the right */
+/* the name and the rows beside the bulb as one group in the middle, never a band of empty space between them */
+#app.preset-canvas .cv-ha-light[data-size='m'].has-feats { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto minmax(0, 1fr); column-gap: 2rem; row-gap: 0; align-content: stretch; }
+#app.preset-canvas .cv-ha-light[data-size='m'].has-feats > .cv-ha-tile { display: contents; }
+#app.preset-canvas .cv-ha-light[data-size='m'].has-feats .cv-ha-tile > .cv-ha-ico { grid-column: 1; grid-row: 1 / -1; align-self: center; width: auto; height: min(100%, 10em); aspect-ratio: 1; padding: 22%; }
+#app.preset-canvas .cv-ha-light[data-size='m'].has-feats .cv-ha-tile > .cv-ha-txt { grid-column: 2; grid-row: 2; }
+#app.preset-canvas .cv-ha-light[data-size='m'].has-feats > .cv-ha-feats { grid-column: 2; grid-row: 3; margin-top: 1.4rem; }
+
+/* ---- one header for every tile-like card (the small size's: the icon on the left, the name and the state stacked
+   beside it), and the card's content kept together with it, centred in the card: never a band of empty space */
+#app.preset-canvas .cv-ha.cv-ha-tile-card.has-feats { justify-content: center; gap: 1.2rem; }
+#app.preset-canvas .cv-ha-tile-card[data-size='xs'] .cv-ha-tile { flex: none; flex-direction: row; align-items: center; justify-content: flex-start; gap: 0.6em; }
+#app.preset-canvas .cv-ha-tile-card[data-size='xs'] { justify-content: center; }
+#app.preset-canvas .cv-ha-tile-card[data-size='xs'] .cv-ha-ico { width: 2.5em; height: 2.5em; padding: 0.55em; }
+#app.preset-canvas .cv-ha-tile-card[data-size='xs'] .cv-ha-txt { flex: 1; width: auto; min-width: 0; }
+/* the name: one line ending in … while a state line is under it; two lines only when none is (the owner hid it, or
+   the card has none to say), at every size */
+#app.preset-canvas .cv-ha .cv-ha-txt:not(:has(> .cv-ha-state:not(:empty))) > .cv-ha-name,
+#app.preset-canvas .cv-ha.no-state .cv-ha-txt > .cv-ha-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* the sensor, the gauge and the statistic: the header, then the value right under it, together in the middle */
+#app.preset-canvas .cv-ha-sensor { justify-content: center; gap: 0.6rem; }
+#app.preset-canvas .cv-ha-head .cv-ha-txt { flex: 1; min-width: 0; gap: 0; }
+#app.preset-canvas .cv-ha-head .cv-ha-txt .cv-ha-ago { font-size: 0.82em; }
+/* the cards with controls: the header and the controls together in the middle */
+#app.preset-canvas .cv-ha-ctl-card:not(.cv-ha-tile-card) { justify-content: center; gap: 1rem; }
+#app.preset-canvas .cv-ha-climate .cv-ha-cl-main { flex: none; }
+#app.preset-canvas .cv-ha-climate[data-size='m'], #app.preset-canvas .cv-ha-climate[data-size='t'], #app.preset-canvas .cv-ha-light[data-size='t'] { justify-content: space-between; gap: 0.5rem; }
+#app.preset-canvas .cv-ha-statcap { font-weight: 600; color: var(--fg-2); }
+
+/* ---- light cards of the light theme: the state colours as text in a deeper shade (the fills keep theirs), the off
+   brightness hint in the secondary ink */
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)) :is(.tone-heat .cv-ha-target, .tone-heat ~ .cv-ha-feats .cv-ha-sval, .cv-ha-climate[data-tone='heat'] .cv-ha-cl-big),
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none :is(.tone-heat .cv-ha-target, .tone-heat ~ .cv-ha-feats .cv-ha-sval, .cv-ha-climate[data-tone='heat'] .cv-ha-cl-big) { color: color-mix(in srgb, var(--ha-heat) 76%, #000); }
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)) :is(.tone-cool .cv-ha-target, .tone-cool ~ .cv-ha-feats .cv-ha-sval, .cv-ha-climate[data-tone='cool'] .cv-ha-cl-big),
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none :is(.tone-cool .cv-ha-target, .tone-cool ~ .cv-ha-feats .cv-ha-sval, .cv-ha-climate[data-tone='cool'] .cv-ha-cl-big) { color: color-mix(in srgb, var(--ha-cool) 72%, #000); }
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)) :is(.cv-ha-big.lv-warn .v, .cv-dt-stale),
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none :is(.cv-ha-big.lv-warn .v, .cv-dt-stale) { color: color-mix(in srgb, var(--ha-warn) 72%, #000); }
+.theme-light #app.preset-canvas :is(.cv-card.is-glass:not(.has-own), .cv-card.is-solid:not(.has-own), .cv-card.is-ink-dark:not(.is-none)) .cv-ha-tile-card .cv-ha-bri[aria-valuenow='0'] .cv-slider-t,
+.theme-light #app#app.preset-canvas:is(.cv-fill-glass, .cv-fill-solid) > .side .cv-card.is-none .cv-ha-tile-card .cv-ha-bri[aria-valuenow='0'] .cv-slider-t { color: var(--fg-2); }
+
+/* ---- fills: calm and even on every Home Assistant card. A slider's fill, a pressed button and a bar are a soft
+   translucent layer of the card's own ink (light on dark glass, dark on light glass, so both themes and every card
+   colour read) with a faint tint: a lit light's own colour, the card's accent (barely) for the rest. A slim handle
+   ends a slider's fill and its number reads in the card's ink. Colours that say something stay (the heating ring, the
+   heat and cool modes, an alert). --ha-k: how much ink the layer takes. */
+#app.preset-canvas .cv-ha { --ha-k: 20%; --ha-tint: var(--accent, transparent); --ha-tint-k: 14%; }
+.theme-light #app.preset-canvas .cv-ha, #app.preset-canvas .cv-card.is-ink-dark .cv-ha { --ha-k: 11%; --ha-tint-k: 12%; }
+#app.preset-canvas .cv-ha-tile-card.is-lit, #app.preset-canvas .cv-ha-light[data-tone='on'] { --ha-tint: var(--tile-c); --ha-tint-k: 30%; }
+/* (on a light card less ink and a little more of the light's colour, so the fill stays clean, not grey) */
+.theme-light #app.preset-canvas :is(.cv-ha-tile-card.is-lit, .cv-ha-light[data-tone='on']), #app.preset-canvas .cv-card.is-ink-dark :is(.cv-ha-tile-card.is-lit, .cv-ha-light[data-tone='on']) { --ha-k: 5%; --ha-tint-k: 36%; }
+#app.preset-canvas .cv-ha .cv-slider > i,
+#app.preset-canvas .cv-ha .cv-slider.is-ro > i,
+#app.preset-canvas .cv-ha-tile-card.is-lit .cv-ha-bri > i,
+#app.preset-canvas .cv-ha-light[data-tone='on'] .cv-ha-bri > i {
+  background:
+    linear-gradient(color-mix(in srgb, var(--ha-tint) var(--ha-tint-k), transparent), color-mix(in srgb, var(--ha-tint) var(--ha-tint-k), transparent)),
+    color-mix(in srgb, var(--fg, #fff) var(--ha-k), transparent);
+}
+/* the handle: a short rounded line inside the end of the fill */
+#app.preset-canvas .cv-ha .cv-slider:not(.is-ro) > i::after {
+  content: ''; position: absolute; right: 0.9rem; top: 50%; width: 0.4rem; height: 38%; min-height: 1.4rem; transform: translateY(-50%);
+  border-radius: 1rem; background: color-mix(in srgb, var(--fg, #fff) 78%, transparent);
+}
+#app.preset-canvas .cv-ha .cv-slider[aria-valuenow='0'] > i::after { display: none; }
+/* the number: the card's ink on the track and on the fill alike, never smaller than reads from the sofa */
+#app.preset-canvas .cv-ha .cv-slider-t, #app.preset-canvas .cv-ha .cv-slider-t.is-on { color: var(--fg); font-size: max(2.2rem, 1em); font-weight: 650; }
+/* a thin read-only bar (a volume, a feature, a cover's position): the ink a little stronger, no colour */
+#app.preset-canvas .cv-ha .cv-ha-vol i, #app.preset-canvas .cv-ha-player.tone-on .cv-ha-vol i, #app.preset-canvas .cv-ha .cv-ha-featbar i { background: color-mix(in srgb, var(--fg, #fff) 62%, transparent); }
+/* a pressed button (a cover moving, a chosen preset): the soft layer and a hairline, the icon in the card's ink */
+#app.preset-canvas .cv-ha .cv-ctl.is-on:not(.cv-swatch):not(.cv-ha-power):not([class*='mode-']), #app.preset-canvas .cv-ha .cv-ha-coverbtns .cv-ctl.is-on {
+  background: color-mix(in srgb, var(--fg, #fff) calc(var(--ha-k) + 8%), transparent); color: var(--fg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fg, #fff) 32%, transparent);
+}
+/* an icon that is on (a cover open, a player playing): the soft circle of the tile header, not a solid disc */
+#app.preset-canvas .cv-ha .tone-on > .cv-ha-ico, #app.preset-canvas .cv-ha .tone-on.cv-ha-row .cv-ha-ico,
+#app.preset-canvas .cv-ha[data-tone='on'] .cv-ha-head > .cv-ha-ico { background: color-mix(in srgb, var(--tile-c) 22%, transparent); color: var(--tile-ink); }
+/* a cover's own colour: calm, the card's ink (a blind open is not an alarm) */
+#app.preset-canvas .cv-ha-cover[data-tone='on'] { --tile-c: color-mix(in srgb, var(--fg, #fff) 80%, transparent); }
+/* the window behind a cover: a calm daylight wash, barely tinted, under the slats */
+#app.preset-canvas .cv-ha .cv-ha-sky { background: linear-gradient(to bottom, color-mix(in srgb, var(--fg, #fff) 16%, transparent), color-mix(in srgb, var(--fg, #fff) 5%, transparent)); }
+/* switches that are on: a soft tint of their colour behind a white knob */
+#app.preset-canvas .cv-ha .cv-ha-switch.is-on { background: color-mix(in srgb, var(--ha-on) 46%, color-mix(in srgb, var(--fg, #fff) 14%, transparent)); }
+#app.preset-canvas .cv-ha .cv-ha-toggle.is-on { background: color-mix(in srgb, var(--tile-c) 40%, color-mix(in srgb, var(--fg, #fff) 12%, transparent)); }
+/* a lit bulb on a light card: its colour softer, so the card is not one loud disc */
+.theme-light #app.preset-canvas .cv-ha-tile-card.is-lit .cv-ha-tile > .cv-ha-ico, #app.preset-canvas .cv-card.is-ink-dark .cv-ha-tile-card.is-lit .cv-ha-tile > .cv-ha-ico { background: color-mix(in srgb, var(--tile-c) 62%, transparent); }
+/* ---- media: where the track is, the time so far and the time left beside a thin bar */
+#app.preset-canvas .cv-ha-prog { display: flex; align-items: center; gap: 0.7em; min-width: 0; margin-top: 0.45em; font-size: 0.72em; font-variant-numeric: tabular-nums; color: var(--fg-2); }
+#app.preset-canvas .cv-ha-prog-t { flex: none; min-width: 2.6em; font-weight: 600; }
+#app.preset-canvas .cv-ha-prog-t.is-left { text-align: right; }
+#app.preset-canvas .cv-ha-prog-bar { position: relative; flex: 1; min-width: 3rem; height: 0.32em; min-height: 0.4rem; border-radius: 1rem; background: color-mix(in srgb, var(--fg, #fff) 16%, transparent); overflow: hidden; }
+#app.preset-canvas .cv-ha-prog-bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; background: color-mix(in srgb, var(--fg, #fff) 78%, transparent); }
+#app.preset-canvas .cv-ha-media.is-stack .cv-ha-prog { width: 100%; }

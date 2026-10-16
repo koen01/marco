@@ -80,7 +80,12 @@ export function sameOrigin(url: string): boolean {
 interface Want {
   w: DisplayWidget;
   box: HTMLElement;
+  /** Personalizado: the canvas item it is drawn for (one copy per item) */
+  slot?: string;
 }
+
+/** Entry key of a wanted widget: the widget, its place and version, and the canvas item when it has one. */
+const wantKey = (x: Want) => `${x.w.id}|${x.w.place}|${x.w.v}${x.slot ? `|${x.slot}` : ''}`;
 
 export class CustomWidgets {
   private entries = new Map<string, Entry>();
@@ -94,6 +99,17 @@ export class CustomWidgets {
   private previewBlobs = new Map<string, { v: string; url: string }>();
   /** called when a widget in the side column appears or changes size (the side content is fitted again) */
   onSideChange: (() => void) | null = null;
+  /** Personalizado screens: the card each 'widget' item draws its widget in, by canvas item id (widgets/canvas.ts) */
+  private canvasBoxes = new Map<string, { widgetId: string; box: HTMLElement }>();
+
+  /** The boxes of the Personalizado layout's widget items (the next render() fills them). */
+  setCanvasBoxes(boxes: Map<string, { widgetId: string; box: HTMLElement }>): void {
+    this.canvasBoxes = new Map(boxes);
+  }
+
+  private isCanvasBox(box: Element | null): boolean {
+    return !!box && box.classList.contains('cv-media');
+  }
 
   constructor(root: ParentNode = document) {
     this.side = root.querySelector('#uw-side') as HTMLElement;
@@ -137,6 +153,14 @@ export class CustomWidgets {
     const sideOn = this.sideVisible();
     const wants: Want[] = [];
     for (const w of list) {
+      // Personalizado: its widget items, each in its card; the corner and side placements are not part of it
+      if (preset === 'canvas' || w.place === 'canvas') {
+        if (w.place !== 'canvas' || preset !== 'canvas') continue;
+        for (const [slot, c] of this.canvasBoxes) {
+          if (c.widgetId === w.id && !wants.some((x) => x.box === c.box)) wants.push({ w, box: c.box, slot });
+        }
+        continue;
+      }
       if (w.place === 'full') {
         if (preset === 'widget' && !wants.some((x) => x.box === this.full)) wants.push({ w, box: this.full });
         continue;
@@ -145,8 +169,9 @@ export class CustomWidgets {
       wants.push({ w, box: w.place === 'side' && sideOn ? this.side : this.corners[corner] });
     }
     const keep = new Set<string>();
-    for (const { w, box } of wants) {
-      const key = `${w.id}|${w.place}|${w.v}`;
+    for (const want of wants) {
+      const { w, box } = want;
+      const key = wantKey(want);
       keep.add(key);
       let e = this.entries.get(key);
       if (!e) {
@@ -165,8 +190,8 @@ export class CustomWidgets {
     }
     for (const [key, e] of this.entries) if (!keep.has(key)) this.destroy(key, e);
     // order inside each container = the order the server sent
-    for (const box of [this.side, this.full, ...Object.values(this.corners)]) {
-      const order = wants.filter((x) => x.box === box).map((x) => this.entries.get(`${x.w.id}|${x.w.place}|${x.w.v}`)!.el);
+    for (const box of [this.side, this.full, ...Object.values(this.corners), ...[...this.canvasBoxes.values()].map((c) => c.box)]) {
+      const order = wants.filter((x) => x.box === box).map((x) => this.entries.get(wantKey(x))!.el);
       order.forEach((el, i) => {
         if (box.children[i] !== el) box.insertBefore(el, box.children[i] ?? null);
       });
@@ -283,6 +308,7 @@ export class CustomWidgets {
     if (e.el.parentElement !== box) box.appendChild(e.el);
     e.el.classList.toggle('uw-in-side', box === this.side);
     e.el.classList.toggle('uw-in-full', box === this.full);
+    e.el.classList.toggle('uw-in-canvas', this.isCanvasBox(box));
     if (box === this.full) this.fullPh.remove();
   }
 
@@ -473,7 +499,7 @@ export class CustomWidgets {
     e.el.classList.add('uw-failed');
     this.halves();
     // full screen: the widget's name and "not updated" instead of an empty screen; corner / side: no space taken
-    if (e.el.parentElement === this.full) this.showNote(e, `${e.w.name} · ${ctx.t('widgetStale')}`);
+    if (e.el.parentElement === this.full || this.isCanvasBox(e.el.parentElement)) this.showNote(e, `${e.w.name} · ${ctx.t('widgetStale')}`);
   }
 
   private setStale(e: Entry, on: boolean): void {
@@ -506,10 +532,11 @@ export class CustomWidgets {
     const vw = window.innerWidth / 100;
     const vh = window.innerHeight / 100;
     const box = e.el.parentElement;
-    if (box === this.full) {
-      const cs = getComputedStyle(this.full);
-      const w = this.full.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-      const h = this.full.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    if (box === this.full || (box && this.isCanvasBox(box))) {
+      const b = box as HTMLElement;
+      const cs = getComputedStyle(b);
+      const w = b.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const h = b.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       return [Math.max(0, w), Math.max(0, h)];
     }
     if (box === this.side) return [Math.max(0, this.side.clientWidth || this.side.parentElement?.clientWidth || 0), SIDE_H[e.w.size] * vh];
@@ -542,12 +569,17 @@ export class CustomWidgets {
       const box = e.el.parentElement;
       if (!box) return;
       const [cw, ch] = this.bounds(e);
-      e.card.layout(cw, ch, box === this.full ? 'full' : box === this.side ? 'side' : 'corner');
+      // a Personalizado card draws it like the full screen when it is big enough, else like the side column
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 10;
+      const canvasPlace = cw >= rem * 70 && ch >= rem * 36 ? 'full' : 'side';
+      // a Personalizado card with its chart "De fondo" (widgets/canvas/content.ts)
+      e.card.backdrop = this.isCanvasBox(box) && box.dataset.chartStyle === 'background';
+      e.card.layout(cw, ch, box === this.full ? 'full' : this.isCanvasBox(box) ? canvasPlace : box === this.side ? 'side' : 'corner');
       return;
     }
     if (!media || !(media instanceof HTMLImageElement || media instanceof HTMLIFrameElement)) return;
     const [mw, mh] = this.bounds(e);
-    const full = e.el.parentElement === this.full;
+    const full = e.el.parentElement === this.full || this.isCanvasBox(e.el.parentElement);
     if (media instanceof HTMLIFrameElement) {
       if (full) {
         media.style.width = `${Math.round(mw)}px`;

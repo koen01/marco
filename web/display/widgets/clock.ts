@@ -1,4 +1,5 @@
 // Huge thin digital clock (seconds as superscript, digit micro-animations) or SVG analog clock.
+import type { DisplayConfig } from '../../shared/types';
 import { formatDateLine, pad2 } from '../../shared/i18n';
 import { ctx } from '../ctx';
 import { esc, reducedMotion, setHTML, setText } from '../dom';
@@ -18,8 +19,15 @@ export class Clock {
   /** minute of the last fit check: the width only changes when the digits, the layout or the font size change */
   private fitKey = '';
 
-  /** @param opts.seconds force the seconds on / off (layouts with a small or a bedside clock); default: the config */
-  constructor(private root: HTMLElement, private opts: { seconds?: boolean } = {}) {
+  /** The settings this clock reads (the screen's, or a canvas item's merged over them). */
+  private readonly cfg: () => DisplayConfig;
+
+  /**
+   * @param opts.seconds force the seconds on / off (layouts with a small or a bedside clock); default: the config
+   * @param opts.cfg where the settings come from (default: the screen's, ctx.cfg); every read goes through it
+   */
+  constructor(private root: HTMLElement, private opts: { seconds?: boolean; cfg?: () => DisplayConfig } = {}) {
+    this.cfg = opts.cfg ?? (() => ctx.cfg);
     root.classList.add('clock-wrap');
     root.innerHTML = `<div class="clock"></div><div class="date"></div>`;
     this.face = root.querySelector('.clock')!;
@@ -45,7 +53,8 @@ export class Clock {
   }
 
   private build(): void {
-    const dt = { ...ctx.cfg.datetime, showSeconds: this.opts.seconds ?? ctx.cfg.datetime.showSeconds };
+    const cfg = this.cfg();
+    const dt = { ...cfg.datetime, showSeconds: this.opts.seconds ?? cfg.datetime.showSeconds };
     const mode = `${dt.clock}|${dt.showSeconds}|${dt.format24}|${dt.showAmPm}`;
     if (mode === this.mode) return;
     this.mode = mode;
@@ -81,7 +90,7 @@ export class Clock {
   }
 
   update(tick: Tick): void {
-    const dt = ctx.cfg.datetime;
+    const dt = this.cfg().datetime;
     this.root.style.display = dt.enabled ? '' : 'none';
     if (!dt.enabled) return;
     this.build();

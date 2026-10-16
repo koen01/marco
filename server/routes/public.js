@@ -22,6 +22,8 @@ import { screenPrivacy, screenPrivacyNext } from '../privacy.js';
 import { privatizeEvents } from '../core/privacy.js';
 import { hash } from '../lib/text.js';
 import { familyQrUrl } from '../family.js';
+import { haStreamHello } from './ha.js';
+import { valuesStreamHello } from '../values.js';
 
 /** How long the display's price request waits for a first fetch of grid tariffs (its own timeout is 15 s). */
 const GRID_WAIT_MS = 5_000;
@@ -144,6 +146,13 @@ export function publicRouter({ version }) {
   r.get('/display/poll', (req, res) => res.json(pollDisplay(req)));
 
   // SSE: GET /api/stream?screen=<slug|id>&client=<clientId>[&k=<key|device token>] (docs/ARCHITECTURE.md).
-  r.get('/stream', sseHandler({ init: streamInit, hello: streamHello, onOpen: onStreamOpen, onClose: onStreamClose }));
+  r.get('/stream', sseHandler({
+    init: streamInit, hello: streamHello, onClose: onStreamClose,
+    onOpen: (client, req) => {
+      onStreamOpen(client, req);
+      haStreamHello(client);
+      valuesStreamHello(client);
+    },
+  }));
   return r;
 }

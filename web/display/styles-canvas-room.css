@@ -1,0 +1,147 @@
+/*
+ * Personalizado: cards in a box larger than any of their named sizes (a box of its own, up to the whole screen). The
+ * display grows a list's type with its box (canvas.ts fillBox); a list that still takes little of a tall box shares
+ * out its height between its rows (.is-spread), and in a tall narrow box lays a row out over two lines (.is-tall), so
+ * no card sits as a few small lines in a band of empty space. Layout only: colours live in styles-canvas.css.
+ */
+
+/* ---------------------------------------------------------------- the rows share out the height */
+#app.preset-canvas .cv-body.is-spread.cv-fam > .kf-list,
+#app.preset-canvas .cv-body.is-spread.cvf-week > .cvf-mlist,
+#app.preset-canvas .cv-body.is-spread.cv-cd > .cd-card,
+#app.preset-canvas .cv-body.is-spread.cv-todo > .todo,
+#app.preset-canvas .cv-body.is-spread.cv-todo > .todo > ul { flex: 1; min-height: 0; justify-content: space-evenly; }
+#app.preset-canvas .cv-body.is-spread.cv-todo > .todo { display: flex; flex-direction: column; }
+#app.preset-canvas .cv-body.is-spread.cvf-members > .cvf-people { flex: 1; align-content: space-evenly; }
+#app.preset-canvas .cv-body.is-spread.cv-hl > div { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; }
+
+/* ---------------------------------------------------------------- tall and narrow: a row on two lines */
+/* birthdays: the name over the day, the cake beside both */
+#app.preset-canvas .cv-body.is-tall.cvf-birthdays .cvf-bd { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 1rem; row-gap: 0.1rem; align-items: center; }
+#app.preset-canvas .cv-body.is-tall.cvf-birthdays .cvf-bd-em { grid-row: 1 / span 2; font-size: 1.5em; }
+#app.preset-canvas .cv-body.is-tall.cvf-birthdays .cvf-bd-when { grid-column: 2; text-align: left; }
+/* countdowns: as in a narrow card */
+#app.preset-canvas .cv-body.is-tall.cv-cd .cd-card .cd { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 1.4rem; row-gap: 0.2rem; }
+#app.preset-canvas .cv-body.is-tall.cv-cd .cd-card .cd-em { grid-row: 1 / span 2; }
+#app.preset-canvas .cv-body.is-tall.cv-cd .cd-card .cd-when { grid-column: 2; text-align: left; }
+/* points: the stars under the name */
+#app.preset-canvas .cv-body.is-tall.cvf-points .cvf-rank { display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: 1rem; align-items: center; border-radius: 2rem; }
+#app.preset-canvas .cv-body.is-tall.cvf-points .cvf-rank > .cvf-place, #app.preset-canvas .cv-body.is-tall.cvf-points .cvf-rank > .k-av { grid-row: 1 / span 2; }
+#app.preset-canvas .cv-body.is-tall.cvf-points .cvf-rank > .k-stars { grid-column: 3; justify-self: start; }
+/* family members: one person a row, the face beside the name, the stars and the bar */
+#app.preset-canvas .cv-body.is-tall.cvf-members .cvf-people { grid-template-columns: minmax(0, 1fr); gap: 1.6rem; }
+#app.preset-canvas .cv-body.is-tall.cvf-members .cvf-person { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 1fr repeat(3, auto) 1fr; column-gap: 1.2rem; row-gap: 0; align-items: center; justify-items: start; text-align: left; }
+#app.preset-canvas .cv-body.is-tall.cvf-members .cvf-person > .k-av { grid-row: 1 / -1; }
+#app.preset-canvas .cv-body.is-tall.cvf-members .cvf-person > :not(.k-av) { grid-column: 2; margin: 0.2rem 0; }
+#app.preset-canvas .cv-body.is-tall.cvf-members .cvf-person > .k-name { grid-row: 2; }
+#app.preset-canvas .cv-body.is-tall.cvf-members .cvf-person > .k-stars { grid-row: 3; }
+#app.preset-canvas .cv-body.is-tall.cvf-members .cvf-person > .k-progress { grid-row: 4; width: 100%; }
+#app.preset-canvas .cv-body.is-tall.cvf-members .cvf-person .k-progress { max-width: none; }
+
+/* ---------------------------------------------------------------- tiles: one per reward or meal, side by side */
+#app.preset-canvas .cv-fam.is-tiles > .kf-list { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--cvf-n, 3), minmax(0, 1fr)); gap: 1.6rem; }
+#app.preset-canvas .cv-fam.is-tiles .kf-reward,
+#app.preset-canvas .cv-fam.is-tiles .kf-meal { container-type: size; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rem; padding: 2.4rem 2rem; border-radius: 2.4rem; text-align: center; }
+#app.preset-canvas .cv-fam.is-tiles .kf-meal { background: var(--k-fill); gap: 1.4rem; }
+#app.preset-canvas .cv-fam.is-tiles .kf-reward .k-av { width: min(50cqw, 34cqh); height: min(50cqw, 34cqh); box-shadow: inset 0 0 0 min(1.8cqw, 1.2cqh) var(--kc); }
+#app.preset-canvas .cv-fam.is-tiles .kf-reward .k-av i { font-size: min(29cqw, 20cqh); }
+#app.preset-canvas .cv-fam.is-tiles .kf-reward .kf-row-main { flex: none; width: 100%; align-items: center; gap: 3cqh; }
+#app.preset-canvas .cv-fam.is-tiles .kf-reward .kf-row-top { justify-content: center; }
+#app.preset-canvas .cv-fam.is-tiles .kf-rw-t { font-size: clamp(1.8rem, min(10cqw, 7.5cqh), 6.4rem); line-height: 1.15; white-space: normal; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#app.preset-canvas .cv-fam.is-tiles .kf-reward .k-progress { width: 100%; flex-direction: column; gap: 1.5cqh; }
+#app.preset-canvas .cv-fam.is-tiles .kf-reward .k-bar { flex: none; width: 100%; height: clamp(0.9rem, 3.5cqh, 3rem); border-radius: 99rem; }
+#app.preset-canvas .cv-fam.is-tiles .kf-reward .k-frac { font-size: clamp(1.5rem, min(7cqw, 5.5cqh), 4rem); }
+#app.preset-canvas .cv-fam.is-tiles .kf-meal-em { width: min(50cqw, 35cqh); height: min(50cqw, 35cqh); border-radius: 22%; font-size: min(30cqw, 21cqh); }
+#app.preset-canvas .cv-fam.is-tiles .kf-meal-l { font-size: clamp(1.4rem, min(7.5cqw, 6cqh), 4rem); }
+/* the dish keeps room for two lines in every tile, so the icons and the labels of the tiles side by side stand at one
+   height whether a dish takes one line or two */
+#app.preset-canvas .cv-fam.is-tiles .kf-meal-t { font-size: clamp(1.9rem, min(11.5cqw, 9cqh), 7rem); line-height: 1.15; min-height: 2.3em; white-space: normal; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+
+/* ---------------------------------------------------------------- tall and narrow: words over two lines */
+#app.preset-canvas .cv-body.is-tall .kf-meal-t,
+#app.preset-canvas .cv-body.is-tall .kf-rw-t { white-space: normal; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* ---------------------------------------------------------------- the week's meals in a narrow card: a list of days */
+#app.preset-canvas .cvf-week .cvf-mlist { flex: none; gap: 1.2rem; }
+#app.preset-canvas .cvf-week .cvf-mday { flex: none; display: flex; flex-direction: column; gap: 0.4rem; padding: 0.8rem 1rem; border-radius: 1.4rem; background: var(--k-fill); }
+#app.preset-canvas .cvf-week .cvf-mday.is-today { background: rgb(var(--accent-rgb) / 0.14); }
+#app.preset-canvas .cvf-week .cvf-mday-h { display: flex; align-items: baseline; gap: 0.6rem; }
+#app.preset-canvas .cvf-week .cvf-mday-h .km-dn { font-size: 1.8rem; }
+#app.preset-canvas .cvf-week .cvf-mline { display: flex; align-items: center; gap: 0.8rem; min-width: 0; font-size: 1.7rem; font-weight: 500; line-height: 1.2; }
+#app.preset-canvas .cvf-week .cvf-mline-em { flex: none; font-family: var(--font-emoji); font-size: 1.7rem; }
+#app.preset-canvas .cvf-week .cvf-mline-t { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.preset-canvas .cvf-week .cvf-mline.is-empty { color: var(--k-ink-3); }
+
+/* ---------------------------------------------------------------- world clock: cities in columns in a wide box */
+#app.preset-canvas .cv-world.is-cols { display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); align-content: center; column-gap: calc(4rem * var(--wk, 1)); row-gap: 1.2rem; }
+
+/* ---------------------------------------------------------------- next events in a tall narrow box: the emoji on top */
+#app.preset-canvas .cv-next.is-stack .cv-next-ev { flex-direction: column; text-align: center; gap: calc(0.8rem * var(--nx, 1)); }
+#app.preset-canvas .cv-next.is-stack .cv-next-ev { width: 100%; }
+#app.preset-canvas .cv-next.is-stack .cv-next-txt { align-items: center; max-width: 100%; }
+#app.preset-canvas .cv-next.is-stack .cv-next-txt > * { max-width: 100%; }
+#app.preset-canvas .cv-next.is-stack { gap: calc(2.4rem * var(--nx, 1)); }
+
+/* ---------------------------------------------------------------- weather now: stacked in a tall narrow box, more in a big one */
+#app.preset-canvas .cv-wx-now .cv-wx-meta .is-extra { display: none; }
+#app.preset-canvas .cv-wx-now.is-big .cv-wx-meta .is-extra { display: inline-flex; }
+#app.preset-canvas .cv-wx-now.is-stack { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; row-gap: calc(1rem * var(--wk, 1)); }
+#app.preset-canvas .cv-wx-now.is-stack .cv-wx-head { flex-direction: column; }
+#app.preset-canvas .cv-wx-now.is-stack .cv-wx-side { align-items: center; max-width: 100%; }
+#app.preset-canvas .cv-wx-now.is-stack .cv-wx-meta { flex-direction: column; align-items: center; }
+#app.preset-canvas .cv-wx-now.is-stack .wx-src { text-align: center; }
+#app.preset-canvas .cv-world.is-stack { gap: calc(2rem * var(--wk, 1)); }
+#app.preset-canvas .cv-world.is-stack .cv-zone { grid-template-columns: minmax(0, 1fr) auto auto minmax(0, 1fr); grid-template-rows: auto auto; gap: 0 0.4rem; text-align: center; max-width: none; }
+#app.preset-canvas .cv-world.is-stack .cv-zone-name { grid-column: 1 / -1; }
+#app.preset-canvas .cv-world.is-stack .cv-zone-time { grid-column: 2; }
+#app.preset-canvas .cv-world.is-stack .cv-zone-off { grid-column: 3; }
+#app.preset-canvas .cv-next.is-row { flex-direction: row; align-items: center; column-gap: calc(2.4rem * var(--nx, 1)); }
+#app.preset-canvas .cv-next.is-row > .cv-next-ev { flex: 1 1 0; }
+
+/* ---------------------------------------------------------------- news in a big box: the headline and summary wrap */
+#app.preset-canvas .cv-news.is-big .news-title { white-space: normal; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
+#app.preset-canvas .cv-news.is-big .news-sum { white-space: normal; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; }
+#app.preset-canvas .cv-news.is-big .news-item { gap: 1rem; }
+
+/* ---------------------------------------------------------------- hourly weather in a tall box: the hours in rows */
+#app.preset-canvas .cv-wx-hourly.is-grid .cv-wx-hours { display: grid; grid-template-columns: repeat(var(--per, 6), minmax(0, 1fr)); row-gap: 2.4rem; align-content: center; }
+#app.preset-canvas .cv-wx-hourly.is-grid .cv-wx-hours .h { min-width: 0; }
+#app.preset-canvas .cv-body.is-spread.cv-wx-forecast.is-column .cv-wx-days { flex: 1; justify-content: space-evenly; }
+
+/* ---------------------------------------------------------------- Casa cards past their named sizes: larger type */
+#app.preset-canvas .cv-ha-tile-card[data-room], #app.preset-canvas .cv-ha-room[data-room] { font-size: calc(1.6rem * clamp(0.45, var(--wk, 1), calc(3 * var(--cv-scale, 1)))); }
+#app.preset-canvas .cv-ha-media[data-room] { font-size: calc(1.6rem * clamp(0.45, var(--wk, 1), calc(2.1 * var(--cv-scale, 1)))); }
+#app.preset-canvas .cv-ha.cv-ha-tile-card[data-room] { font-size: calc(1.6rem * clamp(0.45, var(--wk, 1), calc(3 * var(--cv-scale, 1))) * var(--cv-grow, 1)); }
+#app.preset-canvas .cv-ha-ctl-card:not(.cv-ha-cover)[data-room] { font-size: calc(1.6rem * clamp(0.45, var(--wk, 1), calc(3 * var(--cv-scale, 1))) * var(--cv-grow, 1)); }
+#app.preset-canvas .cv-ha[data-room] .cv-ha-head { font-size: calc(1.5rem * clamp(0.45, var(--wk, 1), calc(2.8 * var(--cv-scale, 1)))); }
+/* a tall tile (Entidad, Interruptor, a binary Sensor): the icon over the name and the state, in the middle */
+#app.preset-canvas .cv-ha-tile-card[data-room].is-tall { justify-content: center; }
+#app.preset-canvas .cv-ha-tile-card[data-room].is-tall .cv-ha-tile { flex: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0.7em; }
+#app.preset-canvas .cv-ha-tile-card[data-room].is-tall .cv-ha-tile .cv-ha-ico { width: 4em; height: 4em; padding: 0.85em; }
+#app.preset-canvas .cv-ha-tile-card[data-room].is-tall .cv-ha-txt { flex: none; width: 100%; align-items: center; }
+/* Escenas: the names grow with a big box */
+#app.preset-canvas .cv-ha-scenecard[data-room] .cv-ha-scene { font-size: calc(1.5rem * clamp(0.45, var(--wk, 1), calc(4 * var(--cv-scale, 1)))); }
+/* Multimedia: the art as tall as the card, up to half its width */
+#app.preset-canvas .cv-ha-media[data-room]:not(.is-stack) .cv-ha-art { width: min(100cqh, 50cqw); height: min(100cqh, 50cqw); }
+#app.preset-canvas .cv-ha-media[data-room].is-stack .cv-ha-art { width: min(60cqh, 100cqw); height: min(60cqh, 100cqw); }
+#app.preset-canvas .cv-ha-tile-card[data-room].is-tall .cv-ha-txt > * { max-width: 100%; }
+#app.preset-canvas .cv-ha-tile-card[data-room].is-tall .cv-ha-name { white-space: normal; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ---------------------------------------------------------------- points as tiles, chores in columns */
+#app.preset-canvas .cv-fam.is-tiles .cvf-rank { container-type: size; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem; padding: 2rem; border-radius: 2.4rem; text-align: center; }
+#app.preset-canvas .cv-fam.is-tiles .cvf-rank .cvf-place { width: auto; font-size: clamp(2rem, min(12cqw, 9cqh), 7rem); line-height: 1; }
+#app.preset-canvas .cv-fam.is-tiles .cvf-rank .k-av { width: min(50cqw, 32cqh); height: min(50cqw, 32cqh); }
+#app.preset-canvas .cv-fam.is-tiles .cvf-rank .k-av i { font-size: min(29cqw, 19cqh); }
+#app.preset-canvas .cv-fam.is-tiles .cvf-rank .k-name { flex: none; max-width: 100%; font-size: clamp(1.9rem, min(11cqw, 8cqh), 6.4rem); }
+#app.preset-canvas .cv-fam.is-tiles .cvf-rank .k-stars { font-size: clamp(1.5rem, min(10cqw, 7cqh), 5.6rem); }
+#app.preset-canvas .cv-fam.is-cols > .kf-list { display: grid; grid-template-columns: repeat(var(--cvf-cols, 2), minmax(0, 1fr)); column-gap: 2rem; }
+#app.preset-canvas .cvf-birthdays.is-cols > .kf-list { grid-auto-flow: column; grid-template-rows: repeat(var(--cvf-rows, 2), auto); }
+#app.preset-canvas .cv-body.is-spread.cvf-birthdays.is-cols > .kf-list { align-content: space-evenly; }
+#app.preset-canvas .cvf-meals.is-row > .kf-list { display: grid; grid-template-columns: repeat(var(--cvf-n, 3), minmax(0, 1fr)); column-gap: 2.4rem; }
+#app.preset-canvas .cv-cd.is-cols > .cd-card { display: grid; grid-auto-flow: column; grid-template-rows: repeat(var(--cd-rows, 2), auto); column-gap: 3rem; }
+#app.preset-canvas .cv-body.is-spread.cv-fam.is-cols > .kf-list { align-content: space-evenly; }
+#app.preset-canvas .cvf-members.is-grid:not(.is-tall) .cvf-people { grid-template-columns: repeat(var(--cvf-cols, 3), minmax(0, 1fr)); }
+
+/* ---------------------------------------------------------------- Deportes in a tall card: the games share its height
+   (widgets/canvas/data.ts spreadRows), each one centred in its share, the line between games where the shares meet */
+#app.preset-canvas .cv-sp.is-spread .cv-sp-list { align-content: stretch; }

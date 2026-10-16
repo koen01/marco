@@ -31,6 +31,7 @@ const FEATURE_RULES = [
   [/^\/api\/admin\/google\//, 'googleCalendar'],
   [/^\/api\/admin\/microsoft\//, 'microsoftCalendar'],
   [/^\/api\/admin\/photos/, 'gallery'],
+  [/^\/api\/admin\/values/, 'valueHooks'],
   [/^\/api\/admin\/tokens/, 'apiTokens'],
   [/^\/api\/admin\/backups/, 'backups'],
   [/^\/api\/admin\/(export|import\/)/, 'importExport'],

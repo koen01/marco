@@ -22,7 +22,12 @@ let offset = 0;
 export function setClockOffset(ms: number) {
   offset = ms;
 }
-export const now = () => new Date(Date.now() + offset);
+/** ?shot=1 with ?now=: the clock stands still at that moment (screenshots and golden fixtures). */
+let frozenAt: number | null = null;
+export function freezeClock(ms: number | null) {
+  frozenAt = ms;
+}
+export const now = () => new Date(frozenAt ?? Date.now() + offset);
 
 export function setTimezone(z: string) {
   try {

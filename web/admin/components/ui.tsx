@@ -937,10 +937,13 @@ export function Modal(props: {
   onClose: () => void;
   children: ComponentChildren;
   footer?: ComponentChildren;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  /** 'full': near the whole window (the screen builder), edge to edge on a phone */
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   icon?: IconName;
   /** the form differs from what it was opened with */
   dirty?: boolean;
+  /** what the "discard?" question says (default: the form's text) */
+  discard?: { title: string; body: string };
   /** false: do not focus the first field on open (a guide to read first; on a phone the keyboard would cover it) */
   autoFocus?: boolean;
 }) {
@@ -952,7 +955,8 @@ export function Modal(props: {
     if (asking.current) return;
     if (live.current.dirty) {
       asking.current = true;
-      const ok = await confirmDialog({ title: t('¿Descartar los cambios?'), body: t('Lo que has escrito en este formulario se perderá.'), confirm: t('Descartar'), danger: true });
+      const q = live.current.discard ?? { title: t('¿Descartar los cambios?'), body: t('Lo que has escrito en este formulario se perderá.') };
+      const ok = await confirmDialog({ title: q.title, body: q.body, confirm: t('Descartar'), danger: true });
       asking.current = false;
       if (!ok) return;
     }

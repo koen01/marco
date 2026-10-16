@@ -59,6 +59,24 @@ export class Announcements {
     return this.live.size;
   }
 
+  /** Called after announcements come or go (a Personalizado announcement card shows the newest). */
+  onChange: (() => void) | null = null;
+
+  /** The newest announcement on screen, or null. */
+  newest(): Announcement | null {
+    let best: Live | null = null;
+    for (const lv of this.live.values()) if (!best || Date.parse(lv.a.createdAt) > Date.parse(best.a.createdAt)) best = lv;
+    return best ? best.a : null;
+  }
+
+  /**
+   * A Personalizado screen with an announcement card: the settled corner toast is left out there (the card shows
+   * it), the big entrance stays.
+   */
+  setDocked(on: boolean): void {
+    this.root.classList.toggle('an-docked', on);
+  }
+
   /**
    * Announcements shown big right now (not yet settled into the corner): a carousel waits for them, but never past
    * `holdUntil` (an urgent one stays big until it expires, up to 24 h).
@@ -92,6 +110,7 @@ export class Announcements {
       known.expiresMs = expires;
       this.fill(known);
       this.arm(known);
+      this.onChange?.();
       return;
     }
     // Replayed (reconnect / page load) announcements older than a minute start compact and silent.
@@ -225,6 +244,7 @@ export class Announcements {
       l.el.classList.remove('behind');
     });
 
+    this.onChange?.();
     const urgent = big.some((l) => l.a.style === 'urgent');
     this.dim.classList.toggle('on', urgent || big.length > 0);
     this.dim.classList.toggle('urgent', urgent);

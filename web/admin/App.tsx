@@ -25,6 +25,7 @@ import { SETTINGS_INDEX } from './searchIndex';
 import { caps as currentCaps, has, hasFeature, loadCaps, type Caps } from './caps';
 import { accountNav, filterActions, filterNav, filterSettings, NAV_ITEMS, type NavMeta } from './navFilter';
 import { accountLinks, accountMode, authRedirect, logoutRedirect } from './authRedirect';
+import { pruneDrafts } from './builder/draftStore';
 import { ActivitySection } from './sections/Activity';
 import { AlertsSection } from './sections/Alerts';
 import { ApiSection } from './sections/Api';
@@ -662,6 +663,8 @@ export function App() {
       const ok = await confirmDialog({ title: t('¿Salir sin guardar?'), body: t('Tienes cambios sin guardar.'), confirm: t('Salir'), danger: true });
       if (!ok) return;
     }
+    // the builder's unsaved drafts stay in this browser only while someone is signed in
+    pruneDrafts(true);
     let res: unknown = null;
     try {
       res = await api.logout();

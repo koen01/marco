@@ -4,6 +4,7 @@
 import crypto from 'node:crypto';
 import { getSecrets, updateSecrets, flushSecrets } from './store.js';
 import { logActivity } from './activity.js';
+import { parseScopes, tokenScopes } from './core/valuesCore.js';
 
 export const MAX_TOKENS = 20;
 export const RATE_LIMIT = 30; // requests per minute per token
@@ -18,6 +19,8 @@ export const hashToken = (token) => crypto.createHash('sha256').update(String(to
 const info = (t) => ({
   id: t.id, name: t.name, prefix: t.prefix, createdAt: t.createdAt,
   lastUsedAt: t.lastUsedAt ?? null, lastUsedIp: t.lastUsedIp ?? null, useCount: t.useCount || 0,
+  // a token made before scopes existed has no field: it keeps doing everything it did ('*')
+  scopes: tokenScopes(t.scopes),
 });
 
 /** ApiTokenInfo[] (no hashes), newest first. */
@@ -28,10 +31,13 @@ export function listTokens() {
 /**
  * Create a token. Returns { token, info } or { error, status }.
  * @param {string} name 1..60 chars
+ * @param {{ req?: object, scopes?: string[] }} [opts] scopes: core/valuesCore.js TOKEN_SCOPES or '*' (the default)
  */
-export function createToken(name, { req } = {}) {
+export function createToken(name, { req, scopes } = {}) {
   const n = typeof name === 'string' ? name.replace(/\s+/g, ' ').trim() : '';
   if (!n || n.length > 60) return { error: 'name must be 1-60 characters', status: 400 };
+  const sc = parseScopes(scopes);
+  if (sc.error) return { error: sc.error, status: 400 };
   if (getSecrets().apiTokens.length >= MAX_TOKENS) return { error: `max ${MAX_TOKENS} tokens`, status: 409 };
   const token = `cs_${crypto.randomBytes(24).toString('base64url')}`;
   const t = {
@@ -43,10 +49,25 @@ export function createToken(name, { req } = {}) {
     lastUsedAt: null,
     lastUsedIp: null,
     useCount: 0,
+    scopes: sc.scopes,
   };
   updateSecrets((s) => { s.apiTokens.push(t); });
-  logActivity('token.created', { req, data: { id: t.id, name: t.name, prefix: t.prefix } });
+  logActivity('token.created', { req, data: { id: t.id, name: t.name, prefix: t.prefix, scopes: t.scopes } });
   return { token, info: info(t) };
+}
+
+/** Change what a token may do. Returns { info } or { error, status }. */
+export function setTokenScopes(id, scopes, { req } = {}) {
+  const t = getSecrets().apiTokens.find((x) => x.id === id);
+  if (!t) return { error: 'not found', status: 404 };
+  const sc = parseScopes(scopes);
+  if (sc.error) return { error: sc.error, status: 400 };
+  updateSecrets((s) => {
+    const x = s.apiTokens.find((y) => y.id === id);
+    if (x) x.scopes = sc.scopes;
+  });
+  logActivity('token.scopes', { req, data: { id: t.id, name: t.name, prefix: t.prefix, scopes: sc.scopes } });
+  return { info: info(getSecrets().apiTokens.find((x) => x.id === id)) };
 }
 
 /** Revoke a token by id. Returns true when it existed. */

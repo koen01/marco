@@ -5,6 +5,7 @@ import { requireAuth, changePasswordHandler } from '../auth.js';
 import * as google from '../google.js';
 import * as microsoft from '../microsoft.js';
 import * as ha from '../homeassistant.js';
+import { homeAssistantTokenChanged } from '../haService.js';
 import * as immich from '../immich.js';
 import { IMMICH_KEY_RE, immichKeyStatus } from '../core/immichCore.js';
 import { testIcs, sourceStatus } from '../calendars.js';
@@ -153,10 +154,11 @@ export function adminRouter({ onConfigSaved } = {}) {
     if (url && !isHttpUrl(url)) return res.json({ ok: false, error: 'invalid URL' });
     res.json(await ha.testConnection({ url, token }));
   }));
+  // ?domain=sensor or a comma list (domain=light,switch); grouped by area in the builder (homeassistant.js)
   r.get('/homeassistant/entities', wrap(async (req, res) => {
-    const domain = /^[a-z_]+$/.test(req.query.domain || '') ? req.query.domain : '';
+    const domains = String(req.query.domain || '').split(',').map((d) => d.trim()).filter((d) => /^[a-z_]{1,40}$/.test(d)).slice(0, 30);
     try {
-      res.json(await ha.listEntities(domain));
+      res.json(await ha.listEntities(domains));
     } catch (err) {
       res.status(502).json({ error: err.message });
     }
@@ -164,7 +166,15 @@ export function adminRouter({ onConfigSaved } = {}) {
   r.put('/homeassistant/token', (req, res) => {
     const token = req.body?.token;
     if (typeof token !== 'string' || token.length > 1000) return res.status(400).json({ error: 'token must be a string' });
-    updateSecrets((s) => { s.homeassistant.token = token.trim(); });
+    // the token is tied to the URL it is saved for (the one typed next to it, else the saved one): it is only ever
+    // sent there (homeassistant.js tokenForOtherUrl)
+    const url = req.body?.url;
+    if (url !== undefined && url !== '' && (typeof url !== 'string' || url.length > 500 || !isHttpUrl(url))) return res.status(400).json({ error: 'invalid URL' });
+    updateSecrets((s) => {
+      s.homeassistant.token = token.trim();
+      s.homeassistant.url = ha.norm(url || getConfig().homeassistant.url);
+    });
+    homeAssistantTokenChanged();
     res.json({ ok: true });
   });
 

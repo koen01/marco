@@ -2,7 +2,9 @@
 //
 // Node's global fetch (undici) does not expose a per-request TLS agent without the `undici` package,
 // which is not installed (we avoid extra deps on the Pi). When `insecureTls` is set we fall back to
-// node:https with `rejectUnauthorized: false` for that request only. Redirects are followed (max 5).
+// node:https with `rejectUnauthorized: false` for that request only. Redirects are followed (max 5), unless the
+// caller passes `redirect: 'error'` (every Home Assistant call does: a redirect would carry the bearer token to
+// another host), on both paths.
 //
 // SSRF: URLs configured in the admin (calendars, RSS, Home Assistant) are fetched from the server, on purpose
 // including LAN addresses (Nextcloud, Home Assistant…). Unauthenticated callers (the setup wizard's test button)
@@ -26,6 +28,8 @@ export class HttpError extends Error {
 }
 
 const blockedError = () => Object.assign(new HttpError('Address not allowed', 0), { blocked: true });
+/** A redirect the caller asked not to follow (`redirect: 'error'`). */
+const redirectError = (status) => Object.assign(new HttpError('Redirect not allowed (use the final URL)', status || 0), { redirect: true });
 
 /** dns.lookup that refuses blocked addresses (used as the socket's lookup, so there is no check/use race). */
 function guardedLookup(hostname, options, cb) {
@@ -51,21 +55,27 @@ export function normalizeUrl(url) {
  */
 export async function request(url, opts = {}) {
   const { method = 'GET', headers = {}, body, timeout = DEFAULT_TIMEOUT, insecureTls = false, throwOnError = true, guard = false } = opts;
+  const noRedirect = opts.redirect === 'error';
   url = normalizeUrl(url);
   let res;
   if (guard) {
     try {
-      res = await nodeRequest(url, { method, headers, body, timeout, insecure: false, guard: true, deadline: Date.now() + timeout });
+      res = await nodeRequest(url, { method, headers, body, timeout, insecure: false, guard: true, noRedirect, deadline: Date.now() + timeout });
     } catch (err) {
-      throw err?.blocked ? blockedError() : new HttpError(/^Timeout/.test(err?.message) ? err.message : 'Could not connect', 0);
+      throw err?.blocked ? blockedError() : err?.redirect ? err : new HttpError(/^Timeout/.test(err?.message) ? err.message : 'Could not connect', 0);
     }
   } else if (insecureTls && url.startsWith('https:')) {
-    res = await nodeRequest(url, { method, headers, body, timeout, insecure: true, deadline: Date.now() + timeout });
+    res = await nodeRequest(url, { method, headers, body, timeout, insecure: true, noRedirect, deadline: Date.now() + timeout });
   } else {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeout);
     try {
-      const r = await fetch(url, { method, headers, body, signal: ctrl.signal, redirect: 'follow' });
+      // 'manual': the redirect answer itself comes back (never followed) and is refused below
+      const r = await fetch(url, { method, headers, body, signal: ctrl.signal, redirect: noRedirect ? 'manual' : 'follow' });
+      if (noRedirect && (r.type === 'opaqueredirect' || (r.status >= 300 && r.status < 400))) {
+        r.body?.cancel().catch(() => {});
+        throw redirectError(r.status);
+      }
       const text = await readCapped(r);
       res = { status: r.status, ok: r.ok, headers: Object.fromEntries(r.headers), text };
     } catch (err) {
@@ -119,7 +129,7 @@ function describeNetError(err) {
   return err.message || String(err);
 }
 
-function nodeRequest(url, { method, headers, body, timeout, insecure, guard = false, deadline }, redirects = 0) {
+function nodeRequest(url, { method, headers, body, timeout, insecure, guard = false, noRedirect = false, deadline }, redirects = 0) {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
     if (guard && (!['http:', 'https:'].includes(u.protocol) || blockedFetchHost(u.hostname))) return reject(blockedError());
@@ -144,6 +154,13 @@ function nodeRequest(url, { method, headers, body, timeout, insecure, guard = fa
         ...(guard ? { lookup: guardedLookup } : {}),
       },
       (res) => {
+        if (noRedirect && res.statusCode >= 300 && res.statusCode < 400) {
+          res.resume();
+          const e = redirectError(res.statusCode);
+          req.destroy();
+          done(reject, e);
+          return;
+        }
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && redirects < 5) {
           res.resume();
           const next = new URL(res.headers.location, u).toString();

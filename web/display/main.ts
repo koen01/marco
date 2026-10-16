@@ -8,6 +8,10 @@ import './styles-views.css';
 import './styles-modern.css';
 import './styles-planner.css';
 import './styles-kids.css';
+import './styles-canvas.css';
+import './styles-ha.css';
+import './styles-data.css';
+import './styles-canvas-room.css';
 import type {
   Announcement, CountdownsResponse, DisplayConfig, EventsResponse, FamilyDisplayState, Lang, NewsResponse, NightCommand, Photo, PhotosResponse, PlannerBar, StreamHello, WeatherResponse,
 } from '../shared/types';
@@ -22,7 +26,7 @@ import {
 } from './identity';
 import { CarouselController, type Bundle, type BundlePart } from './carousel';
 import { ScreenSwitcher, type SwitchGL } from './screenSwitch';
-import { isLowPower, planSwitch, type SwitchInfo, type SwitchPlan } from './switchPlan';
+import { isArmDesktop, isArmLinuxUA, isLowPower, isLowPowerGPU, planSwitch, type SwitchInfo, type SwitchPlan } from './switchPlan';
 import { $ } from './dom';
 import { type NEvent, normalizeEvents } from './eventModel';
 import type { AmbientLayer } from './gl/ambientLayer';
@@ -38,7 +42,7 @@ import {
 import { loadCache, loadScreenCache, on, saveCache, saveScreenCache, set, setConfigOverlay, state } from './store';
 import { detectLiveMode, startConfigPoll, startPoll, type StreamHandlers } from './live';
 import { connectStream, pollUrl } from './stream';
-import { current, onTick, setClockOffset, setTimezone, startTicker, type Tick } from './time';
+import { current, freezeClock, onTick, setClockOffset, setTimezone, startTicker, type Tick } from './time';
 import { Agenda } from './widgets/agenda';
 import { agendaFetchDays } from './agendaFill';
 import { Announcements, IdentifyOverlay, ScheduleBanners, serverNow, setServerNow } from './widgets/alerts';
@@ -52,7 +56,7 @@ import { renderMessage, renderTodo } from './widgets/extras';
 import { Highlights } from './widgets/highlights';
 import { News } from './widgets/news';
 import { Photos, photoStats, type SlideshowPosition } from './widgets/photos';
-import { calendarSheetAlpha, glassVars, normalizeGlass, photoOnWholeScreen } from '../shared/glass';
+import { calendarSheetAlpha, effectiveBackground, glassVars, normalizeGlass, photoOnWholeScreen } from '../shared/glass';
 import { Weather } from './widgets/weather';
 import { VIEW_PRESETS, Views } from './widgets/views';
 import { checkSetup, showWelcome, waitForSetup } from './widgets/welcome';
@@ -62,6 +66,14 @@ import { healthOnce, loadEmojiWebFont } from './health';
 import { isKidsPreset, Kids, withToggle } from './widgets/kids';
 import { refreshMarquee } from './marquee';
 import { CustomWidgets } from './widgets/custom';
+import { Canvas, sidebarSide } from './widgets/canvas';
+import { HaFeed } from './haFeed';
+import { ValuesFeed } from './valuesFeed';
+import { DataFeed } from './dataFeed';
+import { demoData } from './mockData';
+import { demoValues } from './mockCanvas';
+import { HaTouch } from './widgets/canvas/touch';
+import { CANVAS_KINDS, canvasEventsNeed, SIDEBAR_SHARE } from '../../server/core/canvasCore.js';
 
 const params = ctx.params;
 if (isWidgetOnly) document.documentElement.classList.add('widget-only');
@@ -74,6 +86,8 @@ const nowParam = params.get('now');
 if (nowParam) {
   const target = Date.parse(nowParam);
   if (Number.isFinite(target)) setClockOffset(target - Date.now());
+  // &shot=1 (or &shot=<fixture> of a demo layout): the clock stands still there (screenshots, golden fixtures)
+  if (Number.isFinite(target) && params.has('shot') && params.get('shot') !== '0') freezeClock(target);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -84,7 +98,8 @@ const photoArea = $('.photo-area');
 const sideEl = $('.side');
 const mainEl = $('.main');
 const clock = new Clock($('#clock'));
-const highlights = new Highlights($('#highlights'));
+// the pills under the date: screen.highlights off ("Avisos bajo la fecha") hides them
+const highlights = new Highlights($('#highlights'), { shown: () => ctx.cfg.screen.highlights !== false });
 const weather = new Weather($('#weather'));
 const calendar = new MonthCalendar($('#calendar'));
 const agenda = new Agenda($('#agenda'), {}); // days: calendar.agendaDays
@@ -113,6 +128,41 @@ const doorbell = new DoorbellOverlay($('#doorbell'), doorbellFrames, (on) => {
 const views = new Views($('#view'));
 const kids = new Kids($('#kids'), (id, done) => toggleChore(id, done));
 const custom = new CustomWidgets();
+// Home Assistant states of the Personalizado cards (haFeed.ts): pushed as the SSE `ha` event, asked for on changes
+const haFeed = new HaFeed(() => {
+  syncHaTouch();
+  canvasView.onData('ha');
+});
+// values pushed by POST /api/hooks/values for the Valor cards (valuesFeed.ts): the SSE `values` event, asked for on
+// changes and every 30 s on the poll channel
+const valuesFeed = new ValuesFeed(() => canvasView.onData('values'));
+// numbers of the data cards (market, sports, stocks; dataFeed.ts): asked of this server every minute while one shows
+const dataFeed = new DataFeed(() => canvasView.onData('data'));
+// taps on the Home Assistant controls (widgets/canvas/touch.ts): only on a screen that allows them, online, not
+// private, never in the admin's preview (a click there would switch a real light)
+haFeed.gate = () => (state.online || state.demo) && !state.config?.privacy?.active && !isPreview;
+const haTouch = new HaTouch([$('#canvas'), $('#canvas-side')], haFeed, {
+  dimmed: () => nightNow,
+  wake: wakeFromTap,
+});
+function syncHaTouch(): void {
+  haTouch.set(canvasView.active && haFeed.touch());
+}
+// Personalizado (layout 'canvas'): the owner's widgets on a grid (widgets/canvas.ts)
+const canvasView = new Canvas($('#canvas'), $('#canvas-side'), {
+  events: () => eventsNormalized(),
+  low: () => canvasLow(),
+  photoArea: () => photoArea,
+  media: (boxes) => custom.setCanvasBoxes(boxes),
+  // the family cards get what the kids layouts get, with the same rules (familyShown, toggleChore)
+  family: () => familyShown(current()),
+  toggleChore: (id, done) => toggleChore(id, done),
+  announcement: () => announcements.newest(),
+  ha: haFeed,
+  values: valuesFeed,
+  data: dataFeed,
+});
+announcements.onChange = () => canvasView.onData('announcements');
 let sideFitT: ReturnType<typeof setTimeout> | null = null;
 custom.onSideChange = () => {
   if (sideFitT) clearTimeout(sideFitT);
@@ -237,6 +287,8 @@ const PRESETS = [
   'widget',
   // kids layouts (widgets/kids.ts): Modern style only
   'kidsRoutines', 'kidsFamily', 'kidsMeals',
+  // Personalizado (widgets/canvas.ts): Modern style only
+  'canvas',
 ];
 /** Newer layouts built on an older one's frame: they also get its class, so its rules (and the Modern ones) apply. */
 const PRESET_BASE: Record<string, string> = { today: 'bigCalendar', twoWeeks: 'bigCalendar', people: 'topBottom', board: 'topBottom' };
@@ -262,6 +314,9 @@ function effectivePreset(cfg: DisplayConfig): string {
   if (!PRESETS.includes(p)) return 'bigCalendar';
   // the kids layouts are drawn with the Modern style only: Classic shows the big calendar
   if (isKidsPreset(p) && cfg.screen.style !== 'modern') return 'bigCalendar';
+  // Personalizado is a Modern design; a server that sends no canvas (older, or ?preset=canvas on another screen) has
+  // nothing to lay out
+  if (p === 'canvas' && (cfg.screen.style !== 'modern' || !cfg.canvas)) return 'bigCalendar';
   return p;
 }
 
@@ -282,7 +337,9 @@ function applyLayout(): void {
   app.className = [
     // kept until revealApp() fades the screen in (with the Modern style over a photo, once the photo is there)
     app.classList.contains('booting') ? 'booting' : '',
-    `preset-${preset}`, `side-${side === 'right' ? 'right' : 'left'}`, portrait ? 'portrait' : 'landscape',
+    `preset-${preset}`,
+    // Personalizado lays its own frame out: the orientation and side rules of the other layouts must not reach its cards
+    ...(preset === 'canvas' ? [portrait ? 'cv-portrait' : 'cv-landscape'] : [`side-${side === 'right' ? 'right' : 'left'}`, portrait ? 'portrait' : 'landscape']),
     cfg.background.enabled ? 'has-photo' : 'no-photo',
     // background.scope 'screen': the photo behind the whole screen, the calendar over it as glass
     photoOnWholeScreen(cfg.background, preset) ? 'bg-screen' : '',
@@ -290,7 +347,18 @@ function applyLayout(): void {
     // planner on a landscape screen with the clock and the weather in a strip (styles-planner.css)
     bar !== 'side' ? `pbar pbar-${bar}` : '',
     preset === 'photoFrame' ? `corner-${['tl', 'tr', 'bl', 'br'].includes(corner) ? corner : 'br'}` : '',
+    // Personalizado: where its sidebar is on this orientation, how it is filled, and the background
+    ...(preset === 'canvas' && cfg.canvas
+      ? [`cv-side-${sidebarSide(cfg.canvas, portrait)}`, `cv-fill-${cfg.canvas.sidebar.fill}`, `cv-bg-${cfg.canvas.background}`, `cv-scrim-${cfg.canvas.scrim ?? 'uniform'}`]
+      : []),
   ].filter(Boolean).join(' ');
+  if (preset === 'canvas' && cfg.canvas) {
+    const share = SIDEBAR_SHARE[cfg.canvas.sidebar.size] ?? SIDEBAR_SHARE.normal;
+    app.style.setProperty('--cv-side', `${(share * 100).toFixed(2)}%`);
+    app.style.setProperty('--cv-dim', String(cfg.canvas.dim ?? 0.15));
+    if (cfg.canvas.background === 'solid' && cfg.canvas.color) app.style.setProperty('--cv-bg', cfg.canvas.color);
+    else app.style.removeProperty('--cv-bg');
+  } else for (const k of ['--cv-side', '--cv-dim', '--cv-bg']) app.style.removeProperty(k);
   app.classList.toggle('has-view', VIEW_PRESETS.includes(preset));
   app.classList.toggle('is-kids', isKidsPreset(preset));
   views.setPreset(preset);
@@ -317,9 +385,12 @@ function applyGlass(): void {
   }
   const g = glassVars(cfg.screen.glass, cfg.background.enabled ? photoStats : null, { lite, hasPhoto: cfg.background.enabled });
   for (const [k, v] of Object.entries(g.vars)) root.style.setProperty(k, v);
-  root.classList.toggle('glass-ink-dark', g.inkDark);
+  // Personalizado: each card works out its own ink (widgets/canvas.ts look()), so the screen's would only leak into
+  // the rows inside the cards
+  const canvas = effectivePreset(cfg) === 'canvas';
+  root.classList.toggle('glass-ink-dark', g.inkDark && !canvas);
   root.classList.toggle('glass-no-edge', !g.edge);
-  root.classList.toggle('glass-thin', g.thin);
+  root.classList.toggle('glass-thin', g.thin && !canvas);
 }
 window.addEventListener('marco:photo-tone', () => applyGlass());
 
@@ -341,6 +412,9 @@ function applyConfig(raw: DisplayConfig): void {
   if (pt === 'light' || pt === 'dark') cfg.screen.theme = pt;
   const ps = params.get('style');
   if (ps === 'classic' || ps === 'modern') cfg.screen.style = ps;
+  // ?highlights=0|1 (the pills under the date: next event, happening now, birthdays, check-in/out)
+  const phl = params.get('highlights');
+  if (phl === '0' || phl === '1') cfg.screen.highlights = phl === '1';
   // glass previews: ?glass=clear|tinted|auto &glassOpacity=0..1 &glassBlur=0..40 &glassTint=dark|light|photo &glassEdge=0|1
   const gq = (k: string) => params.get(k);
   if (gq('glass') || gq('glassOpacity') || gq('glassBlur') || gq('glassTint') || gq('glassEdge')) {
@@ -403,6 +477,12 @@ function applyConfig(raw: DisplayConfig): void {
     cfg.calendar.weeks = 2;
     cfg.calendar.maxEventsPerDay = Math.max(cfg.calendar.maxEventsPerDay, 8);
   }
+  // Personalizado: its own background (canvas.background): the photo behind the whole screen or in the sidebar only,
+  // the animated backdrop, or a plain colour. The saved screen.background (source, interval, ...) still applies.
+  if (effectivePreset(cfg) === 'canvas' && cfg.canvas) {
+    cfg.background = effectiveBackground(cfg.background, cfg.canvas);
+    if (cfg.canvas.background !== 'ambient') cfg.background.ambient = 'none';
+  }
   // Bedside: a dark room, no photo and no animated background. The kids layouts: the same pastel page everywhere,
   // unless the photo goes behind the whole screen (background.scope 'screen'), with the page over it as glass.
   if (effectivePreset(cfg) === 'bedside' || (isKidsPreset(effectivePreset(cfg)) && !photoOnWholeScreen(cfg.background, effectivePreset(cfg)))) {
@@ -451,7 +531,7 @@ function applyConfig(raw: DisplayConfig): void {
   // WebGL needs
   const preset = effectivePreset(cfg);
   // a photo behind the whole screen leaves no room for the animated backdrop
-  const wantAmbient = !lite && !photoOnWholeScreen(cfg.background, preset) && cfg.background.ambient !== 'none' && ['bigCalendar', 'agenda', 'topBottom', 'today', 'twoWeeks', 'people', 'planner', 'widget'].includes(preset);
+  const wantAmbient = !lite && !photoOnWholeScreen(cfg.background, preset) && cfg.background.ambient !== 'none' && ['bigCalendar', 'agenda', 'topBottom', 'today', 'twoWeeks', 'people', 'planner', 'widget', 'canvas'].includes(preset);
   const wantGLPhoto = !lite && cfg.background.enabled && cfg.background.transition === 'webgl';
   if ((wantAmbient || wantGLPhoto) && !engine && !glFailed) {
     void initGL().then(() => {
@@ -527,6 +607,8 @@ function renderCalendar(tick: Tick): void {
   const preset = effectivePreset(cfg);
   renderView(tick);
   renderKids(tick);
+  // Personalizado draws its own calendars (widgets/canvas.ts)
+  if (preset === 'canvas') return;
   if (!cfg.calendar.enabled) return;
   // layouts with their own view (today, people, …) do not show the month grid / agenda
   if (VIEW_PRESETS.includes(preset)) {
@@ -541,6 +623,22 @@ function renderCalendar(tick: Tick): void {
   if (preset === 'leftRight' || preset === 'bigTime') sideAgenda.render(evs, tick);
   highlights.render(evs, tick);
   refreshMarquee();
+}
+
+/** Personalizado: lay its widgets out (nothing, and its cards removed, on any other layout). */
+function renderCanvas(): void {
+  const cfg = ctx.cfg;
+  const on = effectivePreset(cfg) === 'canvas';
+  syncLowPower();
+  if (on) {
+    probeGPU();
+    canvasView.render(cfg, isPortrait(cfg));
+  }
+  else if (canvasView.active) canvasView.destroy();
+  syncHaTouch();
+  // an announcement card shows the announcement once it settles: no corner toast as well
+  // (only when that card is laid out in this orientation)
+  announcements.setDocked(on && canvasView.shows('announcement'));
 }
 
 /** Content of the layouts with their own view (no-op for the others). */
@@ -559,12 +657,13 @@ function kidsTouch(): boolean {
 /** Last time the family data was asked for again because it was from another day. */
 let staleFamilyAsk = 0;
 
-/** The kids layouts (no-op for the others). */
-function renderKids(tick: Tick): void {
-  if (!kids.active) return;
+/**
+ * The family data as the kids layouts and the Personalizado family cards show it, and whether taps check routines
+ * off now. Data of another day (offline boot from the cache, a missed fetch at midnight): yesterday's ticks must not
+ * show as today's. Nothing is done yet, taps wait for today's data, which is asked for (at most once a minute).
+ */
+function familyShown(tick: Tick): { state: FamilyDisplayState | null; touch: boolean } {
   let fam = ctx.cfg.family?.enabled ? state.family : null;
-  // Data of another day (offline boot from the cache, a missed fetch at midnight): yesterday's ticks must not show
-  // as today's. Nothing is done yet, taps wait for today's data, which is asked for (at most once a minute).
   const stale = !!fam && !state.demo && fam.today !== tick.dayKey;
   if (stale && fam) {
     fam = { ...fam, touch: false, chores: fam.chores.map((c) => ({ ...c, done: false })), members: fam.members.map((m) => ({ ...m, done: 0 })) };
@@ -573,7 +672,14 @@ function renderKids(tick: Tick): void {
       void fetchFamily();
     }
   }
-  kids.render({ family: fam, events: ctx.cfg.calendar.enabled ? eventsNormalized() : [], weather: state.weather, touch: kidsTouch() && !stale }, tick);
+  return { state: fam, touch: kidsTouch() && !stale && !!fam?.touch };
+}
+
+/** The kids layouts (no-op for the others). */
+function renderKids(tick: Tick): void {
+  if (!kids.active) return;
+  const { state: fam, touch } = familyShown(tick);
+  kids.render({ family: fam, events: ctx.cfg.calendar.enabled ? eventsNormalized() : [], weather: state.weather, touch }, tick);
 }
 
 function renderCountdowns(tick: Tick): void {
@@ -589,7 +695,7 @@ function renderCountdowns(tick: Tick): void {
 }
 
 function renderWeather(tick: Tick): void {
-  weather.render(state.weather, tick.dayKey);
+  if (effectivePreset(ctx.cfg) !== 'canvas') weather.render(state.weather, tick.dayKey);
   const p = effectivePreset(ctx.cfg);
   if (p === 'photoFrame' || p === 'bedside') renderView(tick);
   renderKids(tick);
@@ -605,9 +711,11 @@ function renderWeather(tick: Tick): void {
 function renderAll(): void {
   const tick = current();
   clock.update(tick);
+  renderCanvas();
   renderCalendar(tick);
   renderWeather(tick);
-  news.setData(state.news);
+  // the side ticker of the other layouts stops on a Personalizado screen (its own news cards rotate)
+  news.setData(effectivePreset(ctx.cfg) === 'canvas' ? null : state.news);
   renderMessage($('#message'));
   renderTodo($('#todo'));
   renderCountdowns(tick);
@@ -740,6 +848,23 @@ function hmToMin(s: string): number {
 let nightOverride: NightCommand = 'auto';
 let overrideBase: boolean | null = null;
 let nightNow = false;
+// a tap on a dimmed Personalizado screen with controls lifts the dimming for a minute (each tap while lifted starts the
+// minute again); the first tap only wakes it (widgets/canvas/touch.ts)
+const WAKE_MS = 60_000;
+let wakeUntil = 0;
+let wakeTimer: ReturnType<typeof setTimeout> | null = null;
+
+function wakeFromTap(): void {
+  // a tap on a screen that is not dimmed and was not woken: nothing to do
+  if (!nightNow && Date.now() >= wakeUntil) return;
+  wakeUntil = Date.now() + WAKE_MS;
+  if (wakeTimer) clearTimeout(wakeTimer);
+  wakeTimer = setTimeout(() => {
+    wakeTimer = null;
+    updateNight(current());
+  }, WAKE_MS + 50);
+  updateNight(current());
+}
 
 function autoNight(tick: Tick, nm = ctx.cfg.screen.nightMode): boolean {
   let on = false;
@@ -775,7 +900,7 @@ function updateNight(tick: Tick): void {
     overrideBase = null;
     heartbeat.soon();
   }
-  const on = nightOverride === 'on' ? true : nightOverride === 'off' ? false : auto;
+  const on = (nightOverride === 'on' ? true : nightOverride === 'off' ? false : auto) && Date.now() >= wakeUntil;
   nightNow = on;
   const dim = Number.isFinite(nm.dim) ? nm.dim : 0.35;
   night.style.opacity = on ? String(Math.min(0.95, Math.max(0, 1 - dim))) : '0';
@@ -788,7 +913,13 @@ function setOnline(ok: boolean): void {
   const was = state.online;
   set('online', ok);
   // offline: routines are plain rows (a tap could not reach the server)
-  if (was !== ok && kids.active) renderKids(current());
+  if (was !== ok) {
+    if (kids.active) renderKids(current());
+    // the Personalizado family cards too (their taps follow the same rule), and the Home Assistant controls
+    canvasView.onData('family');
+    syncHaTouch();
+    canvasView.onData('ha');
+  }
   statusDot.classList.toggle('show', !ok && !state.demo);
 }
 
@@ -904,6 +1035,11 @@ function eventsRange(cfg: DisplayConfig = ctx.cfg): [string, string] {
     const agendaTo = addDays(today, agendaFetchDays(cfg.calendar.agendaDays));
     if (agendaTo > to) to = agendaTo;
   }
+  // Personalizado: as far as its calendars look ahead (canvasCore.js canvasEventsNeed, at most 6 weeks)
+  if (effectivePreset(cfg) === 'canvas' && cfg.canvas) {
+    const canvasTo = addDays(today, canvasEventsNeed(cfg.canvas));
+    if (canvasTo > to) to = canvasTo;
+  }
   return [from, to];
 }
 
@@ -1013,7 +1149,12 @@ let familyTaken = 0;
 const familyPending = new Map<string, { done: boolean; n: number }>();
 let familyTaps = 0;
 
-const wantsFamily = () => !!state.config && isKidsPreset(effectivePreset(ctx.cfg)) && !!ctx.cfg.family?.enabled;
+/** A kids layout, or a Personalizado screen with a family card (canvasCore: kinds with `family`), and Familia on. */
+const wantsFamily = () => {
+  if (!state.config || !ctx.cfg.family?.enabled) return false;
+  const p = effectivePreset(ctx.cfg);
+  return isKidsPreset(p) || (p === 'canvas' && !!ctx.cfg.canvas?.items.some((it) => !it.disabled && CANVAS_KINDS[it.kind]?.family));
+};
 
 /** The answer to request `seq` for screen `sid`: kept unless a newer request was answered first, with the taps on top. */
 function takeFamily(sid: string, seq: number, r: FamilyDisplayState): void {
@@ -1053,7 +1194,7 @@ function syncFamily(c: DisplayConfig): void {
     familyTaken = 0;
     familyPending.clear();
   }
-  const sig = `${id}|${c.revision}|${effectivePreset(ctx.cfg)}|${c.privacy?.active ? 1 : 0}|${JSON.stringify(c.family ?? null)}`;
+  const sig = `${id}|${c.revision}|${effectivePreset(ctx.cfg)}|${wantsFamily() ? 1 : 0}|${c.privacy?.active ? 1 : 0}|${JSON.stringify(c.family ?? null)}`;
   if (sig === familySig) return;
   familySig = sig;
   void fetchFamily();
@@ -1130,12 +1271,17 @@ const photoSigOf = (b: { enabled: boolean; source: string; stockTopic: string; o
   `${b.enabled}|${b.source}|${b.stockTopic}|${b.order ?? 'random'}|${(b.immich?.albumIds ?? []).join(',')}|${b.immich?.favoritesOnly ? 1 : 0}`;
 on('config', (s) => {
   if (!s.config) return;
+  // before the cards are drawn, so a new Home Assistant card asks for its states with this screen's config
+  haFeed.config(s.config);
+  valuesFeed.config(s.config);
+  dataFeed.config(s.config);
   applyConfig(s.config);
   const priv = s.config.privacy;
   const privSig = priv?.active ? 'on' : 'off';
   const privChanged = privateSig !== '' && privSig !== privateSig;
   privateSig = privSig;
   applyPrivacy(priv);
+  armCanvasSchedule(s.config.canvas?.next);
   // photo source changed in the admin → fetch a fresh list right away; privacy mode with "hide photos" also
   // replaces the photo on screen at once
   const sig = photoSigOf(ctx.cfg.background);
@@ -1307,9 +1453,85 @@ const switchGL = (): SwitchGL | null => {
 const switcher = new ScreenSwitcher(app, switchGL);
 // the new screen sits still now: measure its titles again (they were off screen or moving during the switch)
 switcher.onDone = refreshMarquee;
-/** ?lite=1, ?lowpower=1 or very little memory: every switch is a short fade of #app (a Raspberry Pi gets the real one). */
-const lowPower = lite || params.get('lowpower') === '1'
+/**
+ * ?lite=1, ?lowpower=1 or very little memory: every carousel switch is a short fade of #app. A Raspberry Pi gets the
+ * real animation (it copes), so this does not ask the board or the GPU.
+ */
+const switchLight = lite || params.get('lowpower') === '1'
   || isLowPower((navigator as { deviceMemory?: number }).deviceMemory, navigator.hardwareConcurrency);
+/** The Personalizado low-power look (no blur, no flip): the above, or a Raspberry Pi and the like. */
+let lowPower = switchLight || isArmLinuxUA(navigator.userAgent);
+/** Recent Chromium says "Linux x86_64" on ARM too: ask the client hints and the GPU name. */
+function detectLowPower(): void {
+  if (lowPower) return;
+  const uad = (navigator as { userAgentData?: { mobile?: boolean; platform?: string; getHighEntropyValues?: (h: string[]) => Promise<{ architecture?: string }> } }).userAgentData;
+  void uad?.getHighEntropyValues?.(['architecture']).then(
+    (v) => {
+      if (isArmDesktop(v.architecture, uad.platform, uad.mobile)) setLowPower();
+    },
+    () => undefined,
+  );
+}
+detectLowPower();
+/** The GL renderer name, read once the engine runs (no extra context just for this). */
+let gpuChecked = false;
+function checkGPU(): void {
+  if (lowPower || gpuChecked || !engine) return;
+  gpuChecked = true;
+  try {
+    const gl = engine.renderer.getContext();
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const name = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+    if (isLowPowerGPU(String(name ?? ''))) setLowPower();
+  } catch { /* no name: keep what we know */ }
+}
+
+/** Detection found a slow device after the screen was drawn: the Personalizado look follows at once. */
+function setLowPower(): void {
+  if (lowPower) return;
+  lowPower = true;
+  syncLowPower();
+}
+
+/**
+ * Personalizado's low-power look: lite, a slow device, or canvas.perf 'low' on this screen (no blur, no flip, no
+ * seconds hand). ?blur=1 lifts it (not lite).
+ */
+function canvasLow(): boolean {
+  if (lite) return true;
+  if (params.get('blur') === '1') return false;
+  return lowPower || ctx.cfg?.canvas?.perf === 'low';
+}
+
+/** .low-power on <html> while a Personalizado screen is on and canvasLow(); applied again whenever either changes. */
+function syncLowPower(): void {
+  const on = !!ctx.cfg && effectivePreset(ctx.cfg) === 'canvas' && !!ctx.cfg.canvas && canvasLow();
+  const root = document.documentElement;
+  if (root.classList.contains('low-power') === on) return;
+  root.classList.toggle('low-power', on);
+  canvasView.lowChanged();
+}
+
+/**
+ * A Personalizado screen with a plain or animated background starts no GL engine, so the GPU name would never be
+ * read (and over plain http:// on a Pi or a Fire TV the client hints are missing too): ask a throwaway 1×1 WebGL
+ * context once, then let it go.
+ */
+function probeGPU(): void {
+  if (lowPower || gpuChecked || lite) return;
+  if (engine) return checkGPU();
+  gpuChecked = true;
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 1;
+    const gl = (c.getContext('webgl') ?? c.getContext('experimental-webgl')) as WebGLRenderingContext | null;
+    if (!gl) return;
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const name = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    if (isLowPowerGPU(String(name ?? ''))) setLowPower();
+  } catch { /* no WebGL: keep what we know */ }
+}
 
 /** Carousel screens with other photos: where each slideshow was when its screen left (by photo settings). */
 const photoSpots = new Map<string, { photos: PhotosResponse; at: SlideshowPosition }>();
@@ -1390,7 +1612,7 @@ function showScreen(id: string, b: Bundle, sw: SwitchInfo): void {
   const go = () => {
     if (getActiveScreen() !== id) return; // another switch came meanwhile
     // ?tr=<name> forces one animation and ?trSpeed= its speed (filming, the admin's "Probar")
-    plan = planSwitch(sw, { reduced: reducedMotion(), lowPower, gl: !!dissolve && !!engine, force: params.get('tr'), forceSpeed: params.get('trSpeed') });
+    plan = planSwitch(sw, { reduced: reducedMotion(), lowPower: switchLight, gl: !!dissolve && !!engine, force: params.get('tr'), forceSpeed: params.get('trSpeed') });
     switcher.switch(plan, apply);
   };
   if (!start || !b.config) return go();
@@ -1418,25 +1640,48 @@ function applyPrivacy(p: DisplayConfig['privacy']): void {
   const ms = Math.min(Math.max(Math.min(...at) - Date.now() + 3000, 3000), 24 * 3600_000);
   privacyTimer = setTimeout(() => refreshForPrivacy(), ms);
 }
+// Personalizado: a card with a schedule ("Horario") appears or goes when its window starts or ends. The server sends
+// only the cards shown now and when that changes next; the display asks for its config again a few seconds after.
+let canvasTimer: ReturnType<typeof setTimeout> | null = null;
+function armCanvasSchedule(next: string | undefined): void {
+  if (canvasTimer) clearTimeout(canvasTimer);
+  canvasTimer = null;
+  const at = next ? Date.parse(next) : NaN;
+  if (state.demo || isPreview || !Number.isFinite(at)) return;
+  const ms = Math.min(Math.max(at - Date.now() + 3000, 3000), 24 * 3600_000);
+  canvasTimer = setTimeout(() => void fetchConfig(), ms);
+}
 function refreshForPrivacy(): void {
   void fetchConfig().then((ok) => (ok ? Promise.all([fetchEvents(), fetchCountdowns(), fetchFamily()]) : undefined));
 }
 on('events', () => {
+  canvasView.onData('events');
   renderCalendar(current());
   renderCountdowns(current());
   fitSide();
 });
 on('weather', () => {
+  canvasView.onData('weather');
   renderWeather(current());
   fitSide();
 });
-on('news', (s) => news.setData(s.news));
+on('news', (s) => {
+  canvasView.onData('news');
+  news.setData(effectivePreset(ctx.cfg) === 'canvas' ? null : s.news);
+});
 on('countdowns', () => {
+  canvasView.onData('countdowns');
   renderCountdowns(current());
   fitSide();
 });
-on('photos', (s) => s.photos && photos.setList(s.photos.photos || []));
-on('family', () => renderKids(current()));
+on('photos', (s) => {
+  canvasView.onData('photos');
+  if (s.photos) photos.setList(s.photos.photos || []);
+});
+on('family', () => {
+  canvasView.onData('family');
+  renderKids(current());
+});
 photos.onExhausted = () => fetchPhotos();
 // a carousel switch and a new photo at the same moment look like a glitch: the slideshow steps around switches
 photos.switchAt = () => {
@@ -1462,6 +1707,7 @@ function startPolling(): void {
 onTick((tick) => {
   clock.update(tick);
   views.tick(tick);
+  canvasView.tick(tick);
   if (tick.minuteChanged) {
     renderCalendar(tick);
     renderWeather(tick);
@@ -1486,6 +1732,8 @@ try {
     if (state.config) {
       renderCalendar(current());
       fitSide();
+      // Personalizado cards fit their content to the real text sizes too
+      canvasView.relayout();
     }
   });
 } catch { /* old browser */ }
@@ -1549,6 +1797,9 @@ window.addEventListener('resize', () => {
 // ---------------------------------------------------------------------------------------------
 function enterDemo(): void {
   state.demo = true;
+  haFeed.demo = true;
+  valuesFeed.demo = () => demoValues(state.config);
+  dataFeed.demo = (cfg) => demoData(cfg);
   statusDot.classList.remove('show');
   // &carousel=1: the demo screens in a loop (web/display/mock.ts mockCarouselConfigs)
   set('config', params.get('carousel') === '1' ? mockCarouselConfigs()[0] : mockConfig());
@@ -1679,6 +1930,8 @@ async function goLive(): Promise<void> {
   });
   if (!mode || accessDenied) return;
   if (mode === 'poll') {
+    haFeed.setPollMode(true);
+    valuesFeed.setPollMode(true);
     // The poll answer carries the server time and revision, so the heartbeat only reports what the screen runs.
     heartbeat.start(10 * 60_000);
     liveStream = startPoll({
@@ -1734,6 +1987,9 @@ function onHello(d: Partial<StreamHello>): void {
   void fetchEvents();
   void fetchCountdowns();
   void fetchFamily();
+  haFeed.refresh();
+  valuesFeed.refresh();
+  dataFeed.refresh();
   heartbeat.soon();
   if (d.serverVersion) void maybeReloadForVersion(d.serverVersion);
 }
@@ -1758,6 +2014,10 @@ const liveHandlers: StreamHandlers = {
   },
   // a routine ticked (here, on a phone or in the admin), stars, a new family link
   family: () => void fetchFamily(),
+  // Home Assistant states of a Personalizado screen (aliases only)
+  ha: (d) => haFeed.apply(d),
+  // pushed values of a Personalizado screen (only the keys it shows)
+  values: (d) => valuesFeed.apply(d),
   reload: () => location.reload(),
   announce: (a) => announcements.show(a),
   announceClear: (d) => announcements.clear(d.id),
@@ -1793,6 +2053,9 @@ const liveHandlers: StreamHandlers = {
 // Back on screen after being hidden: poll right away instead of waiting for the hidden-page delay.
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) void liveStream?.tick?.();
+  // Personalizado: its clocks and slideshows rest while the page is hidden
+  if (document.hidden) canvasView.pause();
+  else canvasView.resume();
 });
 
 /**
@@ -1893,6 +2156,29 @@ function previewFocus(id: string | null): void {
   };
   report();
   focusTimer = setInterval(report, 250);
+}
+
+// The admin's screen builder (Personalizado, web/admin/builder/) frames this page with builder=1 and draws its own
+// cells, handles and badges over it: where the grids and the cards are, and which cards do not fit, go back to it
+// ({ type: 'marco:canvas-rects', ... }) whenever they change. Only boxes and item ids: nothing private.
+if (isPreview && params.get('builder') === '1') {
+  document.documentElement.classList.add('cv-builder');
+  let sent = '';
+  setInterval(() => {
+    const info = canvasView.layoutInfo();
+    const msg = { type: 'marco:canvas-rects', screen: { w: innerWidth, h: innerHeight }, ...(info ?? { portrait: false, main: null, side: null, row: false, items: [] }) };
+    const key = JSON.stringify(msg);
+    if (key === sent) return;
+    sent = key;
+    window.parent.postMessage(msg, '*');
+  }, 250);
+  // while a card is dragged or sized in the editor, the animated backdrop (the photo's slow zoom, the aurora) holds
+  // still: each frame it draws makes every glass card above it blur again, which the drag would wait for
+  window.addEventListener('message', (e) => {
+    if (e.source !== window.parent || e.data?.type !== 'marco:builder-busy') return;
+    if (e.data.on === true) engine?.stop();
+    else engine?.start();
+  });
 }
 
 // The admin's focal-point editor previews the photo with this display's real free band.
