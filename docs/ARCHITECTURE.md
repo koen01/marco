@@ -162,7 +162,7 @@ The stored config has **global** sections shared by every screen and a list of *
                   //   Events are fetched up to 61 days ahead while the agenda view is on. The side agenda shows 3 days.
                   //   Pure helpers: web/display/agendaFill.ts (tested in server/test/display-agenda.test.js).
   "datetime":   { "enabled": true, "clock": "digital", "format24": true, "showSeconds": true, "showAmPm": false, "dateFormat": "weekday_d_month" },
-  "weather":    { "enabled": true, "forecastDays": 5, "showHourly": true, "showPrecipChance": true },
+  "weather":    { "enabled": true, "forecastDays": 5, "showHourly": true, "showPrecipChance": true, "showFeelsLike": true },
   "news":       { "enabled": true, "rotateSec": 15 },
   "todo":       { "enabled": false },
   "message":    { "enabled": false, "text": "", "emoji": "💬" },
@@ -181,7 +181,7 @@ Global vs per-screen for the "split" sections:
 | screen, layout, background, message, alerts, privacy, widgets (placements) | none | all |
 | calendar | sources, iconRules | view settings + `sourceIds` |
 | datetime | timezone | clock and date format, enabled |
-| weather | provider, model, location, units, HA entities | enabled, forecastDays, showHourly, showPrecipChance |
+| weather | provider, model, location, units, HA entities | enabled, forecastDays, showHourly, showPrecipChance, showFeelsLike |
 | news | feeds, maxItems | enabled, rotateSec |
 | todo | items | enabled |
 | countdowns | items + inclusion settings | enabled, max |

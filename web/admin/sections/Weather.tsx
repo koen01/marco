@@ -111,6 +111,7 @@ export function WeatherSection({ cfg, set, errors }: SectionProps) {
           </div>
           <ToggleRow icon="🕐" label={t('Previsión por horas')} hint={t('Próximas 8 horas')} checked={w.showHourly} onChange={(v) => set((d) => void (d.weather.showHourly = v))} />
           <ToggleRow icon="☔" label={t('Probabilidad de lluvia')} checked={w.showPrecipChance} onChange={(v) => set((d) => void (d.weather.showPrecipChance = v))} />
+          <ToggleRow icon="🌡️" label={t('Sensación térmica')} hint={t('Temperatura aparente, con viento y humedad')} checked={w.showFeelsLike} onChange={(v) => set((d) => void (d.weather.showFeelsLike = v))} />
         </div>
       </Card>
       <WeatherSourceCard cfg={cfg} set={set} errors={errors} haOffered={haOffered} haOn={haOn} />

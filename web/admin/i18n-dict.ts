@@ -310,6 +310,8 @@ const ROWS: [string, string, string][] = [
   ['Previsión por horas', 'Hourly forecast', 'Previsão por horas'],
   ['Principal', 'Primary', 'Principal'],
   ['Probabilidad de lluvia', 'Chance of rain', 'Probabilidade de chuva'],
+  ['Sensación térmica', 'Feels like', 'Sensação térmica'],
+  ['Temperatura aparente, con viento y humedad', 'Apparent temperature, from wind and humidity', 'Temperatura aparente, com vento e humidade'],
   ['Probar', 'Test', 'Testar'],
   ['Probar conexión', 'Test connection', 'Testar ligação'],
   ['Probar reglas', 'Test rules', 'Testar regras'],

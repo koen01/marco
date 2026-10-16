@@ -517,6 +517,7 @@ export interface WeatherConfig {
   forecastDays: number;
   showHourly: boolean;
   showPrecipChance: boolean;
+  showFeelsLike: boolean;
   haWeatherEntity: string;
   haIndoorTempEntity: string;
   haIndoorHumidityEntity: string;
@@ -2033,7 +2034,7 @@ export interface ScreenProfile {
   background: BackgroundConfig;
   calendar: Pick<CalendarConfig, 'enabled' | 'view' | 'weeks' | 'weekStart' | 'startOn' | 'showLocation' | 'showEndTime' | 'showDayXofY' | 'showLegend' | 'hidePast' | 'maxEventsPerDay' | 'marquee' | 'rotateBusyDays' | 'compactBusyDays' | 'fitBusyDays' | 'eventStyle' | 'agendaDays'> & { sourceIds: string[] | null };
   datetime: Omit<DateTimeConfig, 'timezone'>;
-  weather: Pick<WeatherConfig, 'enabled' | 'forecastDays' | 'showHourly' | 'showPrecipChance'>;
+  weather: Pick<WeatherConfig, 'enabled' | 'forecastDays' | 'showHourly' | 'showPrecipChance' | 'showFeelsLike'>;
   news: { enabled: boolean; rotateSec: number };
   todo: { enabled: boolean };
   message: MessageConfig;
@@ -2180,7 +2181,7 @@ export interface StoredConfig {
   screens: ScreenProfile[];
   calendar: { sources: CalendarSource[]; iconRules: IconRule[] };
   datetime: { timezone: string };
-  weather: Omit<WeatherConfig, 'enabled' | 'forecastDays' | 'showHourly' | 'showPrecipChance'>;
+  weather: Omit<WeatherConfig, 'enabled' | 'forecastDays' | 'showHourly' | 'showPrecipChance' | 'showFeelsLike'>;
   news: { feeds: NewsFeed[]; maxItems: number };
   todo: { items: TodoItem[] };
   localEvents: LocalEventsConfig;

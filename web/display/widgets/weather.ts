@@ -83,7 +83,7 @@ export class Weather {
 
     // A value the source does not give is left out rather than shown as a dash.
     const meta = [
-      has(c.feelsLike) ? `<span class="m">${ICON.thermo}<em>${esc(t('feelsLike'))}</em><b>${r(c.feelsLike)}°</b></span>` : '',
+      wc.showFeelsLike && has(c.feelsLike) ? `<span class="m">${ICON.thermo}<em>${esc(t('feelsLike'))}</em><b>${r(c.feelsLike)}°</b></span>` : '',
       has(c.humidity) ? `<span class="m">${ICON.drop}<b>${r(c.humidity)}%</b></span>` : '',
       has(windVal) ? `<span class="m">${windArrow(c.windDir ?? 0)}<b>${r(windVal)}</b><em>${speedUnit}${c.windDirLabel ? ' ' + esc(c.windDirLabel) : ''}</em></span>` : '',
       sunHtml,
