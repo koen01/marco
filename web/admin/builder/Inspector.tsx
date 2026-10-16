@@ -120,6 +120,8 @@ export interface InspectorProps {
   glass: GlassConfig;
   orient: Orient;
   screenOrientation: 'landscape' | 'portrait' | 'auto';
+  /** where the screen's photos come from (its Fondo section): named under Foto */
+  photoSource: { source: string; stockTopic: string };
   selected: string | null;
   tab: InspectorTab;
   setTab: (t: InspectorTab) => void;
@@ -166,6 +168,15 @@ export function Inspector(p: InspectorProps) {
   return <div class="bld-inspector">{it ? <ItemPanel {...p} item={it} /> : <PagePanel {...p} />}</div>;
 }
 
+/** The photos a Foto page shows, as the screen's Fondo section has them (an empty gallery or Immich falls back to stock). */
+export function photoSourceText(b: InspectorProps['photoSource']): string {
+  if (b.source === 'gallery') return t('Fotos de tu galería.');
+  if (b.source === 'mixed') return t('Fotos de tu galería y de stock.');
+  if (b.source === 'immich') return t('Fotos de tus álbumes de Immich.');
+  const topic = b.stockTopic.trim();
+  return topic ? t('Fotos de stock ({topic}).', { topic }) : t('Fotos de stock.');
+}
+
 function PagePanel(p: InspectorProps) {
   const cv = p.cv;
   const set = (fn: (c: CanvasConfig) => void, merge?: string) => {
@@ -199,7 +210,7 @@ function PagePanel(p: InspectorProps) {
         />
       </Field>
       {cv.background === 'photo' && (
-        <Field label={t('Oscurecer foto')} hint={t('Las fotos salen de la sección Fondo de esta pantalla.')}>
+        <Field label={t('Oscurecer foto')} hint={`${photoSourceText(p.photoSource)} ${t('Se cambian en la sección Fondo de esta pantalla.')}`}>
           <Slider value={cv.dim} min={0} max={0.6} step={0.05} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set((c) => void (c.dim = v), 'dim')} />
         </Field>
       )}

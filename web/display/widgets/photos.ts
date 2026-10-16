@@ -113,6 +113,10 @@ export class Photos {
   private shownFile = '';
   private lastShown = '';
   private fitSig = '';
+  /** a photo was put on screen (by this slideshow or a takeover) */
+  private shown = false;
+  /** background.enabled at the last applyConfig (null before the first) */
+  private wasOn: boolean | null = null;
   /** bumped when a carousel switch puts a photo on screen: a photo still loading from before is dropped */
   private gen = 0;
   private ahead: Ahead | null = null;
@@ -172,6 +176,12 @@ export class Photos {
     this.area.style.display = b.enabled ? '' : 'none';
     this.reframe();
     this.schedule();
+    // The photo just came on (a Personalizado page switched from Animado or Color to Foto, the toggle in Fondo) or
+    // none could be shown yet: show one now. The list may have arrived while photos were off, and waiting for the
+    // timer would leave a black page for a whole interval.
+    const turnedOn = b.enabled && this.wasOn === false;
+    this.wasOn = b.enabled;
+    if (b.enabled && (turnedOn || !this.shown) && this.list.length && !this.loading) void this.next();
   }
 
   setList(photos: Photo[]): void {
@@ -184,7 +194,8 @@ export class Photos {
     const first = this.list.length === 0;
     this.list = photos.slice();
     this.idx = -1;
-    if (first) this.next();
+    // nothing on screen yet (the first list, or one that came while photos were off): show its first photo now
+    if (first || !this.shown) void this.next();
     else if (refocus && updated) {
       this.list = [updated, ...photos.filter((p) => p !== updated)];
       this.idx = 0;
@@ -466,6 +477,7 @@ export class Photos {
   private display(p: Photo, l: Loaded, cut?: number): void {
     const { img, src, composed } = l;
     const b = ctx.cfg.background;
+    this.shown = true;
     this.shownFile = p.file || '';
     if (p.file || p.id) this.lastShown = p.file || p.id || '';
     // a composed frame is already framed: no focal point

@@ -625,6 +625,7 @@ export function BuilderModal(props: SectionProps & { onClose: () => void; startW
       glass={st.glass}
       orient={orient}
       screenOrientation={fixed}
+      photoSource={{ source: cfg.background.source, stockTopic: cfg.background.stockTopic }}
       selected={selected}
       tab={tab}
       setTab={setTab}
