@@ -25,6 +25,8 @@ import { syncDisplayKeys, listDisplayLinks, _resetDisplayAccess } from '../displ
 import { _resetPoll } from '../pollHub.js';
 import { createToken } from '../tokens.js';
 import { _resetDoorbell, FRAME_CACHE_MS } from '../doorbell.js';
+import { _resetDoorbellRtc, rtcStats, RTC_SESSION_LIMIT } from '../doorbellRtc.js';
+import { sanitizeOffer, sanitizeCandidate, clientConfig, supportsWebrtc } from '../core/doorbellRtcCore.js';
 
 const HA_TOKEN = 'ha-secret-long-lived-token-0123456789';
 // A tiny JPEG-looking body (the server checks the content type, never decodes the picture).
@@ -159,7 +161,7 @@ async function fakeHa() {
   return { url: `http://127.0.0.1:${server.address().port}`, hits, state, close: () => new Promise((r) => { server.closeAllConnections?.(); server.close(r); }) };
 }
 
-async function withServer(fn, { mode = 'private' } = {}) {
+async function withServer(fn, { mode = 'private', rtcHa = null } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'marco-doorbell-'));
   globalThis.fetch = offlineFetch;
   const ha = await fakeHa();
@@ -181,6 +183,7 @@ async function withServer(fn, { mode = 'private' } = {}) {
   _resetDisplayAccess();
   _resetPoll();
   _resetDoorbell();
+  _resetDoorbellRtc(rtcHa?.open ?? null);
   setServerVersion('0.5.0');
   await ensurePassword();
   syncDisplayKeys();
@@ -219,6 +222,7 @@ async function withServer(fn, { mode = 'private' } = {}) {
     server.closeAllConnections?.();
     await new Promise((r) => server.close(r));
     await ha.close();
+    _resetDoorbellRtc();
     fs.rmSync(dir, { recursive: true, force: true });
     globalThis.fetch = realFetch;
   }
@@ -394,4 +398,196 @@ test('open display access: frames only for LAN clients (loopback counts as LAN h
     assert.equal(r.status, 200);
     noToken(r);
   }, { mode: 'open' });
+});
+
+// ------------------------------------------------------------------------------------------------ live video (WebRTC)
+
+const OFFER = 'v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n';
+const ANSWER = 'v=0\r\no=- 9 2 IN IP4 0.0.0.0\r\ns=-\r\nt=0 0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n';
+const CAND = { candidate: 'candidate:1 1 udp 2122260223 192.168.1.20 50000 typ host', sdpMid: '0', sdpMLineIndex: 0 };
+
+test('webrtc core: offers, candidates, client configuration, capabilities', () => {
+  assert.deepEqual(sanitizeOffer({ sdp: OFFER }), { ok: true, sdp: OFFER });
+  for (const bad of [null, {}, { sdp: 5 }, { sdp: 'hello' }, { sdp: `v=0${'x'.repeat(40_000)}` }, { sdp: 'v=0\0' }]) assert.equal(sanitizeOffer(bad).ok, false, JSON.stringify(bad)?.slice(0, 40));
+  assert.deepEqual(sanitizeCandidate({ ...CAND, usernameFragment: 'x', extra: 1 }), CAND);
+  assert.deepEqual(sanitizeCandidate({ candidate: 'a=candidate:1 1 udp 1 1.2.3.4 5 typ host', sdpMLineIndex: 1 }), { candidate: 'candidate:1 1 udp 1 1.2.3.4 5 typ host', sdpMid: null, sdpMLineIndex: 1 });
+  assert.deepEqual(sanitizeCandidate({ candidate: '', sdpMid: '0' }), { candidate: '', sdpMid: '0', sdpMLineIndex: null }, 'end of candidates');
+  for (const bad of [null, { candidate: 'x', sdpMid: '0' }, { candidate: 'candidate:1\r\na=evil', sdpMid: '0' }, { candidate: 'candidate:1' }, { candidate: 'candidate:1', sdpMid: '<script>' }]) assert.equal(sanitizeCandidate(bad), null, JSON.stringify(bad));
+  const cfg = clientConfig({
+    configuration: { iceServers: [
+      { urls: ['stun:stun.example.org:3478', 'http://evil.example/'] },
+      { urls: 'turn:turn.example.org:3478?transport=udp', username: 'u', credential: 'c' },
+      { urls: ['javascript:alert(1)'] },
+    ] },
+    dataChannel: 'dataSendChannel',
+  });
+  assert.deepEqual(cfg, { iceServers: [{ urls: ['stun:stun.example.org:3478'] }, { urls: ['turn:turn.example.org:3478?transport=udp'], username: 'u', credential: 'c' }], dataChannel: 'dataSendChannel' });
+  assert.equal(clientConfig({ dataChannel: 'a b' }).dataChannel, null);
+  assert.equal(supportsWebrtc({ frontend_stream_types: ['web_rtc'] }), true);
+  assert.equal(supportsWebrtc({ frontend_stream_types: ['hls'] }), false);
+  assert.equal(supportsWebrtc(null), false);
+});
+
+/** A fake Home Assistant WebSocket for the WebRTC commands. `mode`: 'ok' | 'hls' | 'error' | 'silent' | 'old'. */
+function fakeRtcHa() {
+  const state = { mode: 'ok', opened: 0, open: 0, calls: [], token: '', subs: [] };
+  const open = async ({ token }) => {
+    state.token = token;
+    state.opened++;
+    state.open++;
+    const closers = [];
+    let closed = false;
+    const sock = {
+      async call(msg) {
+        if (closed) throw Object.assign(new Error('closed'), { code: 'closed' });
+        state.calls.push(msg);
+        if (state.mode === 'old') throw Object.assign(new Error('unknown'), { code: 'unknown_command' });
+        if (msg.type === 'camera/capabilities') return { frontend_stream_types: state.mode === 'hls' ? ['hls'] : ['web_rtc'] };
+        if (msg.type === 'camera/webrtc/get_client_config') return { configuration: { iceServers: [{ urls: ['stun:stun.example.org:3478'] }] }, dataChannel: 'dataSendChannel' };
+        return null;
+      },
+      async subscribe(msg, onEvent) {
+        await sock.call(msg);
+        state.subs.push({ msg, onEvent, sock });
+        if (state.mode === 'ok') {
+          setTimeout(() => {
+            onEvent({ type: 'session', session_id: 'ha-sess-1' });
+            onEvent({ type: 'candidate', candidate: { ...CAND, candidate: CAND.candidate.replace('192.168.1.20', '203.0.113.9') } });
+            onEvent({ type: 'answer', answer: ANSWER });
+          }, 5);
+        } else if (state.mode === 'error') {
+          setTimeout(() => onEvent({ type: 'error', code: 'webrtc_offer_failed', message: 'nope' }), 5);
+        }
+        return 1;
+      },
+      close() {
+        if (closed) return;
+        closed = true;
+        state.open--;
+        for (const fn of closers) fn();
+      },
+      onClose(fn) {
+        closers.push(fn);
+      },
+    };
+    return sock;
+  };
+  return { state, open };
+}
+
+test('webrtc: config and negotiation only while ringing, relayed to Home Assistant, bound to the display', async () => {
+  const rha = fakeRtcHa();
+  await withServer(async ({ hook, call, key }) => {
+    const k = (slug) => ({ 'x-marco-key': key(slug) });
+    let r = await call('GET', '/api/display/doorbell/webrtc', { headers: k('kitchen') });
+    assert.equal(r.status, 404);
+    assert.equal(r.json.code, 'no_ring');
+    assert.equal(rha.state.opened, 0, 'Home Assistant is not asked without a ring');
+    assert.equal((await call('GET', '/api/display/doorbell/webrtc')).status, 401);
+
+    await hook({ screens: ['kitchen'] });
+    r = await call('GET', '/api/display/doorbell/webrtc', { headers: k('kitchen') });
+    assert.equal(r.status, 200, r.text);
+    assert.deepEqual(r.json, { iceServers: [{ urls: ['stun:stun.example.org:3478'] }], dataChannel: 'dataSendChannel' });
+    assert.equal(rha.state.token, HA_TOKEN);
+    assert.deepEqual(rha.state.calls.map((c) => [c.type, c.entity_id]), [['camera/capabilities', 'camera.front_door'], ['camera/webrtc/get_client_config', 'camera.front_door']]);
+    assert.equal(rha.state.open, 0, 'the config socket is closed again');
+    noToken(r);
+    assert.equal((await call('GET', '/api/display/doorbell/webrtc', { headers: k('living-room') })).json.code, 'no_ring', 'another screen gets nothing');
+
+    assert.equal((await call('POST', '/api/display/doorbell/webrtc', { body: { sdp: 'nope' }, headers: k('kitchen') })).status, 400);
+    r = await call('POST', '/api/display/doorbell/webrtc', { body: { sdp: OFFER }, headers: k('kitchen') });
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.json.answer, ANSWER);
+    assert.equal(r.json.candidates.length, 1);
+    assert.match(r.json.candidates[0].candidate, /203\.0\.113\.9/);
+    assert.equal(r.json.next, 1);
+    noToken(r);
+    const sid = r.json.session;
+    assert.match(sid, /^[\w-]{20,}$/);
+    const offer = rha.state.subs[0].msg;
+    assert.deepEqual(offer, { type: 'camera/webrtc/offer', entity_id: 'camera.front_door', offer: OFFER });
+    assert.equal(rtcStats().sessions, 1);
+
+    // the display's candidates go to Home Assistant's session; another display cannot touch the session
+    r = await call('POST', `/api/display/doorbell/webrtc/${sid}/candidate`, { body: { candidate: CAND }, headers: k('kitchen') });
+    assert.equal(r.status, 200, r.text);
+    await new Promise((res) => setTimeout(res, 10));
+    assert.deepEqual(rha.state.calls.at(-1), { type: 'camera/webrtc/candidate', entity_id: 'camera.front_door', session_id: 'ha-sess-1', candidate: CAND });
+    assert.equal((await call('POST', `/api/display/doorbell/webrtc/${sid}/candidate`, { body: { candidate: { candidate: 'x' } }, headers: k('kitchen') })).status, 400);
+    assert.equal((await call('POST', `/api/display/doorbell/webrtc/${sid}/candidate`, { body: { candidate: CAND }, headers: k('living-room') })).status, 404);
+    r = await call('GET', `/api/display/doorbell/webrtc/${sid}?after=1`, { headers: k('living-room') });
+    assert.equal(r.json.closed, true, 'not its session');
+
+    // a later candidate of Home Assistant reaches a waiting poll
+    const poll = call('GET', `/api/display/doorbell/webrtc/${sid}?after=1`, { headers: k('kitchen') });
+    await new Promise((res) => setTimeout(res, 20));
+    rha.state.subs[0].onEvent({ type: 'candidate', candidate: { candidate: '', sdpMid: '0' } });
+    r = await poll;
+    assert.deepEqual(r.json, { candidates: [{ candidate: '', sdpMid: '0', sdpMLineIndex: null }], next: 2, closed: false });
+
+    // dismissing the ring ends the session and closes Home Assistant's socket
+    assert.equal(rha.state.open, 1);
+    await hook({ action: 'dismiss' });
+    await new Promise((res) => setTimeout(res, 1100));
+    assert.equal(rtcStats().sessions, 0);
+    assert.equal(rha.state.open, 0, 'the camera stream is closed with the ring');
+    r = await call('GET', `/api/display/doorbell/webrtc/${sid}?after=2`, { headers: k('kitchen') });
+    assert.equal(r.json.closed, true);
+  }, { rtcHa: rha });
+});
+
+test('webrtc: closing, replacing, the limit, cameras without WebRTC, failures', async () => {
+  const rha = fakeRtcHa();
+  await withServer(async ({ hook, call, key }) => {
+    const k = (slug) => ({ 'x-marco-key': key(slug) });
+    const offer = (slug) => call('POST', '/api/display/doorbell/webrtc', { body: { sdp: OFFER }, headers: k(slug) });
+    await hook({});
+    const a = (await offer('kitchen')).json.session;
+    const b = (await offer('kitchen')).json.session;
+    assert.notEqual(a, b);
+    assert.equal(rtcStats().sessions, 1, 'a new offer of the same display ends its old session');
+    assert.equal(rha.state.open, 1);
+    assert.equal((await call('DELETE', `/api/display/doorbell/webrtc/${b}`, { headers: k('living-room') })).status, 200, 'closing is quiet');
+    assert.equal(rtcStats().sessions, 1, 'but only the owner closes it');
+    assert.equal((await call('DELETE', `/api/display/doorbell/webrtc/${b}`, { headers: k('kitchen') })).status, 200);
+    assert.equal(rtcStats().sessions, 0);
+    assert.equal(rha.state.open, 0);
+
+    // one session per display and screen, whichever display asks
+    await offer('kitchen');
+    await offer('living-room');
+    assert.equal(rtcStats().sessions, 2);
+    assert.ok(RTC_SESSION_LIMIT >= 2);
+
+    rha.state.mode = 'hls';
+    let r = await call('GET', '/api/display/doorbell/webrtc', { headers: k('kitchen') });
+    assert.equal(r.status, 404);
+    assert.equal(r.json.code, 'no_webrtc', 'a camera without WebRTC: the display keeps the pictures');
+    rha.state.mode = 'old';
+    assert.equal((await call('GET', '/api/display/doorbell/webrtc', { headers: k('kitchen') })).json.code, 'no_webrtc', 'Home Assistant before 2024.11');
+    rha.state.mode = 'error';
+    r = await offer('kitchen');
+    assert.equal(r.status, 502);
+    assert.equal(r.json.code, 'camera_unavailable');
+    assert.equal(rtcStats().sessions, 1, 'the failed one is gone, the other display keeps its own');
+  }, { rtcHa: rha });
+});
+
+test('webrtc: the admin preview and open access from outside get nothing; no WebSocket means no live video', async () => {
+  await withServer(async ({ hook, call, login }) => {
+    await hook({});
+    const cookie = await login();
+    const r = await call('GET', '/api/display/doorbell/webrtc?screen=kitchen', { headers: { cookie } });
+    assert.equal(r.status, 403);
+    assert.equal(r.json.code, 'preview');
+  });
+  if (typeof globalThis.WebSocket !== 'function') {
+    await withServer(async ({ hook, call, key }) => {
+      await hook({});
+      const r = await call('GET', '/api/display/doorbell/webrtc', { headers: { 'x-marco-key': key('kitchen') } });
+      assert.equal(r.status, 404);
+      assert.equal(r.json.code, 'no_webrtc');
+    });
+  }
 });

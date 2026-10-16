@@ -24,7 +24,7 @@ display and the server guarantee. The HTTP endpoints and event formats are in [A
 |---|---|
 | `server/` | API and logic: ICS + recurrences (`node-ical`, `rrule`), Google Calendar, weather, RSS, photos, auth, SSE and the poll channel (`pollHub.js`), backups, activity |
 | `server/app.js` | `createApp()`: the whole Express stack (host guard, sessions, CSRF, display access, routers, static files); `server/index.js` adds the store, listen and shutdown |
-| `server/core/` | Pure logic shared with Marco Cloud, which copies the folder as it is: config schema and validation (`validate.js`, `defaults.js`, `screens.js`, `iconRules.js`), backups and import (`backupsCore.js`), announcements (`announceCore.js`), doorbell rings (`doorbellCore.js`), feed parsing (`newsParse.js`), image headers and photo names (`imageInfo.js`), activity helpers (`activityCore.js`), pairing codes (`pairCore.js`), privacy mode (`privacy.js`), CSV, schedules and `lib/` (text, time zones, server strings). No Node built-ins, no store, SSE or HTTP modules (checked by `server/test/core-lint.test.js`); the files next to it (`backups.js`, `announce.js`, `photos.js`, `news.js`, `activity.js`, `pairing.js`, `doorbell.js`) add the files, network and SSE |
+| `server/core/` | Pure logic shared with Marco Cloud, which copies the folder as it is: config schema and validation (`validate.js`, `defaults.js`, `screens.js`, `iconRules.js`), backups and import (`backupsCore.js`), announcements (`announceCore.js`), doorbell rings and their WebRTC relay (`doorbellCore.js`, `doorbellRtcCore.js`), feed parsing (`newsParse.js`), image headers and photo names (`imageInfo.js`), activity helpers (`activityCore.js`), pairing codes (`pairCore.js`), privacy mode (`privacy.js`), CSV, schedules and `lib/` (text, time zones, server strings). No Node built-ins, no store, SSE or HTTP modules (checked by `server/test/core-lint.test.js`); the files next to it (`backups.js`, `announce.js`, `photos.js`, `news.js`, `activity.js`, `pairing.js`, `doorbell.js`) add the files, network and SSE |
 | `server/displayAccess.js`, `server/pairing.js` | Private display links, paired devices and pairing codes (see *Display access* below) |
 | `server/routes/` | Express routers: `public.js` (display API), `admin.js`, `screens.js`, `announce.js`, `hooks.js`, `doorbell.js`, `system.js`, `localEvents.js`, `access.js` (links, devices, pairing), `updates.js` |
 | `server/updates.js` | Daily check for a newer release, update settings, the request read by `marco-update.path` (see *Updates* below) |
@@ -289,7 +289,13 @@ flagged by a local event or a style rule (nearest occurrence per title), sorted 
   asking. The overlay does not know whether the frame is live (self-hosted) or an uploaded snapshot. It ends at
   `expiresAt`, on `doorbell-end`, or when `hello` / a poll reset names another ring. The server side lives in
   `server/doorbell.js` (rings in memory, Home Assistant proxy with a 500 ms shared frame cache) and
-  `server/core/doorbellCore.js` (validation, ring / extend / dismiss, payload).
+  `server/core/doorbellCore.js` (validation, ring / extend / dismiss, payload). Before the frames, a ring tries live
+  video once (`LiveSource`, `web/display/doorbellLive.ts`): for a camera Home Assistant streams over WebRTC (Google
+  Nest has no pictures at all) the display makes an `RTCPeerConnection` (audio, video, then the data channel the
+  camera asks for), `server/doorbellRtc.js` relays the offer, the answer and ICE candidates over its own Home
+  Assistant WebSocket per session (`camera/webrtc/offer`, `camera/webrtc/candidate`), and a muted `<video>` replaces
+  the pictures once it plays. Not offered, failed or dropped: the frames. `server/core/doorbellRtcCore.js` checks what
+  passes in both directions.
 - Widgets (`web/display/widgets/custom.ts`): images and web pages from `DisplayConfig.widgets` in a corner, in the
   side column (in their corner when the layout has none) or full screen (the `widget` layout). Reconciled by
   `id|place|v`, so config polls and preview edits never reload one. Images load off screen and replace the old one

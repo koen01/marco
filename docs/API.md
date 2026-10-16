@@ -92,6 +92,11 @@ saved without `security` (old admin builds, backups or exports from before 0.3) 
 | `GET /api/stream?screen=&client=&k=` | Server-Sent Events, see below |
 | `GET /api/display/poll?screen=&client=&cursor=&rev=&hidden=&preview=` | `PollResponse`: the same events as commands, for displays without a stream. See below |
 | `GET /api/display/doorbell/frame?n=` | The doorbell camera picture for this display's screen (`image/jpeg`, `image/png`, `image/webp` or `image/gif`, `Cache-Control: private, no-store`), only while that screen rings. `n` is a counter the display adds so nothing caches it. `404 { code: "no_ring" }` when the screen is not ringing (also for open display access from outside the LAN), `404 { code: "no_camera" }` when the ring has no camera, `503 { code: "homeassistant_off" }`, `502 { code: "camera_unavailable" }` (Home Assistant failed, took more than 6 s, answered something that is not an image or more than 4 MB). See [Doorbell camera](#doorbell-camera) |
+| `GET /api/display/doorbell/webrtc` | Whether the camera of the ring on this display's screen streams over WebRTC, and the configuration for the display's `RTCPeerConnection`: `{ iceServers: [{ urls, username?, credential? }], dataChannel }` (Home Assistant's `camera/webrtc/get_client_config`; only `stun:`, `turn:` and `turns:` URLs pass). `404 { code: "no_webrtc" }` when the camera has no WebRTC stream, Home Assistant is older than 2024.11 or this Node has no WebSocket (the display uses the frames), `no_ring` and `no_camera` as for the frame, `403 { code: "preview" }` for the admin's preview, `503 { code: "homeassistant_off" }`, `502 { code: "camera_unavailable" }`. See [Doorbell camera](#doorbell-camera) |
+| `POST /api/display/doorbell/webrtc` | `{ sdp }` (the display's offer, 32 kB at most) → `{ session, answer, candidates, next }` once the camera answered (20 s at most). `400 { code: "invalid_offer" }`, `503 { code: "busy" }` (4 live sessions per server), `504 { code: "timeout" }`, otherwise as above |
+| `GET /api/display/doorbell/webrtc/<session>?after=n` | Home Assistant's ICE candidates from index `n` on, waiting up to 8 s for one: `{ candidates, next, closed }`. `closed: true` when the session is over or belongs to another display |
+| `POST /api/display/doorbell/webrtc/<session>/candidate` | `{ candidate: { candidate, sdpMid, sdpMLineIndex } }`, one ICE candidate of the display, passed on to Home Assistant. `400 { code: "invalid_candidate" }`, `404 { code: "no_session" }` |
+| `DELETE /api/display/doorbell/webrtc/<session>` | Ends the session (and the camera's stream). `{ ok: true }`, also for one that is already gone |
 | `GET /api/display/ha?screen=` | `HaSnapshot` of a Personalizado screen's Home Assistant cards: `{ rev, conn: "ok" \| "down", full: true, screenId, states }`, `states` keyed by alias `<itemId>:<n>` (an entity id, a Home Assistant URL or an `entity_picture` never reaches a display). Each state is a slim view of one entity (`d`: light, switch, climate, cover, media, sensor, binary, scene, lock, alarm, other or unavailable; `n` its name; `at` when it last changed, ms; `c` the controls the card offers on a screen that allows touch, empty otherwise; `cf: true` when they need two taps). `{}` while the screen is private. `Cache-Control: no-store`. Displays on the poll channel ask every 10 s while a Home Assistant card is on screen |
 | `GET /api/display/ha/history/<itemId>` | `{ period, series: [{ label, unit, points: [[ms, value]] }] }` for a chart item (`1h`, `6h`, `24h` from the recorder history, `7d` from hourly statistics) or a sensor item with its curve (24 h). At most 200 points per series. Cached 2 min (15 min for 7 days) and shared by every screen. `404` for an item that is not one of these on this screen, `403 { error: "private" }`, `503 { error: "ha_off" }`, `502 { error: "ha_error" }` |
 | `POST /api/display/ha/action` | A tap on a Home Assistant control: `{ item, slot, control, value?, seq, confirm? }` (JSON, 2 KB at most). Answers `{ ok: true, seq }` or `{ ok: false, error, seq }`; see *Controls on a touch screen* under Home Assistant for every check and error |
@@ -1040,6 +1045,18 @@ values of *Admin → Home Assistant → Doorbell and camera* (`homeassistant.doo
   `--autoplay-policy=no-user-gesture-required`, so it plays without a tap; other browsers may stay silent until
   someone has touched the page once.
 - Without a camera (`camera: ""`) the screens show a bell and "Someone is at the door".
+- **Live video (WebRTC).** Some cameras have no picture Home Assistant can hand out: Google Nest battery doorbells and
+  cameras only stream over WebRTC, and `/api/camera_proxy` answers with a grey placeholder for them. When a ring
+  starts, the screen first asks `GET /api/display/doorbell/webrtc`; if the camera streams over WebRTC (Home Assistant
+  2024.11 or later, `camera/capabilities`), the screen makes an offer, Marco passes it to Home Assistant's
+  `camera/webrtc/offer` with the stored token and returns the answer, and the screen plays the video itself, straight
+  from the camera's side (Google, or Home Assistant's go2rtc). No video goes through Marco. Each session has its own
+  WebSocket to Home Assistant, which keeps the camera's stream open; it closes when the ring ends (dismissed, expired,
+  another camera), when the screen closes it, or after 6 minutes, and closing it ends the stream. Sessions belong to
+  the credential that opened them, at most 4 per server, never for the admin's preview, and open display access only
+  on the LAN. The video is muted. While it is being set up the screen shows the bell; when it is not offered, fails or
+  drops, the screen goes back to the frames. Node 20 has no WebSocket unless it runs with `--experimental-websocket`
+  (`NODE_OPTIONS`); without one there is no live video.
 
 **Servers with snapshots instead of a live camera** (`features.doorbell` on, `features.doorbellLive` off: Marco Cloud,
 which cannot reach Home Assistant) take the picture with the ring. `POST /api/hooks/doorbell` then also accepts

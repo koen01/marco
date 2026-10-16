@@ -1154,6 +1154,9 @@ body {
 .db-back:not([src]) { display: none; }
 .lite .db-back { display: none; }
 .db-frame.on { opacity: 1; }
+.db-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; background: #000; }
+#doorbell.has-video .db-video { opacity: 1; }
+#doorbell.has-video .db-frame, #doorbell.has-video .db-back { opacity: 0; }
 #doorbell.db-failed .db-frame.on { filter: grayscale(0.6) brightness(0.7); }
 .db-empty {
   position: absolute;

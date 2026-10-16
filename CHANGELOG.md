@@ -5,6 +5,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- Doorbell: live video from cameras that stream over WebRTC, such as Google Nest doorbells, which have no picture Home
+  Assistant can hand out (the overlay showed a grey placeholder). The screen negotiates the stream through Marco and
+  Home Assistant (2024.11 or later) and plays it itself, so no video goes through Marco and the token stays on the
+  server. Other cameras keep the pictures, and a stream that cannot be set up or drops falls back to them. Needs a
+  WebSocket in Node (Node 22, or Node 20 with `--experimental-websocket`).
+
 ## [0.16.0] - 2026-10-16
 
 ### Added
