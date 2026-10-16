@@ -5,27 +5,6 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-### Added
-- Custom screens: the clocks and the date card have their own text colours in the *Style* tab, next to the accent
-  colour. *Time colour* paints the digits or the hands and numbers of the dial, *Date colour* the date line (on the
-  Date card the day, the month and the weekday, which keeps the accent colour when the card has one). *Automatic*
-  keeps the usual look, so saved cards do not change.
-
-### Changed
-- A new Custom screen starts with the animated background. Copying the Left / Right design also gets it behind the
-  cards, with the photo still in its wide column. Templates that are a plain colour on purpose (Bedroom, Bedside and
-  the kids pages) keep their colour.
-- A screen that becomes Custom for the first time gets lighter card glass when its glass was never changed: more
-  transparent (a quarter), blur 5, dark tint, automatic appearance and the light edge. Modern and Classic screens
-  and any glass you already set stay as they are. *Reset* on a Custom screen goes back to this glass.
-- The release workflow runs the tests without the headless Chrome ones (`MARCO_SKIP_BROWSER=1`), which CI already
-  runs on every commit, so a release takes a few minutes instead of half an hour.
-
-### Fixed
-- The tests pass on Node 20 again: the display code no longer reads `navigator` when it loads, and the Home
-  Assistant live and camera tests are skipped when Node has no global WebSocket. On Node 20 the server follows Home
-  Assistant over REST polling, as before.
-
 ## [0.16.0] - 2026-10-16
 
 ### Added
@@ -96,6 +75,10 @@ All notable changes to this project are documented here. The format is based on
   the cards that need them ask you to pick them again.
 - Personalizado: the editor bar has the screen's orientation (Automatic, Always landscape, Always portrait). It is the
   same setting as in the screen settings. Switching to always portrait keeps the portrait layout so you can edit it.
+- Custom screens: the clocks and the date card have their own text colours in the *Style* tab, next to the accent
+  colour. *Time colour* paints the digits or the hands and numbers of the dial, *Date colour* the date line (on the
+  Date card the day, the month and the weekday, which keeps the accent colour when the card has one). *Automatic*
+  keeps the usual look, so saved cards do not change.
 
 ### Security
 - Gallery photos shown on a screen in private mode are no longer kept in the browser cache. Thanks to @scootmandoo.
@@ -128,6 +111,23 @@ All notable changes to this project are documented here. The format is based on
   says which value it read, which forms work, and when a docker-compose line like `$ { TRUST_PROXY:-}` is written
   wrong (it should be `${TRUST_PROXY:-value}`).
 - Carousels on a Raspberry Pi now use the animation chosen for the carousel instead of a short fade. Where the short fade is still used (lite mode, reduced motion), the new screen's photo comes in with the usual crossfade again.
+- The tests pass on Node 20 again: the display code no longer reads `navigator` when it loads, and the Home
+  Assistant live and camera tests are skipped when Node has no global WebSocket. On Node 20 the server follows Home
+  Assistant over REST polling, as before.
+- Custom screens: choosing *Photo* as the page background shows a photo at once. A screen that was showing the
+  animated background or a colour stayed black until the next photo change (up to two minutes).
+
+### Changed
+- A new Custom screen starts with the animated background. Copying the Left / Right design also gets it behind the
+  cards, with the photo still in its wide column. Templates that are a plain colour on purpose (Bedroom, Bedside and
+  the kids pages) keep their colour.
+- A screen that becomes Custom for the first time gets lighter card glass when its glass was never changed: more
+  transparent (a quarter), blur 5, dark tint, automatic appearance and the light edge. Modern and Classic screens
+  and any glass you already set stay as they are. *Reset* on a Custom screen goes back to this glass.
+- The release workflow runs the tests without the headless Chrome ones (`MARCO_SKIP_BROWSER=1`), which CI already
+  runs on every commit, so a release takes a few minutes instead of half an hour.
+- Marco Cloud: in the screen builder the Home Assistant cards and the custom HTML card are folded away under
+  *Only on the self-hosted version* instead of being shown as cards you cannot use.
 
 ## [0.15.0] - 2026-10-13
 
