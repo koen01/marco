@@ -12,6 +12,8 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # a test that never ends must fail the job, not hold a runner for hours
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
