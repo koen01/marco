@@ -364,6 +364,7 @@ function sanitizeScreenProfile(ctx, p, raw, seenIds, seenSlugs, familyMemberIds 
     forecastDays: num(ctx, `${p}.weather.forecastDays`, we.forecastDays, D.weather.forecastDays, 1, 14, true),
     showHourly: bool(ctx, `${p}.weather.showHourly`, we.showHourly, D.weather.showHourly),
     showPrecipChance: bool(ctx, `${p}.weather.showPrecipChance`, we.showPrecipChance, D.weather.showPrecipChance),
+    showFeelsLike: bool(ctx, `${p}.weather.showFeelsLike`, we.showFeelsLike, D.weather.showFeelsLike),
   };
 
   const ne = obj(ctx, `${p}.news`, x.news);

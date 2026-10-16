@@ -28,7 +28,7 @@ export const DEFAULT_CONFIG: DisplayConfig = {
   },
   weather: {
     enabled: true, provider: 'open-meteo', model: 'best_match', locationName: 'Lisbon, Portugal', lat: 38.7223, lon: -9.1393, units: 'metric',
-    forecastDays: 5, showHourly: true, showPrecipChance: true, haWeatherEntity: '', haIndoorTempEntity: '',
+    forecastDays: 5, showHourly: true, showPrecipChance: true, showFeelsLike: true, haWeatherEntity: '', haIndoorTempEntity: '',
     haIndoorHumidityEntity: '',
   },
   news: { enabled: true, rotateSec: 15 },

@@ -293,6 +293,8 @@ export const NL: Record<string, string> = {
   'Previsión por horas': 'Verwachting per uur',
   'Principal': 'Hoofdagenda',
   'Probabilidad de lluvia': 'Kans op regen',
+  'Sensación térmica': 'Gevoelstemperatuur',
+  'Temperatura aparente, con viento y humedad': 'Gevoelstemperatuur, op basis van wind en luchtvochtigheid',
   'Probar': 'Testen',
   'Probar conexión': 'Verbinding testen',
   'Probar reglas': 'Regels testen',

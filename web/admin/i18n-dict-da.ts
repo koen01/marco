@@ -293,6 +293,8 @@ export const DA: Record<string, string> = {
   'Previsión por horas': 'Vejrudsigt pr. time',
   'Principal': 'Primær',
   'Probabilidad de lluvia': 'Risiko for regn',
+  'Sensación térmica': 'Føles som',
+  'Temperatura aparente, con viento y humedad': 'Oplevet temperatur, ud fra vind og fugtighed',
   'Probar': 'Test',
   'Probar conexión': 'Test forbindelsen',
   'Probar reglas': 'Test regler',
