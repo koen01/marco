@@ -22,9 +22,11 @@ import { ctx, setCtxConfig } from './ctx';
 import { normalizeAgendaDays, normalizeConfig } from './defaults';
 import { Heartbeat, noteError } from './heartbeat';
 import {
-  authHeaders, clearDeviceToken, clientId, credential, credentialKind, getActiveScreen, isPreview, isWidgetOnly, screenKey, setActiveScreen, storedDeviceToken, withScreen,
+  authHeaders, clearDeviceToken, clientId, credential, credentialKind, getActiveScreen, isPreview, isWidgetOnly, screenKey, screenNs, setActiveScreen, storedDeviceToken, withScreen,
 } from './identity';
-import { CarouselController, type Bundle, type BundlePart } from './carousel';
+import { CarouselController, emptyBundle, type Bundle, type BundlePart } from './carousel';
+import { NavIdle, planNav, swipeDir, type NavMemo } from './nav';
+import type { NavProgress, NavSource } from './widgets/canvas/types';
 import { ScreenSwitcher, type SwitchGL } from './screenSwitch';
 import { isArmDesktop, isArmLinuxUA, isLowPower, isLowPowerGPU, planSwitch, type SwitchInfo, type SwitchPlan } from './switchPlan';
 import { $ } from './dom';
@@ -37,7 +39,7 @@ import type { PrecipLayer } from './gl/precipLayer';
 import type { WeatherFxLayer } from './gl/weatherFxLayer';
 import { weatherFxOf } from './icons';
 import {
-  mockAnnouncements, mockCarouselConfigs, mockConfig, mockCountdowns, mockEvents, mockFamily, mockNews, mockPhotos, mockWeather,
+  mockAnnouncements, mockCarouselConfigs, mockConfig, mockCountdowns, mockEvents, mockFamily, mockNavScreens, mockNews, mockPhotos, mockWeather,
 } from './mock';
 import { loadCache, loadScreenCache, on, saveCache, saveScreenCache, set, setConfigOverlay, state } from './store';
 import { detectLiveMode, startConfigPoll, startPoll, type StreamHandlers } from './live';
@@ -161,6 +163,16 @@ const canvasView = new Canvas($('#canvas'), $('#canvas-side'), {
   ha: haFeed,
   values: valuesFeed,
   data: dataFeed,
+  nav: {
+    shows: () => isPreview || !!ctx.cfg?.canvas?.taps,
+    live: () => navLive(),
+    carousel: () => !!carousel,
+    go: (target, returnMin) => void navGo(target, returnMin),
+    pause: (returnMin) => navPause(returnMin),
+    paused: () => !!carousel?.paused,
+    current: () => getActiveScreen() || state.config?.screenId || '',
+    progress: () => navProgress(),
+  } satisfies NavSource,
 });
 announcements.onChange = () => canvasView.onData('announcements');
 let sideFitT: ReturnType<typeof setTimeout> | null = null;
@@ -1288,6 +1300,7 @@ on('config', (s) => {
   if (photoSig && sig !== photoSig) void fetchPhotos().then(() => (privChanged ? photos.next() : undefined));
   photoSig = sig;
   syncCarousel(s.config);
+  syncNav(s.config);
   syncFamily(s.config);
   // an unsaved draft in the admin preview may show other days (weeks, weekStart, startOn): fetch the events they need
   if (isPreview && fetchedRange && eventsRange().join('/') !== fetchedRange) void fetchEvents();
@@ -1346,6 +1359,7 @@ function syncCarousel(c: DisplayConfig): void {
     frozen: carouselFrozen,
     save: state.demo ? undefined : (id, part, v) => saveScreenCache(id, part, v),
   });
+  carousel.onChange = () => canvasView.onData('nav');
   setActiveScreen(c.screenId);
   document.documentElement.classList.add('has-carousel');
   // offline: what came from the cache is marked old (at = 0), so it is fetched again as soon as the server answers
@@ -1368,6 +1382,8 @@ function syncCarousel(c: DisplayConfig): void {
     }
   }
   carousel.start();
+  // the demo of the navigation cards (&carousel=1&nav=1) starts on its first step, the screen with the cards
+  if (state.demo && params.get('nav') === '1') carousel.jumpTo(0);
   // ?try=1 (the admin's "Probar" in the preview): a switch every few seconds, so the animation can be seen
   if (params.get('try') === '1' && !tryTimer) {
     tryTimer = setInterval(() => {
@@ -1381,7 +1397,10 @@ let tryTimer: ReturnType<typeof setInterval> | null = null;
 /** Fetch parts of one carousel screen's data (a prefetch, or a screen shown without data yet). */
 async function fetchBundle(id: string, parts: BundlePart[], known: DisplayConfig | null): Promise<Partial<Pick<Bundle, BundlePart>>> {
   if (state.demo) {
-    const cfg = mockCarouselConfigs().find((x) => x.screenId === id) ?? null;
+    // a demo with no carousel (&preset=canvas&shot=nav) goes to the carousel's screens as plain screens
+    const found = mockCarouselConfigs().find((x) => x.screenId === id) ?? mockNavScreens().find((x) => x.screenId === id) ?? null;
+    const plain = mockConfig();
+    const cfg = carousel || !found ? found : id === plain.screenId ? plain : { ...found, target: undefined, carousel: null };
     const t = current().now;
     return { config: cfg, events: mockEvents(t), countdowns: mockCountdowns(t), photos: mockPhotos(cfg?.background.stockTopic) };
   }
@@ -1619,6 +1638,214 @@ function showScreen(id: string, b: Bundle, sw: SwitchInfo): void {
   const ready = photos.prepare(start.list, start.idx, b.config.background);
   void Promise.race([ready, new Promise((r) => setTimeout(r, PHOTO_WAIT_MS))]).then(go);
 }
+
+// ---------------------------------------------------------------------------------------------
+// Navigation on touch screens (web/display/nav.ts, the "Navegación" cards of widgets/canvas/nav.ts): "Ir a pantalla",
+// "Pausar carrusel", the progress card and the swipe. Taps need the screen's canvas.taps (touch on, not private, a
+// display the server trusts) and never act in the admin's preview. All of it stays on this device: a carousel jump is
+// an offset of this display's own rotation, a screen outside it is fetched like a carousel bundle (the server lets a
+// display read the screens its own buttons lead to), and the visit or the pause is kept in localStorage only.
+// ---------------------------------------------------------------------------------------------
+/** What this display is bound to: its carousel's id or its screen's id (set by the first config). */
+let navHomeId = '';
+/** The screen a display with no carousel is bound to ('' on a carousel). */
+let navHomeScreen = '';
+let navIdle: NavIdle | null = null;
+const NAV_LS = `marco.nav.${screenNs}`;
+/** A switch made by touch: a short fade, whatever the carousel uses. */
+const NAV_SWITCH: SwitchInfo = { transition: 'fade', speed: 'fast', n: 0, seed: 'nav' };
+/** Bundles of screens shown by touch on a display with no carousel (a carousel keeps its own). */
+const navBundles = new Map<string, { b: Bundle; at: number }>();
+let navHomeRetry: ReturnType<typeof setTimeout> | null = null;
+
+/** Taps of the navigation cards and the swipe do something now. */
+function navLive(): boolean {
+  return !isPreview && !!ctx.cfg?.canvas?.taps && !accessDenied;
+}
+
+function syncNav(c: DisplayConfig): void {
+  // the swipe: only with touch on, on a carousel, never in the preview (styles: touch-action for the gesture)
+  document.documentElement.classList.toggle('nav-swipe', !isPreview && !!carousel && !!c.canvas?.swipe && !!c.canvas?.taps);
+  // (a config with no `target` comes from a server older than carousels: the screen itself)
+  const kind = c.target?.kind ?? 'screen';
+  if (navIdle || isPreview || !(c.target?.id || c.screenId)) return;
+  navHomeId = c.target?.id || c.screenId || '';
+  navHomeScreen = kind === 'screen' ? c.screenId || '' : '';
+  navIdle = new NavIdle(navHomeId, {
+    now: () => Date.now(),
+    load: () => {
+      if (state.demo) return null;
+      try {
+        return JSON.parse(localStorage.getItem(NAV_LS) || 'null');
+      } catch {
+        return null;
+      }
+    },
+    save: (m: NavMemo | null) => {
+      if (state.demo) return;
+      try {
+        if (m) localStorage.setItem(NAV_LS, JSON.stringify(m));
+        else localStorage.removeItem(NAV_LS);
+      } catch { /* storage off: the visit ends with the page */ }
+    },
+    // "Volver solo tras X min sin tocar": the display's own screen or carousel again
+    expire: () => void navGoHome(),
+  });
+  const m = navIdle.restore();
+  if (m?.mode === 'visit') void navVisit(m.screenId, m.returnMin, true);
+  else if (m?.mode === 'pause' && carousel) carousel.pause(true);
+  else if (m) navIdle.clear();
+}
+
+/** A short line at the bottom of the screen (a tap that could not go anywhere). Text as text. */
+let navToastTimer: ReturnType<typeof setTimeout> | null = null;
+function navToast(text: string): void {
+  let el = document.getElementById('nav-toast');
+  if (!el) {
+    el = Object.assign(document.createElement('div'), { id: 'nav-toast' });
+    el.setAttribute('role', 'status');
+    document.body.appendChild(el);
+  }
+  el.textContent = text;
+  el.classList.add('show');
+  if (navToastTimer) clearTimeout(navToastTimer);
+  navToastTimer = setTimeout(() => el!.classList.remove('show'), 2600);
+}
+
+/** The bundle of a screen for a display with no carousel (fresh for a minute), or null when it cannot be read. */
+async function navBundle(id: string): Promise<Bundle | null> {
+  const hit = navBundles.get(id);
+  if (hit && Date.now() - hit.at < 60_000 && hit.b.config) return hit.b;
+  try {
+    const got = await fetchBundle(id, ['config', 'events', 'countdowns', 'photos'], null);
+    if (!got.config || !got.events) return null;
+    const b = { ...emptyBundle(), ...got, configAt: Date.now(), eventsAt: Date.now(), countdownsAt: Date.now(), photosAt: Date.now() };
+    navBundles.set(id, { b, at: Date.now() });
+    return b;
+  } catch {
+    return null;
+  }
+}
+
+/** True when this tap only wakes a dimmed screen (night mode), as the Home Assistant controls do. */
+function navWakes(): boolean {
+  const dimmed = nightNow && Date.now() >= wakeUntil;
+  wakeFromTap();
+  return dimmed;
+}
+
+/** "Ir a pantalla" with `target` (a screen id or 'home'). */
+async function navGo(target: string, returnMin: number): Promise<void> {
+  if (!navLive() || !navIdle || navWakes()) return;
+  const w = carousel?.where();
+  const plan = planNav(target, {
+    homeScreen: navHomeScreen,
+    steps: carousel ? carousel.carousel.steps.map((st) => st.screenId) : null,
+    rotating: !!carousel?.rotates(),
+    current: getActiveScreen() || state.config?.screenId || '',
+    index: w?.index ?? -1,
+  });
+  if (plan.do === 'home') return navGoHome();
+  if (plan.do === 'jump') {
+    navIdle.clear();
+    carousel!.jumpTo(plan.index);
+    return;
+  }
+  if (plan.do === 'visit') return navVisit(plan.screenId, returnMin);
+}
+
+/** Show a screen that is not this display's own (or not in its carousel) and stay there, until the idle rule. */
+async function navVisit(id: string, returnMin: number, restoring = false): Promise<void> {
+  if (!navIdle) return;
+  if (carousel) {
+    const b = await carousel.ensure(id);
+    if (!b?.config || !b.events) {
+      if (restoring) navIdle.clear();
+      else navToast(ctx.t('navUnavailable'));
+      return;
+    }
+    navIdle.start('visit', id, returnMin);
+    carousel.visitScreen(id);
+    return;
+  }
+  const b = await navBundle(id);
+  if (!b) {
+    if (restoring) navIdle.clear();
+    else navToast(ctx.t('navUnavailable'));
+    return;
+  }
+  navIdle.start('visit', id, returnMin);
+  showScreen(id, b, NAV_SWITCH);
+  canvasView.onData('nav');
+}
+
+/** Back to this display's own screen or carousel (Inicio, or the idle time passed). */
+async function navGoHome(): Promise<void> {
+  navIdle?.clear();
+  if (navHomeRetry) clearTimeout(navHomeRetry);
+  navHomeRetry = null;
+  if (carousel) return carousel.home();
+  const on = getActiveScreen();
+  if (!navHomeScreen || !on || on === navHomeScreen) return;
+  navBundles.delete(navHomeScreen);
+  const b = await navBundle(navHomeScreen);
+  // offline: try again in a while (the screen shown by touch stays meanwhile)
+  if (!b) {
+    navHomeRetry = setTimeout(() => void navGoHome(), 30_000);
+    return;
+  }
+  showScreen(navHomeScreen, b, NAV_SWITCH);
+  canvasView.onData('nav');
+}
+
+/** "Pausar carrusel": pause the rotation on this display, or go on. */
+function navPause(returnMin: number): void {
+  if (!navLive() || !navIdle || !carousel || navWakes()) return;
+  // on a screen shown by touch, the button takes the display back into its carousel, paused
+  if (carousel.visit) carousel.home();
+  const on = !carousel.paused;
+  carousel.pause(on);
+  if (on) navIdle.start('pause', '', returnMin);
+  else navIdle.clear();
+}
+
+/** The carousel's steps and where it is now (the progress card), or null on a display with no carousel. */
+function navProgress(): NavProgress | null {
+  if (!carousel) return null;
+  const w = carousel.where();
+  return {
+    steps: carousel.carousel.steps.map((st) => ({ name: st.name })),
+    index: w.index,
+    startsAt: w.startsAt,
+    endsAt: w.endsAt,
+    paused: w.paused,
+    visiting: !!w.visiting,
+    now: serverNow(),
+  };
+}
+
+// every touch pushes the "Volver solo tras" time forward
+document.addEventListener('pointerdown', () => navIdle?.touched(), { capture: true, passive: true });
+// the swipe: a quick sideways stroke of a finger (or a pen) that did not start on a control
+let swipeFrom: { x: number; y: number; t: number; id: number } | null = null;
+const SWIPE_SKIP = '[data-ctl], [data-slide], .cv-nav-btn, .k-chore, .kf-chore, input, select, textarea, button';
+document.addEventListener('pointerdown', (e) => {
+  swipeFrom = null;
+  if (e.pointerType === 'mouse' || !document.documentElement.classList.contains('nav-swipe')) return;
+  if ((e.target as Element | null)?.closest?.(SWIPE_SKIP)) return;
+  swipeFrom = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
+}, { capture: true, passive: true });
+document.addEventListener('pointercancel', () => (swipeFrom = null), { capture: true, passive: true });
+document.addEventListener('pointerup', (e) => {
+  const f = swipeFrom;
+  swipeFrom = null;
+  if (!f || f.id !== e.pointerId || !carousel || !navLive() || !ctx.cfg?.canvas?.swipe) return;
+  const dir = swipeDir(e.clientX - f.x, e.clientY - f.y, Date.now() - f.t, window.innerWidth);
+  if (!dir || navWakes()) return;
+  navIdle?.clear();
+  // to the left: the next screen; to the right: the one before
+  carousel.stepBy(dir === -1 ? 1 : -1);
+}, { capture: true, passive: true });
 
 // ---------------------------------------------------------------------------------------------
 // Privacy mode: the server already filtered the events; the display shows a small lock and asks again when the

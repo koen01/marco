@@ -48,6 +48,7 @@ test('registry: every kind of the spec and of the owner amendments is reserved, 
     'calendar.month', 'calendar.week', 'calendar.agenda', 'calendar.today', 'calendar.next', 'calendar.people', 'countdowns',
     'weather.now', 'weather.hourly', 'weather.forecast',
     'message', 'todo', 'news', 'photo', 'widget', 'value', 'spacer', 'heading',
+    'nav.button', 'nav.pause', 'nav.progress',
     'family.members', 'family.routines', 'family.points', 'family.rewards', 'family.chores', 'meals.today', 'meals.week', 'birthdays', 'highlights', 'announcement',
     'ha.tile', 'ha.light', 'ha.switch', 'ha.climate', 'ha.cover', 'ha.sensor', 'ha.room', 'ha.chart', 'ha.camera', 'ha.media', 'ha.scene',
     'ha.gauge', 'ha.statistic',
@@ -59,7 +60,7 @@ test('registry: every kind of the spec and of the owner amendments is reserved, 
     const def = CANVAS_KINDS[k];
     assert.ok(def.sizes.length && def.sizes.every((s) => s in CANVAS_SIZES), k);
     assert.ok(def.sizes.includes(def.def), `${k}: default size ${def.def} not allowed`);
-    assert.ok(['time', 'calendar', 'weather', 'content', 'family', 'home', 'data', 'adv'].includes(def.cat), k);
+    assert.ok(['time', 'calendar', 'weather', 'content', 'nav', 'family', 'home', 'data', 'adv'].includes(def.cat), k);
     // the defaults pass their own validation with no error
     const c = collector();
     const props = def.props(c, 'p', canvasDefaults(k), {}, {});
@@ -92,7 +93,7 @@ test('defaults: an inert canvas on every screen, back-filled for configs saved b
   assert.deepEqual(defaultScreenProfile().canvas, defaultCanvas());
   assert.deepEqual(defaultCanvas(), {
     v: 1, background: 'ambient', dim: 0.15, scrim: 'uniform', color: null, sidebar: { side: 'none', size: 'normal', fill: 'glass' },
-    defaults: { surface: 'glass', radius: 'l' }, touch: false, perf: 'auto', portraitAuto: true, items: [],
+    defaults: { surface: 'glass', radius: 'l' }, touch: false, swipe: false, perf: 'auto', portraitAuto: true, items: [],
   });
   const c = defaultConfig();
   delete c.screens[0].canvas;

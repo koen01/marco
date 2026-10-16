@@ -359,3 +359,6 @@
 /* the corners choice on one line at the inspector's width (Muy redondeadas is long) */
 .bld-radius .seg button { padding-inline: 4px; white-space: nowrap; font-size: 12.5px; letter-spacing: -0.01em; }
 .bld-radius .seg button > span { overflow: hidden; text-overflow: ellipsis; }
+/* "Icono" of the Navegación cards: the built-in icons and the emoji picker on one row (fields.tsx NavIconField) */
+.bld-navicons { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.bld-navicon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; }

@@ -28,6 +28,7 @@ import { ROWS_TWOFA } from './i18n-dict-2fa';
 import { ROWS_ACCOUNT } from './i18n-dict-account';
 import { ROWS_BACKGROUND } from './i18n-dict-background';
 import { ROWS_BUILDER } from './i18n-dict-builder';
+import { ROWS_NAV } from './i18n-dict-nav';
 import { ROWS_TILE } from './i18n-dict-tile';
 // Translations for the admin panel. Spanish is the source language (key); [es, en, pt].
 const ROWS: [string, string, string][] = [
@@ -431,7 +432,7 @@ for (const [es, en, pt] of ROWS) {
   PT[es] = pt;
 }
 // v2 pages; existing rows win on duplicates.
-for (const [es, en, pt] of [...ROWS2, ...ROWS3, ...ROWS4, ...ROWS5, ...ROWS6, ...ROWS7, ...ROWS8, ...ROWS9, ...ROWS10, ...ROWS11, ...ROWS12, ...ROWS13, ...ROWS14, ...ROWS15, ...ROWS_ICLOUD, ...ROWS_MOTION, ...ROWS_COMPACT, ...ROWS_FEEDBACK, ...ROWS_PRIVACY, ...ROWS_DOORBELL, ...ROWS_CAROUSELS, ...ROWS_IMMICH, ...ROWS_PLANNER, ...ROWS_FAMILY, ...ROWS_WIDGETS, ...ROWS_PRICES, ...ROWS_BACKGROUND, ...ROWS_TWOFA, ...ROWS_ACCOUNT, ...ROWS_BUILDER, ...ROWS_TILE]) {
+for (const [es, en, pt] of [...ROWS2, ...ROWS3, ...ROWS4, ...ROWS5, ...ROWS6, ...ROWS7, ...ROWS8, ...ROWS9, ...ROWS10, ...ROWS11, ...ROWS12, ...ROWS13, ...ROWS14, ...ROWS15, ...ROWS_ICLOUD, ...ROWS_MOTION, ...ROWS_COMPACT, ...ROWS_FEEDBACK, ...ROWS_PRIVACY, ...ROWS_DOORBELL, ...ROWS_CAROUSELS, ...ROWS_IMMICH, ...ROWS_PLANNER, ...ROWS_FAMILY, ...ROWS_WIDGETS, ...ROWS_PRICES, ...ROWS_BACKGROUND, ...ROWS_TWOFA, ...ROWS_ACCOUNT, ...ROWS_BUILDER, ...ROWS_TILE, ...ROWS_NAV]) {
   if (!(es in EN)) EN[es] = en;
   if (!(es in PT)) PT[es] = pt;
 }

@@ -1,8 +1,8 @@
 // Inspector, Contenido tab: draws the options of each kind (fieldSpecs.ts) as one small form.
 import type { CanvasItem, FamilyMember, HaState, HookValueInfo, TileFeature, WidgetDef } from '../../shared/types';
-import { ColorPicker, Field, NumberInput, Segmented, Select, Slider, TextInput, ToggleRow } from '../components/ui';
+import { ColorPicker, EmojiPicker, Field, NumberInput, Segmented, Select, Slider, TextInput, ToggleRow } from '../components/ui';
 import { HaEntitySelect } from '../components/HaEntityPicker';
-import { CANVAS_KINDS, TILE_FEATURES } from '../../../server/core/canvasCore.js';
+import { CANVAS_KINDS, NAV_ICONS, TILE_FEATURES } from '../../../server/core/canvasCore.js';
 import { FEATURE_DOMAINS, tileFeatures } from '../../../server/core/haCore.js';
 import { attrsFromSlim } from '../../shared/haGuess';
 import { t } from '../i18n';
@@ -14,6 +14,9 @@ import { CoinsField, FollowField, StocksKeyField, SymbolsField } from './DataPic
 
 export interface FieldEnv {
   sources: { id: string; name: string; color: string; emoji: string }[];
+  /** the household's screens ("Ir a pantalla"), and the one being edited */
+  screens?: { id: string; name: string }[];
+  screenId?: string;
   members: FamilyMember[];
   widgets: WidgetDef[];
   go: (route: string) => void;
@@ -29,6 +32,42 @@ export interface FieldEnv {
 
 const fmt = (unit: string | undefined, v: number) =>
   unit === 'min' ? (v === 0 ? t('Nunca') : t('{n} min', { n: v })) : unit === 'days' ? t('{n} días', { n: v }) : unit === 'sec' ? (v >= 60 && v % 60 === 0 ? t('{n} min', { n: v / 60 }) : t('{n} s', { n: v })) : String(v);
+
+/** The built-in icons of the navigation cards (the display draws the same paths: widgets/canvas/nav.ts). */
+const NAV_ICON_PATHS: Record<string, string> = {
+  home: 'M3 11l9-7 9 7 M5 10v10h14V10 M10 20v-6h4v6',
+  back: 'M9 14L4 9l5-5 M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
+  prev: 'm15 6-6 6 6 6',
+  next: 'm9 6 6 6-6 6',
+  grid: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+  pause: 'M8 5v14 M16 5v14',
+  play: 'M7 4l13 8-13 8z',
+  star: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z',
+  photo: 'M3 5h18v14H3z M3 16l5-5 4 4 3-3 6 6 M15.5 9.5a1.5 1.5 0 1 0 0-.01',
+  calendar: 'M4 6h16v14H4z M4 10h16 M8 3v5 M16 3v5',
+};
+const navSvg = (name: string) => (
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d={NAV_ICON_PATHS[name] ?? ''} />
+  </svg>
+);
+
+/** "Icono" of a navigation card: one of the built-in icons, an emoji, or none (the card's default icon). */
+function NavIconField({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const builtIn = value.startsWith('i:') ? value.slice(2) : '';
+  return (
+    <Field label={label} hint={t('Sin icono: el de siempre (una flecha, o la casa para Inicio).')}>
+      <div class="bld-navicons" role="group">
+        {NAV_ICONS.map((n) => (
+          <button type="button" class={`bld-chip bld-navicon ${builtIn === n ? 'is-on' : ''}`} aria-pressed={builtIn === n} aria-label={n} title={n} onClick={() => onChange(builtIn === n ? '' : `i:${n}`)}>
+            {navSvg(n)}
+          </button>
+        ))}
+        <EmojiPicker value={builtIn ? '' : value} allowNone onChange={(v) => onChange(v)} />
+      </div>
+    </Field>
+  );
+}
 
 /** A multi-pick of chips with "all" first (null = all). */
 function MultiPick({ all, items, value, onChange }: { all: string; items: { id: string; label: string; color?: string }[]; value: string[] | null; onChange: (v: string[] | null) => void }) {
@@ -307,10 +346,28 @@ export function ContentFields({ item, env, put }: { item: CanvasItem; env: Field
         }
         if (s.type === 'select')
           return (
-            <Field label={t(s.label)}>
+            <Field label={t(s.label)} hint={s.hint ? t(s.hint) : undefined}>
               <Select value={p[s.k]} options={s.opts.map((o) => ({ value: o.v, label: t(o.l) }))} onChange={(v) => put(s.k, v)} />
             </Field>
           );
+        if (s.type === 'screen') {
+          const list = env.screens ?? [];
+          const gone = !!p.target && p.target !== 'home' && !list.some((x) => x.id === p.target);
+          return (
+            <Field label={t(s.label)} hint={!p.target || gone ? t('Elige a qué pantalla lleva el botón.') : p.target === 'home' ? t('La pantalla o el carrusel que el dispositivo muestra siempre.') : undefined}>
+              <Select
+                value={gone ? '' : p.target ?? ''}
+                options={[
+                  ...(!p.target || gone ? [{ value: '', label: t('Elige una pantalla') }] : []),
+                  { value: 'home', label: t('Inicio (la de siempre del dispositivo)') },
+                  ...list.map((x) => ({ value: x.id, label: x.id === env.screenId ? t('{name} (esta pantalla)', { name: x.name || x.id }) : x.name || x.id })),
+                ]}
+                onChange={(v) => put('target', v)}
+              />
+            </Field>
+          );
+        }
+        if (s.type === 'navIcon') return <NavIconField value={String(p.icon ?? '')} onChange={(v) => put('icon', v)} label={t(s.label)} />;
         if (s.type === 'num')
           return (
             <Field label={t(s.label)}>

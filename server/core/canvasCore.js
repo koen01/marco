@@ -319,6 +319,36 @@ function inkProps(c, p, x, kind) {
   return out;
 }
 
+/** "Ir a pantalla": what the button shows (icon and text, the icon alone, the text alone). */
+export const NAV_SHOW = ['both', 'icon', 'text'];
+/** "Volver solo tras": minutes without a touch before a device that navigated goes back (0 = it stays). */
+export const NAV_RETURN_DEFAULT = 5;
+export const NAV_RETURN_MAX = 120;
+/** The built-in icons of the navigation cards ('i:<name>'); anything else in `icon` is an emoji. */
+export const NAV_ICONS = ['home', 'back', 'prev', 'next', 'grid', 'pause', 'play', 'star', 'photo', 'calendar'];
+/** The target of "Ir a pantalla": a screen id, 'home' (the device's own screen or carousel) or '' (not chosen yet). */
+export const NAV_HOME = 'home';
+/** Kinds the "Permitir tocar en la pantalla" switch turns on (without it the display does not draw them). */
+export const NAV_TAP_KINDS = ['nav.button', 'nav.pause'];
+
+function navTargetOf(c, p, v, known) {
+  if (v === undefined || v === null || v === '') return '';
+  if (v === NAV_HOME) return NAV_HOME;
+  if (typeof v !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(v)) {
+    c.err(p, 'invalid screen id');
+    return '';
+  }
+  // a screen deleted meanwhile: not chosen any more (the config pass drops them too, validate.js)
+  if (known && !known.has(v)) return '';
+  return v;
+}
+
+function navIconOf(c, p, v) {
+  const s = P.str(c, p, v, '', 12).trim();
+  if (s.startsWith('i:')) return NAV_ICONS.includes(s.slice(2)) ? s : '';
+  return s.length > 8 ? s.slice(0, 8) : s;
+}
+
 /**
  * Every kind of widget. `cat` = palette category, `sizes` = its named sizes (`def` the default; the presets of the
  * editor), `cells` = [min w, min h, max w, max h]: any box of whole cells in between is allowed too (landscape cells;
@@ -523,6 +553,37 @@ export const CANVAS_KINDS = {
     cat: 'content', sizes: ['xs', 's', 'm', 'w', 't', 'l'], def: 's', cells: [1, 1, 12, 8], side: true, edition: 'all',
     defaults: () => ({}),
     props: () => ({}),
+  },
+  // ---- Navegación (touch screens: go to another screen, pause the carousel, see where it is; display: widgets/canvas/nav.ts)
+  'nav.button': {
+    cat: 'nav', sizes: ['row', 'xs', 's', 'w', 'm'], def: 's', cells: [1, 1, 6, 3], side: true, edition: 'all', nav: true, taps: true,
+    defaults: () => ({ target: '', label: '', icon: '', show: 'both', returnMin: NAV_RETURN_DEFAULT }),
+    props: (c, p, x, refs) => ({
+      target: navTargetOf(c, `${p}.target`, x.target, refs.screenIds ?? null),
+      label: P.str(c, `${p}.label`, x.label, '', 40),
+      icon: navIconOf(c, `${p}.icon`, x.icon),
+      show: P.oneOf(c, `${p}.show`, x.show, 'both', NAV_SHOW),
+      returnMin: P.num(c, `${p}.returnMin`, x.returnMin, NAV_RETURN_DEFAULT, 0, NAV_RETURN_MAX),
+    }),
+  },
+  'nav.pause': {
+    cat: 'nav', sizes: ['row', 'xs', 's', 'w'], def: 'xs', cells: [1, 1, 6, 2], side: true, edition: 'all', nav: true, taps: true,
+    defaults: () => ({ label: '', icon: '', show: 'both', returnMin: NAV_RETURN_DEFAULT }),
+    props: (c, p, x) => ({
+      label: P.str(c, `${p}.label`, x.label, '', 40),
+      icon: navIconOf(c, `${p}.icon`, x.icon),
+      show: P.oneOf(c, `${p}.show`, x.show, 'both', NAV_SHOW),
+      returnMin: P.num(c, `${p}.returnMin`, x.returnMin, NAV_RETURN_DEFAULT, 0, NAV_RETURN_MAX),
+    }),
+  },
+  'nav.progress': {
+    cat: 'nav', sizes: ['row', 's', 'w', 'band'], def: 'w', cells: [2, 1, 12, 2], side: true, edition: 'all', nav: true, defStyle: { surface: 'none' },
+    defaults: () => ({ style: 'dots', name: true, time: true }),
+    props: (c, p, x) => ({
+      style: P.oneOf(c, `${p}.style`, x.style, 'dots', ['dots', 'bar']),
+      name: P.bool(c, `${p}.name`, x.name, true),
+      time: P.bool(c, `${p}.time`, x.time, true),
+    }),
   },
   // ---- Familia y hogar (the family data the display already gets: GET /api/display/family)
   'family.members': {
@@ -864,7 +925,7 @@ export const DEFAULT_CANVAS_KINDS = CANVAS_KIND_IDS.filter((k) => !CANVAS_KINDS[
 /** Kinds Marco Cloud allows: no Home Assistant and no custom HTML. */
 export const CLOUD_CANVAS_KINDS = DEFAULT_CANVAS_KINDS.filter((k) => CANVAS_KINDS[k].edition === 'all');
 /** Palette categories, in order. */
-export const CANVAS_CATEGORIES = ['time', 'calendar', 'weather', 'content', 'family', 'home', 'data', 'adv'];
+export const CANVAS_CATEGORIES = ['time', 'calendar', 'weather', 'content', 'nav', 'family', 'home', 'data', 'adv'];
 
 /** Props of a new item of `kind`. */
 export function canvasDefaults(kind) {
@@ -881,7 +942,7 @@ export function defaultItemStyle() {
 export function defaultCanvas() {
   return {
     v: 1, background: 'ambient', dim: 0.15, scrim: 'uniform', color: null, sidebar: { side: 'none', size: 'normal', fill: 'glass' },
-    defaults: { surface: 'glass', radius: 'l' }, touch: false, perf: 'auto', portraitAuto: true, items: [],
+    defaults: { surface: 'glass', radius: 'l' }, touch: false, swipe: false, perf: 'auto', portraitAuto: true, items: [],
   };
 }
 
@@ -1166,6 +1227,8 @@ export function sanitizeCanvas(c, p, raw, refs = {}, opts = {}) {
       radius: P.oneOf(c, `${p}.defaults.radius`, df.radius, D.defaults.radius, CANVAS_RADII),
     },
     touch: P.bool(c, `${p}.touch`, raw.touch, D.touch),
+    // "Deslizar para cambiar de pantalla": a swipe goes to the carousel's next or previous screen (with touch on)
+    swipe: P.bool(c, `${p}.swipe`, raw.swipe, D.swipe),
     perf: P.oneOf(c, `${p}.perf`, raw.perf, D.perf, ['auto', 'low']),
     portraitAuto: P.bool(c, `${p}.portraitAuto`, raw.portraitAuto, D.portraitAuto),
     items: [],
@@ -1589,7 +1652,8 @@ export function itemAliases(item) {
  * pictures never leave the server (aliases instead); private screens get placeholders for HA, cameras, values,
  * per-person calendars and custom cards; kinds this server does not allow get disabled 'feature'. Pure: only the
  * config decides it (the admin preview runs it too).
- * `opts` = { isPrivate, canvasKinds, haControls, members: [{ id, calendarId }] }.
+ * `opts` = { isPrivate, canvasKinds, haControls, members: [{ id, calendarId }], screens: [{ id, name }], trusted }.
+ * `taps` (the navigation cards and the swipe) needs the screen's touch switch, not private, and `trusted` not false.
  */
 export function projectCanvas(screen, opts = {}) {
   if (screen?.layout?.preset !== 'canvas') return null;
@@ -1598,6 +1662,10 @@ export function projectCanvas(screen, opts = {}) {
   const priv = !!opts.isPrivate;
   const haControls = opts.haControls !== false;
   const touch = !!cv.touch && haControls && !priv;
+  // the navigation cards and the swipe (no Home Assistant involved, so Marco Cloud has them too): touch on, not
+  // private, and a display the server trusts (`trusted` false: open mode from outside the local network)
+  const taps = !!cv.touch && !priv && opts.trusted !== false;
+  const names = new Map((opts.screens ?? []).map((s) => [s.id, s.name]));
   const derived = cv.portraitAuto ? new Map(deriveCanvasPortrait(cv.items, cv.sidebar).placed.map((d) => [d.id, d.pos])) : null;
   const members = new Map((opts.members ?? []).map((m) => [m.id, m.calendarId ?? null]));
   // the schedules decide at `now` in the screen's zone; the display asks again at the next change (`next`)
@@ -1613,6 +1681,11 @@ export function projectCanvas(screen, opts = {}) {
     if (it.kind === 'calendar.people') {
       const { memberIds, ...rest } = props;
       props = { ...rest, columns: memberIds ? memberIds.map((id) => members.get(id)).filter(Boolean) : null };
+    }
+    // the target's name (the button's text when it has none of its own); a deleted screen is no target
+    if (it.kind === 'nav.button' && props.target && props.target !== NAV_HOME) {
+      if (opts.screens && !names.has(props.target)) props = { ...props, target: '' };
+      else props = { ...props, targetName: names.get(props.target) ?? '' };
     }
     const portrait = derived ? derived.get(it.id) ?? null : it.portrait ?? null;
     const out = {
@@ -1630,7 +1703,7 @@ export function projectCanvas(screen, opts = {}) {
     return out;
   });
   const { items: _i, touch: _t, ...rest } = cv;
-  const out = { ...structuredClone(rest), orientation: screen.screen?.orientation ?? 'auto', touch, items };
+  const out = { ...structuredClone(rest), orientation: screen.screen?.orientation ?? 'auto', touch, taps, swipe: taps && !!cv.swipe, items };
   if (nextMs !== null) out.next = new Date(nextMs).toISOString();
   if (opts.haOff && items.some((it) => it.kind.startsWith('ha.') && !it.disabled)) out.haOff = true;
   return out;
@@ -1646,6 +1719,17 @@ export function canvasDataItems(screen, { now = new Date(), tz = 'UTC' } = {}) {
 export function canvasWidgetIds(screen, { now = new Date(), tz = 'UTC' } = {}) {
   if (screen?.layout?.preset !== 'canvas') return [];
   return [...new Set((screen.canvas?.items ?? []).filter((it) => it.kind === 'widget' && !it.hidden && it.props?.widgetId && scheduleOn(it, now, tz)).map((it) => it.props.widgetId))];
+}
+
+/** Screen ids the "Ir a pantalla" cards of a screen go to (shown ones; 'home' and unchosen left out), no repeats. */
+export function navTargets(screen) {
+  if (screen?.layout?.preset !== 'canvas') return [];
+  const out = [];
+  for (const it of screen.canvas?.items ?? []) {
+    const t = it.kind === 'nav.button' && !it.hidden ? it.props?.target : '';
+    if (typeof t === 'string' && t && t !== NAV_HOME && !out.includes(t)) out.push(t);
+  }
+  return out;
 }
 
 /**
@@ -2062,7 +2146,7 @@ export const CANVAS_FILE_VERSION = 1;
 /** Largest file the editor reads (bytes). */
 export const CANVAS_FILE_MAX = 512 * 1024;
 /** What a card asks for again after an import. */
-export const CANVAS_PICKS = ['calendars', 'people', 'entities', 'widget'];
+export const CANVAS_PICKS = ['calendars', 'people', 'entities', 'widget', 'screen'];
 
 /** An item's props and condition with this household's references emptied; `removed` = the CANVAS_PICKS it lost. */
 function stripItem(it) {
@@ -2077,6 +2161,11 @@ function stripItem(it) {
   if (it.kind === 'widget') {
     removed.add('widget');
     p.widgetId = '';
+  }
+  // a screen of this Marco means nothing in another one ('home' does)
+  if (it.kind === 'nav.button' && p.target && p.target !== NAV_HOME) {
+    removed.add('screen');
+    p.target = '';
   }
   const ent = (e) => {
     if (typeof e === 'string' && e) removed.add('entities');

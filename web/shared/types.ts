@@ -787,13 +787,15 @@ export interface AppConfig {
 export type CanvasSize = 'xs' | 's' | 'm' | 'w' | 't' | 'l' | 'xl' | 'band' | 'full' | 'row' | 'sq';
 export type SideSpan = 2 | 3 | 4 | 'fill';
 export type CanvasSurface = 'glass' | 'solid' | 'none';
-export type CanvasCategory = 'time' | 'calendar' | 'weather' | 'content' | 'family' | 'home' | 'data' | 'adv';
+export type CanvasCategory = 'time' | 'calendar' | 'weather' | 'content' | 'nav' | 'family' | 'home' | 'data' | 'adv';
 
 export type CanvasKind =
   | 'clock.digital' | 'clock.analog' | 'clock.flip' | 'clock.world' | 'date'
   | 'calendar.month' | 'calendar.week' | 'calendar.agenda' | 'calendar.today' | 'calendar.next' | 'calendar.people' | 'countdowns'
   | 'weather.now' | 'weather.hourly' | 'weather.forecast'
   | 'message' | 'todo' | 'news' | 'photo' | 'widget' | 'value' | 'spacer' | 'heading'
+  // Navegación: touch screens go to another screen, pause the carousel or show where it is
+  | 'nav.button' | 'nav.pause' | 'nav.progress'
   // Familia y hogar: the family data the display already has (GET /api/display/family)
   | 'family.members' | 'family.routines' | 'family.points' | 'family.rewards' | 'family.chores'
   | 'meals.today' | 'meals.week' | 'birthdays' | 'highlights' | 'announcement'
@@ -875,8 +877,10 @@ export interface CanvasConfig {
   color: string | null;
   sidebar: { side: 'none' | 'left' | 'right' | 'top' | 'bottom'; size: 'narrow' | 'normal' | 'wide'; fill: 'glass' | 'solid' | 'photo' };
   defaults: { surface: CanvasSurface; radius: 'sq' | 'm' | 'l' | 'xl' };
-  /** "Permitir tocar en la pantalla" (Home Assistant controls on the TV) */
+  /** "Permitir tocar en la pantalla" (Home Assistant controls, the navigation cards) */
   touch: boolean;
+  /** "Deslizar para cambiar de pantalla": with touch on, a swipe goes to the carousel's next or previous screen */
+  swipe?: boolean;
   /** 'low' forces the low-power look on this screen */
   perf: 'auto' | 'low';
   /** the portrait arrangement is derived from the landscape one */
@@ -909,6 +913,10 @@ export interface DisplayCanvas extends Omit<CanvasConfig, 'items' | 'touch'> {
   orientation: 'landscape' | 'portrait' | 'auto';
   /** canvas.touch, with controls allowed on this server and the screen not private */
   touch: boolean;
+  /** canvas.touch for the navigation cards and the swipe: not private, and a display the server trusts (absent: older servers) */
+  taps?: boolean;
+  /** canvas.swipe, only while `taps` */
+  swipe?: boolean;
   items: DisplayCanvasItem[];
   /** when a visibility schedule of an item starts or ends next (ISO): the display asks for its config again then */
   next?: string;

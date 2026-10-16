@@ -147,8 +147,9 @@ export function displayWidgets(cfg, screen, { isPrivate = false, widgetSrc = nul
  * `familyQr` = the family page URL (family.js familyQrUrl), or null without a family link.
  * `widgetSrc` = how the display loads widgets (displayWidgets): null = the URL itself.
  * `canvasKinds` / `haControls` = what a Personalizado screen may show on this server (core/canvasCore.js projectCanvas).
+ * `trusted` = false for a display that may not tap (open mode from outside the local network): no navigation taps.
  */
-export function displayConfig(cfg, screen, { privacy = null, carousel = null, familyQr = null, widgetSrc = null, canvasKinds, haControls } = {}) {
+export function displayConfig(cfg, screen, { privacy = null, carousel = null, familyQr = null, widgetSrc = null, canvasKinds, haControls, trusted } = {}) {
   const f = flatView(cfg, screen);
   const priv = displayPrivacy(screen, privacy?.status, privacy?.next ?? null);
   const background = priv.active && screen.privacy?.hidePhotos && f.background.source !== 'stock' ? { ...f.background, source: 'stock' } : f.background;
@@ -177,6 +178,7 @@ export function displayConfig(cfg, screen, { privacy = null, carousel = null, fa
     canvas: projectCanvas(screen, {
       isPrivate: priv.active, canvasKinds, haControls, tz: cfg.datetime?.timezone || 'UTC', haOff: !cfg.homeassistant?.enabled,
       members: (cfg.family?.members ?? []).map((m) => ({ id: m.id, calendarId: m.calendarId ?? null })),
+      screens: (cfg.screens ?? []).map((x) => ({ id: x.id, name: x.name })), trusted,
     }),
     // what the display is bound to: this screen, or a carousel that shows it among others
     target: carousel

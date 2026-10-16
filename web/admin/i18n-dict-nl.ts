@@ -5,6 +5,7 @@
 import { NL_TWOFA } from './i18n-dict-2fa';
 import { NL_ACCOUNT } from './i18n-dict-account';
 import { NL_BUILDER, NL_SINGULAR_BUILDER } from './i18n-dict-builder';
+import { NL_NAV } from './i18n-dict-nav';
 import { NL_TILE } from './i18n-dict-tile';
 
 /** Every admin row but the Familia ones. */
@@ -12,6 +13,7 @@ export const NL: Record<string, string> = {
   ...NL_TWOFA,
   ...NL_ACCOUNT,
   ...NL_BUILDER,
+  ...NL_NAV,
   ...NL_TILE,
   '(ninguno)': '(geen)',
   'Estás usando la contraseña inicial. Cámbiala: hasta entonces solo se acepta desde tu red local.': 'Je gebruikt het startwachtwoord. Wijzig het: tot dan wordt het alleen vanuit je lokale netwerk geaccepteerd.',

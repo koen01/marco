@@ -7,7 +7,11 @@ export type Spec =
   | { k: string; type: 'bool'; label: string; hint?: string }
   /** `show`: only while it applies (`widgets`: the saved widgets, for the card that shows one) */
   | { k: string; type: 'seg'; label: string; opts: Opt[]; hint?: string; show?: (p: Record<string, any>, widgets: { id: string; type: string }[]) => boolean }
-  | { k: string; type: 'select'; label: string; opts: Opt[] }
+  | { k: string; type: 'select'; label: string; opts: Opt[]; hint?: string }
+  /** "Ir a pantalla": one of the household's screens, or Inicio */
+  | { k: 'target'; type: 'screen'; label: string }
+  /** an emoji, or one of the built-in icons of the navigation cards (canvasCore NAV_ICONS, 'i:<name>') */
+  | { k: 'icon'; type: 'navIcon'; label: string }
   | { k: string; type: 'num'; label: string; min: number; max: number; step?: number; unit?: 'days' | 'sec' | 'n' | 'min' }
   /** any number, typed (the ends of a bar); `show`: only while it applies */
   | { k: string; type: 'number'; label: string; step?: number; hint?: string; show?: (p: Record<string, any>) => boolean }
@@ -56,7 +60,37 @@ const CHART_STYLE = (hint: string, show?: (p: Record<string, any>, widgets: { id
 });
 const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 
+/** What a navigation button shows. */
+const NAV_SHOW_FIELD: Spec = { k: 'show', type: 'seg', label: 'Mostrar', opts: [{ v: 'both', l: 'Icono y texto' }, { v: 'icon', l: 'Solo icono' }, { v: 'text', l: 'Solo texto' }] };
+/** "Volver solo tras X min sin tocar" (canvasCore NAV_RETURN_DEFAULT; 0 = it stays). */
+const NAV_RETURN: Spec = {
+  k: 'returnMin', type: 'select', label: 'Volver solo tras',
+  opts: [{ v: 0, l: 'No volver solo' }, ...[1, 2, 5, 10, 15, 30, 60].map((n) => ({ v: n, l: n === 1 ? '1 min sin tocar' : `${n} min sin tocar` }))],
+  hint: 'Pasado ese tiempo sin que nadie toque la pantalla, vuelve a su pantalla o a su carrusel de siempre.',
+};
+
 export const FIELDS: Partial<Record<CanvasKind, Spec[]>> = {
+  'nav.button': [
+    { k: 'target', type: 'screen', label: 'Pantalla' },
+    NAV_SHOW_FIELD,
+    { k: 'icon', type: 'navIcon', label: 'Icono' },
+    { k: 'label', type: 'text', label: 'Texto', max: 40, hint: 'Vacío: el nombre de la pantalla.' },
+    NAV_RETURN,
+    { type: 'note', text: 'Si la pantalla de destino está en el carrusel de este dispositivo, salta a ella y el carrusel sigue desde ahí. Si no, la muestra y se queda en ella.' },
+  ],
+  'nav.pause': [
+    NAV_SHOW_FIELD,
+    { k: 'icon', type: 'navIcon', label: 'Icono' },
+    { k: 'label', type: 'text', label: 'Texto', max: 40, hint: 'Vacío: Pausar o Seguir.' },
+    NAV_RETURN,
+    { type: 'note', text: 'Solo se ve en los dispositivos que muestran un carrusel.' },
+  ],
+  'nav.progress': [
+    { k: 'style', type: 'seg', label: 'Estilo', opts: [{ v: 'dots', l: 'Puntos' }, { v: 'bar', l: 'Barra' }] },
+    { k: 'name', type: 'bool', label: 'Nombre de la pantalla' },
+    { k: 'time', type: 'bool', label: 'Tiempo que queda' },
+    { type: 'note', text: 'Solo se ve en los dispositivos que muestran un carrusel. No hace falta tocar la pantalla.' },
+  ],
   'clock.digital': [
     { k: 'seconds', type: 'bool', label: 'Segundos' },
     { k: 'showDate', type: 'bool', label: 'Mostrar la fecha' },

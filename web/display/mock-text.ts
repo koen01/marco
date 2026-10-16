@@ -10,6 +10,7 @@ export const DEMO_NL_DA: Record<string, [string, string]> = {
   'Public holidays': ['Feestdagen', 'Helligdage'],
   'Work': ['Werk', 'Arbejde'],
   'Living room': ['Woonkamer', 'Stue'],
+  'Kitchen': ['Keuken', 'Køkken'],
   'Lisbon, Portugal': ['Lissabon, Portugal', 'Lissabon, Portugal'],
   'Today': ['Vandaag', 'I dag'],
   'Photos': ['Foto\'s', 'Billeder'],

@@ -5,6 +5,21 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- **Navigation cards for touch screens** (Custom screens, new palette group *Navigation*): *Go to screen* is a button
+  to any other screen in your home, or *Home* (the screen or carousel the device usually shows), from a one-line or
+  icon-only button up to a medium card, with an emoji or a built-in icon, its own text or the screen's name. On a
+  device that runs a carousel with that screen, the carousel jumps to it, starts that step's time again and goes on
+  from there; any other screen is shown and stays. *Go back by itself after* (5 minutes without a touch by default,
+  or never) takes the device back to its usual screen or carousel. The choice is kept on the device only.
+- *Pause carousel* button (pauses the rotation on that device until it is tapped again or the idle time passes) and a
+  *Carousel progress* card (which screen is on and how long it has left, as dots or a thin bar).
+- *Swipe to change screen*: with touch on, swiping left or right on a carousel goes to the next or the previous screen.
+- The buttons work only where the screen allows touch, on a display Marco trusts and never while the screen is
+  private; without touch they are not drawn and the editor says why. In the editor's preview a tap only lights them.
+- The *Animated* background in the editor's page settings now points to where its effect (aurora, particles) is
+  chosen: *Background → Ambient effect*.
+
 ## [0.16.0] - 2026-10-16
 
 ### Added
